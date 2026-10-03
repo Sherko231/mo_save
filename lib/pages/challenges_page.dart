@@ -72,6 +72,53 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
   }
 
+  Future<void> _deleteChallenge(SavingChallenge challenge) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete challenge?'),
+        content: Text(
+          'Delete "${challenge.name}"? This cannot be undone.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    final List<SavingChallenge> updated = _challenges
+        .where((item) => item.id != challenge.id)
+        .toList(growable: false);
+
+    try {
+      await _storage.saveChallenges(updated);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _challenges = updated;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not delete the challenge locally.')),
+      );
+    }
+  }
+
   void _openChallenge(SavingChallenge challenge) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -101,7 +148,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
                           '\$${_formatAmount(challenge.targetAmount)}  •  '
                           '${challenge.sequence.label}',
                         ),
-                        trailing: const Icon(Icons.chevron_right),
+                        trailing: IconButton(
+                          onPressed: () => _deleteChallenge(challenge),
+                          tooltip: 'Delete challenge',
+                          icon: const Icon(Icons.delete_outline),
+                        ),
                       ),
                     );
                   },
