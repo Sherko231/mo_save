@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'pages/challenges_page.dart';
+
 void main() {
   runApp(const MoSaveApp());
 }
@@ -32,7 +34,7 @@ class _AppShellState extends State<AppShell> {
 
   static const List<Widget> _pages = <Widget>[
     _PlaceholderPage(label: 'Home'),
-    _PlaceholderPage(label: 'Challenges'),
+    ChallengesPage(),
     _PlaceholderPage(label: 'Settings'),
   ];
 
