@@ -249,7 +249,6 @@ class _ChallengesPageState extends State<ChallengesPage> {
                             const SizedBox(height: 4),
                             Text(
                               '${challenge.currency.code}  •  '
-                              '${challenge.sequence.label}  •  '
                               '${challenge.cellCount} cells',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
@@ -340,6 +339,8 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final int step = _currency.cellStep;
+
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -378,6 +379,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               ),
               const SizedBox(height: 10),
               SegmentedButton<ChallengeCurrency>(
+                showSelectedIcon: false,
                 segments: ChallengeCurrency.values
                     .map(
                       (currency) => ButtonSegment<ChallengeCurrency>(
@@ -406,14 +408,19 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   prefixText:
                       _currency == ChallengeCurrency.usd ? '\$ ' : null,
                   suffixText:
-                      _currency == ChallengeCurrency.syp ? ' SYP' : null,
-                  helperText: 'Whole ${_currency.code} units only',
+                      _currency == ChallengeCurrency.usd ? null : ' ${_currency.code}',
+                  helperText: step == 1
+                      ? 'Whole units only'
+                      : 'Target must be a multiple of ${_currency.cellStepLabel}',
                   border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   final int? amount = int.tryParse((value ?? '').trim());
                   if (amount == null || amount <= 0) {
                     return 'Enter a whole-unit target greater than 0.';
+                  }
+                  if (amount % step != 0) {
+                    return 'Target must be a multiple of ${_currency.cellStepLabel}.';
                   }
                   return null;
                 },
@@ -439,10 +446,14 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   if (count > 500) {
                     return 'Use 500 cells or fewer.';
                   }
+
                   final int? target =
                       int.tryParse(_targetController.text.trim());
-                  if (target != null && count > target) {
-                    return 'Cells cannot exceed the target amount.';
+                  if (target != null && target > 0 && target % step == 0) {
+                    final int maxCells = target ~/ step;
+                    if (count > maxCells) {
+                      return 'This target supports at most $maxCells cells.';
+                    }
                   }
                   return null;
                 },
@@ -454,6 +465,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               ),
               const SizedBox(height: 10),
               SegmentedButton<ChallengeSequence>(
+                showSelectedIcon: false,
                 segments: ChallengeSequence.values
                     .map(
                       (sequence) => ButtonSegment<ChallengeSequence>(

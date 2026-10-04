@@ -14,29 +14,47 @@ enum ChallengeSequence {
 
 enum ChallengeCurrency {
   usd,
-  syp;
+  syp,
+  sypNew;
 
   String get code => switch (this) {
         ChallengeCurrency.usd => 'USD',
         ChallengeCurrency.syp => 'SYP',
+        ChallengeCurrency.sypNew => 'SYP (N)',
       };
 
   String get label => switch (this) {
         ChallengeCurrency.usd => 'US Dollar',
         ChallengeCurrency.syp => 'Syrian Pound',
+        ChallengeCurrency.sypNew => 'New Syrian Pound',
+      };
+
+  int get cellStep => switch (this) {
+        ChallengeCurrency.usd => 1,
+        ChallengeCurrency.syp => 1000,
+        ChallengeCurrency.sypNew => 10,
+      };
+
+  String get cellStepLabel => switch (this) {
+        ChallengeCurrency.usd => '1',
+        ChallengeCurrency.syp => '1,000',
+        ChallengeCurrency.sypNew => '10',
       };
 
   String formatAmount(num amount) {
     final double value = amount.toDouble();
     final bool isWhole = value == value.roundToDouble();
-    final String raw = isWhole ? value.toInt().toString() : value.toStringAsFixed(2);
+    final String raw =
+        isWhole ? value.toInt().toString() : value.toStringAsFixed(2);
     final List<String> parts = raw.split('.');
     final String grouped = _groupDigits(parts.first);
-    final String formatted = parts.length == 1 ? grouped : '$grouped.${parts.last}';
+    final String formatted =
+        parts.length == 1 ? grouped : '$grouped.${parts.last}';
 
     return switch (this) {
       ChallengeCurrency.usd => '\$$formatted',
       ChallengeCurrency.syp => '$formatted SYP',
+      ChallengeCurrency.sypNew => '$formatted SYP (N)',
     };
   }
 
@@ -111,15 +129,36 @@ class SavingChallenge {
     return (savedAmount / targetAmount).clamp(0.0, 1.0).toDouble();
   }
 
-  SavingChallenge copyWith({List<ChallengeCell>? cells}) {
+  SavingChallenge copyWith({
+    ChallengeSequence? sequence,
+    List<ChallengeCell>? cells,
+  }) {
     return SavingChallenge(
       id: id,
       name: name,
       targetAmount: targetAmount,
       currency: currency,
-      sequence: sequence,
+      sequence: sequence ?? this.sequence,
       cellCount: cellCount,
       cells: cells ?? this.cells,
+    );
+  }
+
+  SavingChallenge resequence(ChallengeSequence nextSequence) {
+    final List<ChallengeCell> reordered = List<ChallengeCell>.from(cells);
+
+    switch (nextSequence) {
+      case ChallengeSequence.ordered:
+        reordered.sort((a, b) => a.value.compareTo(b.value));
+      case ChallengeSequence.reversed:
+        reordered.sort((a, b) => b.value.compareTo(a.value));
+      case ChallengeSequence.random:
+        reordered.shuffle(Random(DateTime.now().microsecondsSinceEpoch));
+    }
+
+    return copyWith(
+      sequence: nextSequence,
+      cells: reordered,
     );
   }
 
@@ -136,16 +175,28 @@ class SavingChallenge {
     }
 
     final int total = targetAmount.toInt();
-    if (cellCount <= 0 || cellCount > total) {
-      throw ArgumentError('Cell count must be between 1 and the target amount.');
+    final int step = currency.cellStep;
+    if (total % step != 0) {
+      throw ArgumentError(
+        'Target must be divisible by the currency cell step.',
+      );
     }
 
-    final List<int> values = _generateValues(
-      total: total,
+    final int unitTotal = total ~/ step;
+    if (cellCount <= 0 || cellCount > unitTotal) {
+      throw ArgumentError(
+        'Cell count must fit within the target and denomination step.',
+      );
+    }
+
+    final List<int> unitValues = _generateValues(
+      total: unitTotal,
       count: cellCount,
       sequence: sequence,
       seedSource: id,
     );
+    final List<int> values =
+        unitValues.map((value) => value * step).toList(growable: false);
 
     return SavingChallenge(
       id: id,
@@ -189,38 +240,56 @@ class SavingChallenge {
             ),
           )
           .toList(growable: false);
+      final int count = (json['cellCount'] as num?)?.toInt() ?? cells.length;
+
+      final List<ChallengeCell> migratedCells = _migrateCellsToStepIfNeeded(
+        id: id,
+        targetAmount: targetAmount,
+        currency: currency,
+        sequence: sequence,
+        cellCount: count,
+        currentCells: cells,
+      );
+
       return SavingChallenge(
         id: id,
         name: json['name'] as String,
         targetAmount: targetAmount,
         currency: currency,
         sequence: sequence,
-        cellCount: (json['cellCount'] as num?)?.toInt() ?? cells.length,
-        cells: cells,
+        cellCount: count,
+        cells: migratedCells,
       );
     }
 
     // Backward compatibility for challenges created before grids existed.
     if (targetAmount > 0 && targetAmount == targetAmount.roundToDouble()) {
       final int total = targetAmount.toInt();
-      final int requestedCount =
-          (json['cellCount'] as num?)?.toInt() ?? min(50, total);
-      final int safeCount = requestedCount.clamp(1, total).toInt();
-      final List<int> values = _generateValues(
-        total: total,
-        count: safeCount,
-        sequence: sequence,
-        seedSource: id,
-      );
-      return SavingChallenge(
-        id: id,
-        name: json['name'] as String,
-        targetAmount: targetAmount,
-        currency: currency,
-        sequence: sequence,
-        cellCount: safeCount,
-        cells: values.map((value) => ChallengeCell(value: value)).toList(),
-      );
+      final int step = currency.cellStep;
+      if (total % step == 0) {
+        final int unitTotal = total ~/ step;
+        final int requestedCount =
+            (json['cellCount'] as num?)?.toInt() ?? min(50, unitTotal);
+        final int safeCount = requestedCount.clamp(1, unitTotal).toInt();
+        final List<int> unitValues = _generateValues(
+          total: unitTotal,
+          count: safeCount,
+          sequence: sequence,
+          seedSource: id,
+        );
+        final List<int> values =
+            unitValues.map((value) => value * step).toList(growable: false);
+
+        return SavingChallenge(
+          id: id,
+          name: json['name'] as String,
+          targetAmount: targetAmount,
+          currency: currency,
+          sequence: sequence,
+          cellCount: safeCount,
+          cells: values.map((value) => ChallengeCell(value: value)).toList(),
+        );
+      }
     }
 
     return SavingChallenge(
@@ -231,6 +300,51 @@ class SavingChallenge {
       sequence: sequence,
       cellCount: 0,
       cells: const <ChallengeCell>[],
+    );
+  }
+
+  static List<ChallengeCell> _migrateCellsToStepIfNeeded({
+    required String id,
+    required double targetAmount,
+    required ChallengeCurrency currency,
+    required ChallengeSequence sequence,
+    required int cellCount,
+    required List<ChallengeCell> currentCells,
+  }) {
+    final int step = currency.cellStep;
+    if (currentCells.every((cell) => cell.value % step == 0)) {
+      return currentCells;
+    }
+
+    if (targetAmount != targetAmount.roundToDouble()) {
+      return currentCells;
+    }
+
+    final int total = targetAmount.toInt();
+    if (total <= 0 || total % step != 0) {
+      return currentCells;
+    }
+
+    final int unitTotal = total ~/ step;
+    if (cellCount <= 0 || cellCount > unitTotal) {
+      return currentCells;
+    }
+
+    final List<int> unitValues = _generateValues(
+      total: unitTotal,
+      count: cellCount,
+      sequence: sequence,
+      seedSource: id,
+    );
+
+    return List<ChallengeCell>.generate(
+      cellCount,
+      (index) => ChallengeCell(
+        value: unitValues[index] * step,
+        isCompleted:
+            index < currentCells.length && currentCells[index].isCompleted,
+      ),
+      growable: false,
     );
   }
 
