@@ -6,7 +6,12 @@ import '../services/challenge_storage.dart';
 import 'challenge_detail_page.dart';
 
 class ChallengesPage extends StatefulWidget {
-  const ChallengesPage({super.key});
+  const ChallengesPage({
+    super.key,
+    required this.isActive,
+  });
+
+  final bool isActive;
 
   @override
   State<ChallengesPage> createState() => _ChallengesPageState();
@@ -179,9 +184,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
     final SavingChallenge? openedChallenge = _openedChallenge;
 
     return PopScope(
-      canPop: openedChallenge == null,
+      canPop: !widget.isActive || openedChallenge == null,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && openedChallenge != null) {
+        if (!didPop && widget.isActive && openedChallenge != null) {
           _closeChallenge();
         }
       },
