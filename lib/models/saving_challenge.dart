@@ -66,7 +66,7 @@ class SavingChallenge {
     if (targetAmount <= 0) {
       return 0;
     }
-    return (savedAmount / targetAmount).clamp(0.0, 1.0);
+    return (savedAmount / targetAmount).clamp(0.0, 1.0).toDouble();
   }
 
   SavingChallenge copyWith({List<ChallengeCell>? cells}) {
@@ -153,7 +153,7 @@ class SavingChallenge {
     if (targetAmount > 0 && targetAmount == targetAmount.roundToDouble()) {
       final int total = targetAmount.toInt();
       final int requestedCount = (json['cellCount'] as num?)?.toInt() ?? min(50, total);
-      final int safeCount = requestedCount.clamp(1, total);
+      final int safeCount = requestedCount.clamp(1, total).toInt();
       final List<int> values = _generateValues(
         total: total,
         count: safeCount,
@@ -188,7 +188,7 @@ class SavingChallenge {
   }) {
     final Random random = Random(_stableSeed(seedSource));
     final List<int> values = List<int>.filled(count, 1);
-    int remaining = total - count;
+    final int remaining = total - count;
 
     if (remaining > 0) {
       final List<double> weights = List<double>.generate(
@@ -217,13 +217,12 @@ class SavingChallenge {
       }
     }
 
-    switch (sequence) {
-      case ChallengeSequence.ordered:
-        values.sort();
-      case ChallengeSequence.reversed:
-        values.sort((a, b) => b.compareTo(a));
-      case ChallengeSequence.random:
-        values.shuffle(random);
+    if (sequence == ChallengeSequence.ordered) {
+      values.sort();
+    } else if (sequence == ChallengeSequence.reversed) {
+      values.sort((a, b) => b.compareTo(a));
+    } else {
+      values.shuffle(random);
     }
 
     return values;
