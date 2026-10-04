@@ -50,6 +50,29 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     updatedCells[index] = cell.copyWith(isCompleted: !cell.isCompleted);
     final SavingChallenge updated = _challenge.copyWith(cells: updatedCells);
 
+    await _saveChange(previous, updated, 'Could not save progress locally.');
+  }
+
+  Future<void> _changeSequence(ChallengeSequence sequence) async {
+    if (_isSaving || sequence == _challenge.sequence) {
+      return;
+    }
+
+    final SavingChallenge previous = _challenge;
+    final SavingChallenge updated = _challenge.resequence(sequence);
+
+    await _saveChange(
+      previous,
+      updated,
+      'Could not save the sequence change locally.',
+    );
+  }
+
+  Future<void> _saveChange(
+    SavingChallenge previous,
+    SavingChallenge updated,
+    String errorMessage,
+  ) async {
     setState(() {
       _challenge = updated;
       _isSaving = true;
@@ -66,7 +89,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
         _isSaving = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not save progress locally.')),
+        SnackBar(content: Text(errorMessage)),
       );
       return;
     }
@@ -122,36 +145,32 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               ],
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                _InfoChip(
-                  label: 'Target',
-                  value: _challenge.currency
-                      .formatAmount(_challenge.targetAmount),
-                ),
-                _InfoChip(
-                  label: 'Currency',
-                  value: _challenge.currency.code,
-                ),
-                _InfoChip(
-                  label: 'Sequence',
-                  value: _challenge.sequence.label,
-                ),
-                _InfoChip(
-                  label: 'Cells',
-                  value: '${_challenge.cellCount}',
-                ),
-              ],
+            Text(
+              'Sequence',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<ChallengeSequence>(
+              showSelectedIcon: false,
+              segments: ChallengeSequence.values
+                  .map(
+                    (sequence) => ButtonSegment<ChallengeSequence>(
+                      value: sequence,
+                      label: Text(sequence.label),
+                    ),
+                  )
+                  .toList(growable: false),
+              selected: <ChallengeSequence>{_challenge.sequence},
+              onSelectionChanged: _isSaving
+                  ? null
+                  : (selection) => _changeSequence(selection.first),
             ),
             const SizedBox(height: 16),
             if (_challenge.cells.isEmpty)
               const Expanded(
                 child: Center(
                   child: Text(
-                    'This older challenge has a fractional target and cannot '
-                    'use a whole-number grid.',
+                    'This older challenge cannot use the current grid rules.',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -250,20 +269,5 @@ class _SavingCell extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(label: Text('$label: $value'));
   }
 }
