@@ -12,6 +12,46 @@ enum ChallengeSequence {
       };
 }
 
+enum ChallengeCurrency {
+  usd,
+  syp;
+
+  String get code => switch (this) {
+        ChallengeCurrency.usd => 'USD',
+        ChallengeCurrency.syp => 'SYP',
+      };
+
+  String get label => switch (this) {
+        ChallengeCurrency.usd => 'US Dollar',
+        ChallengeCurrency.syp => 'Syrian Pound',
+      };
+
+  String formatAmount(num amount) {
+    final double value = amount.toDouble();
+    final bool isWhole = value == value.roundToDouble();
+    final String raw = isWhole ? value.toInt().toString() : value.toStringAsFixed(2);
+    final List<String> parts = raw.split('.');
+    final String grouped = _groupDigits(parts.first);
+    final String formatted = parts.length == 1 ? grouped : '$grouped.${parts.last}';
+
+    return switch (this) {
+      ChallengeCurrency.usd => '\$$formatted',
+      ChallengeCurrency.syp => '$formatted SYP',
+    };
+  }
+
+  static String _groupDigits(String digits) {
+    final StringBuffer buffer = StringBuffer();
+    for (int index = 0; index < digits.length; index++) {
+      if (index > 0 && (digits.length - index) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(digits[index]);
+    }
+    return buffer.toString();
+  }
+}
+
 class ChallengeCell {
   const ChallengeCell({
     required this.value,
@@ -46,6 +86,7 @@ class SavingChallenge {
     required this.id,
     required this.name,
     required this.targetAmount,
+    required this.currency,
     required this.sequence,
     required this.cellCount,
     required this.cells,
@@ -54,6 +95,7 @@ class SavingChallenge {
   final String id;
   final String name;
   final double targetAmount;
+  final ChallengeCurrency currency;
   final ChallengeSequence sequence;
   final int cellCount;
   final List<ChallengeCell> cells;
@@ -74,6 +116,7 @@ class SavingChallenge {
       id: id,
       name: name,
       targetAmount: targetAmount,
+      currency: currency,
       sequence: sequence,
       cellCount: cellCount,
       cells: cells ?? this.cells,
@@ -84,11 +127,12 @@ class SavingChallenge {
     required String id,
     required String name,
     required double targetAmount,
+    required ChallengeCurrency currency,
     required ChallengeSequence sequence,
     required int cellCount,
   }) {
     if (targetAmount <= 0 || targetAmount != targetAmount.roundToDouble()) {
-      throw ArgumentError('Target must be a positive whole-dollar amount.');
+      throw ArgumentError('Target must be a positive whole-unit amount.');
     }
 
     final int total = targetAmount.toInt();
@@ -107,6 +151,7 @@ class SavingChallenge {
       id: id,
       name: name,
       targetAmount: targetAmount,
+      currency: currency,
       sequence: sequence,
       cellCount: cellCount,
       cells: values.map((value) => ChallengeCell(value: value)).toList(),
@@ -117,6 +162,7 @@ class SavingChallenge {
         'id': id,
         'name': name,
         'targetAmount': targetAmount,
+        'currency': currency.name,
         'sequence': sequence.name,
         'cellCount': cellCount,
         'cells': cells.map((cell) => cell.toJson()).toList(growable: false),
@@ -125,6 +171,10 @@ class SavingChallenge {
   factory SavingChallenge.fromJson(Map<String, dynamic> json) {
     final String id = json['id'] as String;
     final double targetAmount = (json['targetAmount'] as num).toDouble();
+    final ChallengeCurrency currency = ChallengeCurrency.values.firstWhere(
+      (value) => value.name == json['currency'],
+      orElse: () => ChallengeCurrency.usd,
+    );
     final ChallengeSequence sequence = ChallengeSequence.values.firstWhere(
       (value) => value.name == json['sequence'],
       orElse: () => ChallengeSequence.ordered,
@@ -143,6 +193,7 @@ class SavingChallenge {
         id: id,
         name: json['name'] as String,
         targetAmount: targetAmount,
+        currency: currency,
         sequence: sequence,
         cellCount: (json['cellCount'] as num?)?.toInt() ?? cells.length,
         cells: cells,
@@ -152,7 +203,8 @@ class SavingChallenge {
     // Backward compatibility for challenges created before grids existed.
     if (targetAmount > 0 && targetAmount == targetAmount.roundToDouble()) {
       final int total = targetAmount.toInt();
-      final int requestedCount = (json['cellCount'] as num?)?.toInt() ?? min(50, total);
+      final int requestedCount =
+          (json['cellCount'] as num?)?.toInt() ?? min(50, total);
       final int safeCount = requestedCount.clamp(1, total).toInt();
       final List<int> values = _generateValues(
         total: total,
@@ -164,6 +216,7 @@ class SavingChallenge {
         id: id,
         name: json['name'] as String,
         targetAmount: targetAmount,
+        currency: currency,
         sequence: sequence,
         cellCount: safeCount,
         cells: values.map((value) => ChallengeCell(value: value)).toList(),
@@ -174,6 +227,7 @@ class SavingChallenge {
       id: id,
       name: json['name'] as String,
       targetAmount: targetAmount,
+      currency: currency,
       sequence: sequence,
       cellCount: 0,
       cells: const <ChallengeCell>[],
@@ -198,7 +252,8 @@ class SavingChallenge {
           return 0.15 + (value * value * 2.2);
         },
       );
-      final double weightTotal = weights.fold<double>(0, (sum, value) => sum + value);
+      final double weightTotal =
+          weights.fold<double>(0, (sum, value) => sum + value);
 
       int distributed = 0;
       for (int i = 0; i < count; i++) {
@@ -208,7 +263,8 @@ class SavingChallenge {
       }
 
       int leftovers = remaining - distributed;
-      final List<int> indexes = List<int>.generate(count, (index) => index)..shuffle(random);
+      final List<int> indexes = List<int>.generate(count, (index) => index)
+        ..shuffle(random);
       int cursor = 0;
       while (leftovers > 0) {
         values[indexes[cursor % indexes.length]]++;
