@@ -104,8 +104,8 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
             ),
             const SizedBox(height: 14),
             Text(
-              '\$${_challenge.savedAmount} of '
-              '\$${_formatAmount(_challenge.targetAmount)} saved',
+              '${_challenge.currency.formatAmount(_challenge.savedAmount)} of '
+              '${_challenge.currency.formatAmount(_challenge.targetAmount)} saved',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -128,7 +128,12 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               children: <Widget>[
                 _InfoChip(
                   label: 'Target',
-                  value: '\$${_formatAmount(_challenge.targetAmount)}',
+                  value: _challenge.currency
+                      .formatAmount(_challenge.targetAmount),
+                ),
+                _InfoChip(
+                  label: 'Currency',
+                  value: _challenge.currency.code,
                 ),
                 _InfoChip(
                   label: 'Sequence',
@@ -173,6 +178,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                         final ChallengeCell cell = _challenge.cells[index];
                         return _SavingCell(
                           cell: cell,
+                          currency: _challenge.currency,
                           enabled: !_isSaving,
                           onTap: () => _toggleCell(index),
                         );
@@ -186,22 +192,18 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
       ),
     );
   }
-
-  static String _formatAmount(double amount) {
-    return amount == amount.truncateToDouble()
-        ? amount.toStringAsFixed(0)
-        : amount.toStringAsFixed(2);
-  }
 }
 
 class _SavingCell extends StatelessWidget {
   const _SavingCell({
     required this.cell,
+    required this.currency,
     required this.enabled,
     required this.onTap,
   });
 
   final ChallengeCell cell;
+  final ChallengeCurrency currency;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -234,7 +236,7 @@ class _SavingCell extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  '\$${cell.value}',
+                  currency.formatAmount(cell.value),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         decoration: cell.isCompleted
