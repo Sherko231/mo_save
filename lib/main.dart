@@ -32,12 +32,6 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = <Widget>[
-    _PlaceholderPage(label: 'Home'),
-    ChallengesPage(),
-    _PlaceholderPage(label: 'Settings'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,7 +39,11 @@ class _AppShellState extends State<AppShell> {
         bottom: false,
         child: IndexedStack(
           index: _selectedIndex,
-          children: _pages,
+          children: <Widget>[
+            const _PlaceholderPage(label: 'Home'),
+            ChallengesPage(isActive: _selectedIndex == 1),
+            const _PlaceholderPage(label: 'Settings'),
+          ],
         ),
       ),
       bottomNavigationBar: SafeArea(
