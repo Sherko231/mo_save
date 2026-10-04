@@ -17,6 +17,21 @@ class _ChallengesPageState extends State<ChallengesPage> {
 
   List<SavingChallenge> _challenges = <SavingChallenge>[];
   bool _isLoading = true;
+  String? _openedChallengeId;
+
+  SavingChallenge? get _openedChallenge {
+    final String? id = _openedChallengeId;
+    if (id == null) {
+      return null;
+    }
+
+    for (final SavingChallenge challenge in _challenges) {
+      if (challenge.id == id) {
+        return challenge;
+      }
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -37,7 +52,8 @@ class _ChallengesPageState extends State<ChallengesPage> {
   }
 
   Future<void> _createChallenge() async {
-    final SavingChallenge? challenge = await showModalBottomSheet<SavingChallenge>(
+    final SavingChallenge? challenge =
+        await showModalBottomSheet<SavingChallenge>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -78,7 +94,8 @@ class _ChallengesPageState extends State<ChallengesPage> {
       return false;
     }
 
-    final List<SavingChallenge> updated = List<SavingChallenge>.from(_challenges);
+    final List<SavingChallenge> updated =
+        List<SavingChallenge>.from(_challenges);
     updated[index] = challenge;
 
     try {
@@ -131,6 +148,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
       }
       setState(() {
         _challenges = updated;
+        if (_openedChallengeId == challenge.id) {
+          _openedChallengeId = null;
+        }
       });
     } catch (_) {
       if (!mounted) {
@@ -142,53 +162,110 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
   }
 
-  Future<void> _openChallenge(SavingChallenge challenge) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => ChallengeDetailPage(
-          challenge: challenge,
-          onChanged: _updateChallenge,
-        ),
-      ),
-    );
+  void _openChallenge(SavingChallenge challenge) {
+    setState(() {
+      _openedChallengeId = challenge.id;
+    });
+  }
+
+  void _closeChallenge() {
+    setState(() {
+      _openedChallengeId = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _challenges.isEmpty
-              ? const Center(child: Text('No challenges yet.'))
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                  itemCount: _challenges.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final SavingChallenge challenge = _challenges[index];
-                    return Card(
-                      child: ListTile(
-                        onTap: () => _openChallenge(challenge),
-                        title: Text(challenge.name),
-                        subtitle: Text(
-                          '\$${_formatAmount(challenge.targetAmount)}  •  '
-                          '${challenge.sequence.label}  •  '
-                          '${challenge.cellCount} cells',
-                        ),
-                        trailing: IconButton(
-                          onPressed: () => _deleteChallenge(challenge),
-                          tooltip: 'Delete challenge',
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createChallenge,
-        tooltip: 'Add challenge',
-        child: const Icon(Icons.add),
+    final SavingChallenge? openedChallenge = _openedChallenge;
+
+    return PopScope(
+      canPop: openedChallenge == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && openedChallenge != null) {
+          _closeChallenge();
+        }
+      },
+      child: Scaffold(
+        body: openedChallenge != null
+            ? ChallengeDetailPage(
+                challenge: openedChallenge,
+                onChanged: _updateChallenge,
+                onBack: _closeChallenge,
+              )
+            : _buildChallengeList(),
+        floatingActionButton: openedChallenge == null
+            ? FloatingActionButton(
+                onPressed: _createChallenge,
+                tooltip: 'Add challenge',
+                child: const Icon(Icons.add),
+              )
+            : null,
       ),
+    );
+  }
+
+  Widget _buildChallengeList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_challenges.isEmpty) {
+      return const Center(child: Text('No challenges yet.'));
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      itemCount: _challenges.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final SavingChallenge challenge = _challenges[index];
+        final int percent = (challenge.progress * 100).round();
+
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: <Widget>[
+              ListTile(
+                onTap: () => _openChallenge(challenge),
+                title: Text(challenge.name),
+                subtitle: Text(
+                  '${challenge.sequence.label}  •  '
+                  '${challenge.cellCount} cells',
+                ),
+                trailing: IconButton(
+                  onPressed: () => _deleteChallenge(challenge),
+                  tooltip: 'Delete challenge',
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Column(
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            '\$${challenge.savedAmount} / '
+                            '\$${_formatAmount(challenge.targetAmount)} saved',
+                          ),
+                        ),
+                        Text('$percent%'),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    LinearProgressIndicator(
+                      value: challenge.progress,
+                      minHeight: 7,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -210,7 +287,8 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _targetController = TextEditingController();
-  final TextEditingController _cellCountController = TextEditingController(text: '50');
+  final TextEditingController _cellCountController =
+      TextEditingController(text: '50');
 
   ChallengeSequence _sequence = ChallengeSequence.ordered;
 
@@ -318,7 +396,8 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   if (count > 500) {
                     return 'Use 500 cells or fewer.';
                   }
-                  final int? target = int.tryParse(_targetController.text.trim());
+                  final int? target =
+                      int.tryParse(_targetController.text.trim());
                   if (target != null && count > target) {
                     return 'Cells cannot exceed the target amount.';
                   }
