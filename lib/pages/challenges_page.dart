@@ -72,6 +72,29 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
   }
 
+  Future<bool> _updateChallenge(SavingChallenge challenge) async {
+    final int index = _challenges.indexWhere((item) => item.id == challenge.id);
+    if (index == -1) {
+      return false;
+    }
+
+    final List<SavingChallenge> updated = List<SavingChallenge>.from(_challenges);
+    updated[index] = challenge;
+
+    try {
+      await _storage.saveChallenges(updated);
+      if (!mounted) {
+        return false;
+      }
+      setState(() {
+        _challenges = updated;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _deleteChallenge(SavingChallenge challenge) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -119,10 +142,13 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
   }
 
-  void _openChallenge(SavingChallenge challenge) {
-    Navigator.of(context).push(
+  Future<void> _openChallenge(SavingChallenge challenge) async {
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => ChallengeDetailPage(challenge: challenge),
+        builder: (context) => ChallengeDetailPage(
+          challenge: challenge,
+          onChanged: _updateChallenge,
+        ),
       ),
     );
   }
@@ -146,7 +172,8 @@ class _ChallengesPageState extends State<ChallengesPage> {
                         title: Text(challenge.name),
                         subtitle: Text(
                           '\$${_formatAmount(challenge.targetAmount)}  •  '
-                          '${challenge.sequence.label}',
+                          '${challenge.sequence.label}  •  '
+                          '${challenge.cellCount} cells',
                         ),
                         trailing: IconButton(
                           onPressed: () => _deleteChallenge(challenge),
@@ -183,6 +210,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _targetController = TextEditingController();
+  final TextEditingController _cellCountController = TextEditingController(text: '50');
 
   ChallengeSequence _sequence = ChallengeSequence.ordered;
 
@@ -190,6 +218,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   void dispose() {
     _nameController.dispose();
     _targetController.dispose();
+    _cellCountController.dispose();
     super.dispose();
   }
 
@@ -198,16 +227,17 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
       return;
     }
 
-    final double target = double.parse(
-      _targetController.text.trim().replaceAll(',', '.'),
-    );
+    final int target = int.parse(_targetController.text.trim());
+    final int cellCount = int.parse(_cellCountController.text.trim());
+    final String id = DateTime.now().microsecondsSinceEpoch.toString();
 
     Navigator.of(context).pop(
-      SavingChallenge(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+      SavingChallenge.create(
+        id: id,
         name: _nameController.text.trim(),
-        targetAmount: target,
+        targetAmount: target.toDouble(),
         sequence: _sequence,
+        cellCount: cellCount,
       ),
     );
   }
@@ -248,21 +278,49 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _targetController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
                 inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration: const InputDecoration(
                   labelText: 'Target',
                   prefixText: '\$ ',
+                  helperText: 'Whole dollars only',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  final double? amount = double.tryParse(
-                    (value ?? '').trim().replaceAll(',', '.'),
-                  );
+                  final int? amount = int.tryParse((value ?? '').trim());
                   if (amount == null || amount <= 0) {
-                    return 'Enter a target greater than 0.';
+                    return 'Enter a whole-dollar target greater than 0.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _cellCountController,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'Number of cells',
+                  helperText: 'How many saving boxes to create',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  final int? count = int.tryParse((value ?? '').trim());
+                  if (count == null || count <= 0) {
+                    return 'Enter at least 1 cell.';
+                  }
+                  if (count > 500) {
+                    return 'Use 500 cells or fewer.';
+                  }
+                  final int? target = int.tryParse(_targetController.text.trim());
+                  if (target != null && count > target) {
+                    return 'Cells cannot exceed the target amount.';
                   }
                   return null;
                 },
