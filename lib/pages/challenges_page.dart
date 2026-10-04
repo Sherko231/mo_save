@@ -228,56 +228,67 @@ class _ChallengesPageState extends State<ChallengesPage> {
 
         return Card(
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: <Widget>[
-              ListTile(
-                onTap: () => _openChallenge(challenge),
-                title: Text(challenge.name),
-                subtitle: Text(
-                  '${challenge.sequence.label}  •  '
-                  '${challenge.cellCount} cells',
-                ),
-                trailing: IconButton(
-                  onPressed: () => _deleteChallenge(challenge),
-                  tooltip: 'Delete challenge',
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Column(
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            '\$${challenge.savedAmount} / '
-                            '\$${_formatAmount(challenge.targetAmount)} saved',
-                          ),
+          child: InkWell(
+            onTap: () => _openChallenge(challenge),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              challenge.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${challenge.currency.code}  •  '
+                              '${challenge.sequence.label}  •  '
+                              '${challenge.cellCount} cells',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
                         ),
-                        Text('$percent%'),
-                      ],
-                    ),
-                    const SizedBox(height: 7),
-                    LinearProgressIndicator(
-                      value: challenge.progress,
-                      minHeight: 7,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ],
-                ),
+                      ),
+                      IconButton(
+                        onPressed: () => _deleteChallenge(challenge),
+                        tooltip: 'Delete challenge',
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          '${challenge.currency.formatAmount(challenge.savedAmount)} / '
+                          '${challenge.currency.formatAmount(challenge.targetAmount)} saved',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text('$percent%'),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  LinearProgressIndicator(
+                    value: challenge.progress,
+                    minHeight: 7,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     );
-  }
-
-  static String _formatAmount(double amount) {
-    return amount == amount.truncateToDouble()
-        ? amount.toStringAsFixed(0)
-        : amount.toStringAsFixed(2);
   }
 }
 
@@ -295,6 +306,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   final TextEditingController _cellCountController =
       TextEditingController(text: '50');
 
+  ChallengeCurrency _currency = ChallengeCurrency.usd;
   ChallengeSequence _sequence = ChallengeSequence.ordered;
 
   @override
@@ -319,6 +331,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
         id: id,
         name: _nameController.text.trim(),
         targetAmount: target.toDouble(),
+        currency: _currency,
         sequence: _sequence,
         cellCount: cellCount,
       ),
@@ -358,6 +371,28 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   return null;
                 },
               ),
+              const SizedBox(height: 20),
+              Text(
+                'Currency',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 10),
+              SegmentedButton<ChallengeCurrency>(
+                segments: ChallengeCurrency.values
+                    .map(
+                      (currency) => ButtonSegment<ChallengeCurrency>(
+                        value: currency,
+                        label: Text(currency.code),
+                      ),
+                    )
+                    .toList(growable: false),
+                selected: <ChallengeCurrency>{_currency},
+                onSelectionChanged: (selection) {
+                  setState(() {
+                    _currency = selection.first;
+                  });
+                },
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _targetController,
@@ -366,16 +401,19 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly,
                 ],
-                decoration: const InputDecoration(
-                  labelText: 'Target',
-                  prefixText: '\$ ',
-                  helperText: 'Whole dollars only',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Target (${_currency.code})',
+                  prefixText:
+                      _currency == ChallengeCurrency.usd ? '\$ ' : null,
+                  suffixText:
+                      _currency == ChallengeCurrency.syp ? ' SYP' : null,
+                  helperText: 'Whole ${_currency.code} units only',
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   final int? amount = int.tryParse((value ?? '').trim());
                   if (amount == null || amount <= 0) {
-                    return 'Enter a whole-dollar target greater than 0.';
+                    return 'Enter a whole-unit target greater than 0.';
                   }
                   return null;
                 },
