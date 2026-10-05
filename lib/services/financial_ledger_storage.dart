@@ -106,9 +106,18 @@ class FinancialLedgerStorage {
   }
 
   Future<void> addEvent(FinancialEvent event) async {
-    if (event.type == FinancialEventType.currencyConversion) {
-      await addCurrencyConversion(event);
-      return;
+    switch (event.type) {
+      case FinancialEventType.currencyConversion:
+        await addCurrencyConversion(event);
+        return;
+      case FinancialEventType.goldPurchase:
+        await addGoldPurchase(event);
+        return;
+      case FinancialEventType.goldSale:
+        await addGoldSale(event);
+        return;
+      default:
+        break;
     }
 
     final Database database = await _database.database;
@@ -124,24 +133,70 @@ class FinancialLedgerStorage {
   /// posts the negative source entry and positive destination entry.
   Future<void> addCurrencyConversion(FinancialEvent event) async {
     final _ConversionPosting posting = _validateCurrencyConversion(event);
+    await _addBalanceCheckedEvent(
+      event,
+      requiredUnit: posting.sourceUnit,
+      requiredMicros: posting.sourceAmountMicros,
+    );
+  }
+
+  /// Adds one physical-gold purchase atomically: cash out and grams in.
+  Future<void> addGoldPurchase(FinancialEvent event) async {
+    final _BalanceRequirement requirement = _validateGoldPurchase(event);
+    await _addBalanceCheckedEvent(
+      event,
+      requiredUnit: requirement.unit,
+      requiredMicros: requirement.amountMicros,
+    );
+  }
+
+  /// Foundation for a future sale UI: grams out and cash in atomically.
+  Future<void> addGoldSale(FinancialEvent event) async {
+    final _BalanceRequirement requirement = _validateGoldSale(event);
+    await _addBalanceCheckedEvent(
+      event,
+      requiredUnit: requirement.unit,
+      requiredMicros: requirement.amountMicros,
+    );
+  }
+
+  /// Adds an explicit gold quantity correction while preventing negative
+  /// holdings. Positive corrections need no source-balance requirement.
+  Future<void> addGoldCorrection(FinancialEvent event) async {
+    final _BalanceRequirement? requirement = _validateGoldCorrection(event);
+    if (requirement == null) {
+      final Database database = await _database.database;
+      await database.transaction((transaction) async {
+        await _insertEvent(transaction, event);
+      });
+      notifyChanged();
+      return;
+    }
+
+    await _addBalanceCheckedEvent(
+      event,
+      requiredUnit: requirement.unit,
+      requiredMicros: requirement.amountMicros,
+    );
+  }
+
+  Future<void> _addBalanceCheckedEvent(
+    FinancialEvent event, {
+    required FinancialUnit requiredUnit,
+    required int requiredMicros,
+  }) async {
     final Database database = await _database.database;
 
     await database.transaction((transaction) async {
-      final List<Map<String, Object?>> rows = await transaction.rawQuery(
-        '''
-        SELECT COALESCE(SUM(amount_micros), 0) AS balance_micros
-        FROM financial_event_entries
-        WHERE affects_balance = 1 AND unit = ?
-        ''',
-        <Object?>[posting.sourceUnit.name],
+      final int available = await _loadUnitBalanceMicros(
+        transaction,
+        requiredUnit,
       );
-      final int available =
-          (rows.single['balance_micros']! as num).toInt();
-      if (available < posting.sourceAmountMicros) {
+      if (available < requiredMicros) {
         throw InsufficientBalanceException(
-          unit: posting.sourceUnit,
+          unit: requiredUnit,
           availableMicros: available,
-          requiredMicros: posting.sourceAmountMicros,
+          requiredMicros: requiredMicros,
         );
       }
 
@@ -155,8 +210,18 @@ class FinancialLedgerStorage {
   /// The event keeps its original id and creation timestamp. Entries are
   /// replaced atomically with the corrected event payload.
   Future<void> updateEvent(FinancialEvent event) async {
-    if (event.type == FinancialEventType.currencyConversion) {
-      _validateCurrencyConversion(event);
+    switch (event.type) {
+      case FinancialEventType.currencyConversion:
+        _validateCurrencyConversion(event);
+        break;
+      case FinancialEventType.goldPurchase:
+        _validateGoldPurchase(event);
+        break;
+      case FinancialEventType.goldSale:
+        _validateGoldSale(event);
+        break;
+      default:
+        break;
     }
 
     final Database database = await _database.database;
@@ -367,6 +432,21 @@ class FinancialLedgerStorage {
     }
   }
 
+  static Future<int> _loadUnitBalanceMicros(
+    DatabaseExecutor database,
+    FinancialUnit unit,
+  ) async {
+    final List<Map<String, Object?>> rows = await database.rawQuery(
+      '''
+      SELECT COALESCE(SUM(amount_micros), 0) AS balance_micros
+      FROM financial_event_entries
+      WHERE affects_balance = 1 AND unit = ?
+      ''',
+      <Object?>[unit.name],
+    );
+    return (rows.single['balance_micros']! as num).toInt();
+  }
+
   static _ConversionPosting _validateCurrencyConversion(FinancialEvent event) {
     if (event.type != FinancialEventType.currencyConversion) {
       throw ArgumentError('Event is not a currency conversion.');
@@ -423,6 +503,89 @@ class FinancialLedgerStorage {
     );
   }
 
+  static _BalanceRequirement _validateGoldPurchase(FinancialEvent event) {
+    if (event.type != FinancialEventType.goldPurchase) {
+      throw ArgumentError('Event is not a gold purchase.');
+    }
+    final _AssetExchangePosting posting = _validateTwoEntryAssetExchange(event);
+    if (posting.destination.unit != FinancialUnit.goldGram ||
+        !_isSupportedGoldCashUnit(posting.source.unit)) {
+      throw ArgumentError(
+        'Gold purchase must exchange USD or SYP cash for gold grams.',
+      );
+    }
+    return _BalanceRequirement(
+      unit: posting.source.unit,
+      amountMicros: posting.source.amountMicros.abs(),
+    );
+  }
+
+  static _BalanceRequirement _validateGoldSale(FinancialEvent event) {
+    if (event.type != FinancialEventType.goldSale) {
+      throw ArgumentError('Event is not a gold sale.');
+    }
+    final _AssetExchangePosting posting = _validateTwoEntryAssetExchange(event);
+    if (posting.source.unit != FinancialUnit.goldGram ||
+        !_isSupportedGoldCashUnit(posting.destination.unit)) {
+      throw ArgumentError(
+        'Gold sale must exchange gold grams for USD or SYP cash.',
+      );
+    }
+    return _BalanceRequirement(
+      unit: FinancialUnit.goldGram,
+      amountMicros: posting.source.amountMicros.abs(),
+    );
+  }
+
+  static _BalanceRequirement? _validateGoldCorrection(FinancialEvent event) {
+    if (event.type != FinancialEventType.manualAdjustment ||
+        event.entries.length != 1 ||
+        !event.entries.single.affectsBalance ||
+        event.entries.single.unit != FinancialUnit.goldGram) {
+      throw ArgumentError(
+        'Gold correction must be one balance-affecting gold adjustment.',
+      );
+    }
+    final int delta = event.entries.single.amountMicros;
+    if (delta >= 0) return null;
+    return _BalanceRequirement(
+      unit: FinancialUnit.goldGram,
+      amountMicros: delta.abs(),
+    );
+  }
+
+  static _AssetExchangePosting _validateTwoEntryAssetExchange(
+    FinancialEvent event,
+  ) {
+    if (event.entries.length != 2 ||
+        event.entries.any((entry) => !entry.affectsBalance)) {
+      throw ArgumentError(
+        'Asset exchange must contain exactly two balance entries.',
+      );
+    }
+
+    final List<LedgerEntry> negative = event.entries
+        .where((entry) => entry.amountMicros < 0)
+        .toList(growable: false);
+    final List<LedgerEntry> positive = event.entries
+        .where((entry) => entry.amountMicros > 0)
+        .toList(growable: false);
+    if (negative.length != 1 || positive.length != 1) {
+      throw ArgumentError(
+        'Asset exchange must have one source and one destination entry.',
+      );
+    }
+
+    return _AssetExchangePosting(
+      source: negative.single,
+      destination: positive.single,
+    );
+  }
+
+  static bool _isSupportedGoldCashUnit(FinancialUnit unit) {
+    return unit == FinancialUnit.usd || unit == FinancialUnit.syp;
+  }
+
   static String? _normalizeOptionalText(String? value) {
     final String? trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
@@ -475,4 +638,24 @@ class _ConversionPosting {
 
   final FinancialUnit sourceUnit;
   final int sourceAmountMicros;
+}
+
+class _BalanceRequirement {
+  const _BalanceRequirement({
+    required this.unit,
+    required this.amountMicros,
+  });
+
+  final FinancialUnit unit;
+  final int amountMicros;
+}
+
+class _AssetExchangePosting {
+  const _AssetExchangePosting({
+    required this.source,
+    required this.destination,
+  });
+
+  final LedgerEntry source;
+  final LedgerEntry destination;
 }
