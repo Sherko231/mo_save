@@ -71,6 +71,31 @@ class FinancialEvent {
     }
   }
 
+  factory FinancialEvent.create({
+    required FinancialEventType type,
+    required DateTime occurredAt,
+    required List<LedgerEntry> entries,
+    String? note,
+    String? category,
+    String? relatedChallengeId,
+    String? relatedGoalId,
+    String? id,
+  }) {
+    final DateTime now = DateTime.now().toUtc();
+    return FinancialEvent(
+      id: id ?? newId(),
+      type: type,
+      occurredAt: occurredAt.toUtc(),
+      entries: entries,
+      note: note,
+      category: category,
+      relatedChallengeId: relatedChallengeId,
+      relatedGoalId: relatedGoalId,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
   final String id;
   final FinancialEventType type;
   final DateTime occurredAt;
@@ -115,7 +140,7 @@ class FinancialEvent {
       relatedGoalId:
           clearRelatedGoalId ? null : (relatedGoalId ?? this.relatedGoalId),
       createdAt: createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      updatedAt: updatedAt ?? DateTime.now().toUtc(),
     );
   }
 
