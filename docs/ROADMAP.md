@@ -29,8 +29,8 @@ These features are foundation only. The current persistence is not yet suitable 
 ### #8 — P1-T01 — Resolve remaining product decisions — COMPLETED
 Client decisions are locked and documented in `docs/PRODUCT.md`.
 
-### #9 — P1-T02 — Introduce robust local database and migrate current challenges
-Move financial persistence to a versioned local database and migrate existing challenge data.
+### #9 — P1-T02 — Introduce robust local database and migrate current challenges — COMPLETED
+Challenge persistence now uses a versioned SQLite database. Existing SharedPreferences challenge JSON is migrated transactionally on first database access, and the schema/migration policy is documented in `docs/DATA_STORAGE.md`.
 
 **Phase exit:** product assumptions are explicit and existing user challenge data is safe in the new persistence layer.
 
