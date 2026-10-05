@@ -26,8 +26,8 @@ These features are foundation only. The current persistence is not yet suitable 
 
 ## Phase 1 — Lock scope and data foundation
 
-### #8 — P1-T01 — Resolve remaining product decisions
-Confirm the remaining client choices before financial calculations are frozen.
+### #8 — P1-T01 — Resolve remaining product decisions — COMPLETED
+Client decisions are locked and documented in `docs/PRODUCT.md`.
 
 ### #9 — P1-T02 — Introduce robust local database and migrate current challenges
 Move financial persistence to a versioned local database and migrate existing challenge data.
