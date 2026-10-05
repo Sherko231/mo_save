@@ -72,21 +72,32 @@ class FinancialLedgerStorage {
 
   /// Explicit user-authorized correction of an existing historical event.
   ///
-  /// The event keeps its original id and createdAt timestamp. Entries are
+  /// The event keeps its original id and creation timestamp. Entries are
   /// replaced atomically with the corrected event payload.
   Future<void> updateEvent(FinancialEvent event) async {
     final Database database = await _database.database;
     await database.transaction((transaction) async {
-      final int updated = await transaction.update(
+      final List<Map<String, Object?>> existing = await transaction.query(
         'financial_events',
-        _eventRow(event),
+        columns: <String>['created_at_ms'],
+        where: 'id = ?',
+        whereArgs: <Object?>[event.id],
+        limit: 1,
+      );
+
+      if (existing.isEmpty) {
+        throw StateError('Financial event ${event.id} does not exist.');
+      }
+
+      final Map<String, Object?> row = _eventRow(event);
+      row['created_at_ms'] = existing.single['created_at_ms'];
+
+      await transaction.update(
+        'financial_events',
+        row,
         where: 'id = ?',
         whereArgs: <Object?>[event.id],
       );
-
-      if (updated == 0) {
-        throw StateError('Financial event ${event.id} does not exist.');
-      }
 
       await transaction.delete(
         'financial_event_entries',
