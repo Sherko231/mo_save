@@ -57,6 +57,7 @@ class FinancialEvent {
     this.category,
     this.relatedChallengeId,
     this.relatedGoalId,
+    this.recurrenceKey,
     required this.createdAt,
     required this.updatedAt,
   }) : entries = List<LedgerEntry>.unmodifiable(entries) {
@@ -69,6 +70,13 @@ class FinancialEvent {
     if (entries.any((entry) => entry.amountMicros == 0)) {
       throw ArgumentError('Ledger entries cannot have a zero amount.');
     }
+    if (recurrenceKey != null && recurrenceKey!.trim().isEmpty) {
+      throw ArgumentError.value(
+        recurrenceKey,
+        'recurrenceKey',
+        'Recurrence key must be null or non-empty.',
+      );
+    }
   }
 
   factory FinancialEvent.create({
@@ -79,6 +87,7 @@ class FinancialEvent {
     String? category,
     String? relatedChallengeId,
     String? relatedGoalId,
+    String? recurrenceKey,
     String? id,
   }) {
     final DateTime now = DateTime.now().toUtc();
@@ -91,6 +100,7 @@ class FinancialEvent {
       category: category,
       relatedChallengeId: relatedChallengeId,
       relatedGoalId: relatedGoalId,
+      recurrenceKey: recurrenceKey,
       createdAt: now,
       updatedAt: now,
     );
@@ -104,6 +114,14 @@ class FinancialEvent {
   final String? category;
   final String? relatedChallengeId;
   final String? relatedGoalId;
+
+  /// Stable identity for one generated recurring occurrence.
+  ///
+  /// This is null for ordinary/manual financial events. Recurring income uses
+  /// it to prevent the same scheduled salary occurrence from being confirmed
+  /// more than once while keeping the actual historical transaction intact.
+  final String? recurrenceKey;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -125,6 +143,8 @@ class FinancialEvent {
     bool clearRelatedChallengeId = false,
     String? relatedGoalId,
     bool clearRelatedGoalId = false,
+    String? recurrenceKey,
+    bool clearRecurrenceKey = false,
     DateTime? updatedAt,
   }) {
     return FinancialEvent(
@@ -139,6 +159,8 @@ class FinancialEvent {
           : (relatedChallengeId ?? this.relatedChallengeId),
       relatedGoalId:
           clearRelatedGoalId ? null : (relatedGoalId ?? this.relatedGoalId),
+      recurrenceKey:
+          clearRecurrenceKey ? null : (recurrenceKey ?? this.recurrenceKey),
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now().toUtc(),
     );
