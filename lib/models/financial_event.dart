@@ -2,6 +2,7 @@ enum FinancialEventType {
   income,
   expense,
   savingContribution,
+  weeklyAllocation,
   currencyConversion,
   goldPurchase,
   goldSale,
@@ -15,11 +16,17 @@ enum FinancialUnit {
   goldGram,
 }
 
+enum LedgerEntryRole {
+  weeklyExpensesEnvelope,
+  weeklySavingsEnvelope,
+}
+
 class LedgerEntry {
   const LedgerEntry({
     required this.unit,
     required this.amountMicros,
     this.affectsBalance = true,
+    this.role,
   }) : assert(amountMicros != 0);
 
   static const int microsPerUnit = 1000000;
@@ -36,9 +43,12 @@ class LedgerEntry {
 
   /// Whether this posting changes the owned-asset balance.
   ///
-  /// Goal/saving tracking can deliberately use non-balance entries so the same
-  /// cash is not counted twice merely because it was assigned to a goal.
+  /// Goal/saving tracking and envelope allocation can deliberately use
+  /// non-balance entries so earmarking cash does not count it twice.
   final bool affectsBalance;
+
+  /// Optional semantic role inside a multi-entry event.
+  final LedgerEntryRole? role;
 
   double get amount => amountMicros / microsPerUnit;
 
@@ -58,6 +68,7 @@ class FinancialEvent {
     this.relatedChallengeId,
     this.relatedGoalId,
     this.recurrenceKey,
+    this.sourceEventId,
     required this.createdAt,
     required this.updatedAt,
   }) : entries = List<LedgerEntry>.unmodifiable(entries) {
@@ -77,6 +88,13 @@ class FinancialEvent {
         'Recurrence key must be null or non-empty.',
       );
     }
+    if (sourceEventId != null && sourceEventId!.trim().isEmpty) {
+      throw ArgumentError.value(
+        sourceEventId,
+        'sourceEventId',
+        'Source event id must be null or non-empty.',
+      );
+    }
   }
 
   factory FinancialEvent.create({
@@ -88,6 +106,7 @@ class FinancialEvent {
     String? relatedChallengeId,
     String? relatedGoalId,
     String? recurrenceKey,
+    String? sourceEventId,
     String? id,
   }) {
     final DateTime now = DateTime.now().toUtc();
@@ -101,6 +120,7 @@ class FinancialEvent {
       relatedChallengeId: relatedChallengeId,
       relatedGoalId: relatedGoalId,
       recurrenceKey: recurrenceKey,
+      sourceEventId: sourceEventId,
       createdAt: now,
       updatedAt: now,
     );
@@ -117,10 +137,14 @@ class FinancialEvent {
 
   /// Stable identity for one generated recurring occurrence.
   ///
-  /// This is null for ordinary/manual financial events. Recurring income uses
-  /// it to prevent the same scheduled salary occurrence from being confirmed
-  /// more than once while keeping the actual historical transaction intact.
+  /// This is null for ordinary/manual financial events. Recurring workflows use
+  /// it to prevent the same scheduled action from being confirmed twice.
   final String? recurrenceKey;
+
+  /// Optional direct link to the financial event that caused this event.
+  ///
+  /// Weekly envelope allocation points to the confirmed Thursday income event.
+  final String? sourceEventId;
 
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -145,6 +169,8 @@ class FinancialEvent {
     bool clearRelatedGoalId = false,
     String? recurrenceKey,
     bool clearRecurrenceKey = false,
+    String? sourceEventId,
+    bool clearSourceEventId = false,
     DateTime? updatedAt,
   }) {
     return FinancialEvent(
@@ -161,6 +187,8 @@ class FinancialEvent {
           clearRelatedGoalId ? null : (relatedGoalId ?? this.relatedGoalId),
       recurrenceKey:
           clearRecurrenceKey ? null : (recurrenceKey ?? this.recurrenceKey),
+      sourceEventId:
+          clearSourceEventId ? null : (sourceEventId ?? this.sourceEventId),
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now().toUtc(),
     );
