@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `2`
+- Current schema version: `3`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -67,7 +67,50 @@ A single editable row (`id = 1`) stores the user's current defaults for future f
 
 The first load seeds the approved client defaults (885,000 SYP weekly income, Thursday payday, 300 USD monthly income, day 1 payday, 540,000 SYP expenses envelope, 345,000 SYP savings envelope). Exchange rate and gold price begin unset (`0`) until the user enters them.
 
-Changing these settings affects future defaults only. Historical financial transactions, once introduced, must preserve the values actually used at the time and must never be rewritten by later settings changes.
+Changing these settings affects future defaults only. Historical financial transactions preserve the values actually used at the time and are not rewritten by later settings changes.
+
+## Schema v3 — Financial ledger
+
+The ledger is the source of truth for money and asset movements. No duplicate running totals are stored.
+
+### `financial_events`
+
+One row represents one user-visible financial event.
+
+- `id` — stable event id, primary key;
+- `event_type` — income, expense, saving contribution, currency conversion, gold purchase, gold sale or manual adjustment;
+- `occurred_at_ms` — when the event actually happened;
+- `note` — optional free-text note;
+- `category` — optional category;
+- `related_challenge_id` — optional link to an existing challenge; deleting the challenge clears this link but does not delete the financial history;
+- `related_goal_id` — reserved link for the saving-goal model introduced later;
+- `created_at_ms` and `updated_at_ms` — audit timestamps.
+
+### `financial_event_entries`
+
+Each event has one or more signed ledger entries.
+
+- `event_id` — parent financial event;
+- `position` — stable order inside the event;
+- `unit` — `usd`, `syp`, `sypNew` or `goldGram`;
+- `amount_micros` — signed fixed-point quantity where one unit equals 1,000,000 micros;
+- `affects_balance` — whether this entry changes the owned-asset balance.
+
+Positive entries add to a balance and negative entries subtract from it. Fixed-point micros are used instead of SQLite floating-point money values so later calculations do not accumulate binary rounding errors.
+
+Examples of the posting model:
+
+- income: positive balance-affecting cash entry;
+- expense: negative balance-affecting cash entry;
+- SYP → USD conversion: negative SYP entry plus positive USD entry in the same event;
+- gold purchase: negative cash entry plus positive `goldGram` entry;
+- gold sale: negative `goldGram` entry plus positive cash entry;
+- saving contribution: may use a non-balance-affecting entry to track goal progress without counting the same cash twice;
+- manual adjustment: explicit signed correction entry.
+
+`FinancialLedgerStorage` owns event CRUD and balance queries. Balance reads sum only entries where `affects_balance = 1`; therefore future screens must derive owned balances from the ledger instead of maintaining separate cached totals.
+
+Historical events are append-only by normal workflows. Corrections require the explicit `updateEvent` or `deleteEvent` paths; updates keep the original event id and creation timestamp and replace the event entries atomically.
 
 ## Legacy SharedPreferences migration
 
@@ -94,7 +137,7 @@ Dedicated repository methods also exist for add/update/delete operations so late
 
 ## Future financial tables
 
-Income, expense, transaction, conversion and gold-operation tables belong to later bounded roadmap Issues. They must be introduced through numbered SQLite migrations so existing client data survives application upgrades.
+Recurring-income definitions, planned expenses, envelopes and saving-goal-specific data belong to later bounded roadmap Issues. They must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the v3 ledger rather than maintaining independent balances.
 
 ## Backup
 
