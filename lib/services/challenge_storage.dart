@@ -55,6 +55,8 @@ class ChallengeStorage {
                 ),
               )
               .toList(growable: false),
+          deadline: _readDeadline(row['deadline_ms']),
+          goalNote: _normalizeOptionalText(row['goal_note'] as String?),
         ),
       );
     }
@@ -87,6 +89,8 @@ class ChallengeStorage {
           'currency': challenge.currency.name,
           'sequence': challenge.sequence.name,
           'cell_count': challenge.cellCount,
+          'deadline_ms': challenge.deadline?.toUtc().millisecondsSinceEpoch,
+          'goal_note': _normalizeOptionalText(challenge.goalNote),
         },
         where: 'id = ?',
         whereArgs: <Object?>[challenge.id],
@@ -253,6 +257,8 @@ class ChallengeStorage {
         'sequence': challenge.sequence.name,
         'cell_count': challenge.cellCount,
         'sort_order': sortOrder,
+        'deadline_ms': challenge.deadline?.toUtc().millisecondsSinceEpoch,
+        'goal_note': _normalizeOptionalText(challenge.goalNote),
       },
       conflictAlgorithm: ConflictAlgorithm.abort,
     );
@@ -277,6 +283,21 @@ class ChallengeStorage {
         conflictAlgorithm: ConflictAlgorithm.abort,
       );
     }
+  }
+
+  static DateTime? _readDeadline(Object? raw) {
+    if (raw == null) {
+      return null;
+    }
+    return DateTime.fromMillisecondsSinceEpoch(
+      (raw as num).toInt(),
+      isUtc: true,
+    );
+  }
+
+  static String? _normalizeOptionalText(String? value) {
+    final String? trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   static ChallengeCurrency _parseCurrency(String name) {
