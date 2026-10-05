@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `5`
+- Current schema version: `6`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -78,7 +78,7 @@ The ledger is the source of truth for money and asset movements. No duplicate ru
 One row represents one user-visible financial event.
 
 - `id` — stable event id, primary key;
-- `event_type` — income, expense, saving contribution, currency conversion, gold purchase, gold sale or manual adjustment;
+- `event_type` — income, expense, saving contribution, weekly allocation, currency conversion, gold purchase, gold sale or manual adjustment;
 - `occurred_at_ms` — when the event actually happened;
 - `note` — optional free-text note;
 - `category` — optional category;
@@ -106,6 +106,7 @@ Examples of the posting model:
 - gold purchase: negative cash entry plus positive `goldGram` entry;
 - gold sale: negative `goldGram` entry plus positive cash entry;
 - saving contribution: may use a non-balance-affecting entry to track goal progress without counting the same cash twice;
+- weekly envelope allocation: non-balance-affecting SYP entries earmark already-owned cash into weekly buckets;
 - manual adjustment: explicit signed correction entry.
 
 `FinancialLedgerStorage` owns event CRUD and balance queries. Balance reads sum only entries where `affects_balance = 1`; therefore future screens must derive owned balances from the ledger instead of maintaining separate cached totals.
@@ -149,6 +150,25 @@ The seed marker remains even if the user deletes every item, so an intentionally
 
 Actual spending is not stored in the plan table. Every actual expense is a normal `expense` financial event with a negative balance-affecting ledger entry plus its date, category and optional note. The selected-month UI compares totals derived from the plan rows against totals derived from expense ledger events.
 
+## Schema v6 — Weekly envelope allocation metadata
+
+Schema v6 keeps weekly allocation inside the financial ledger rather than creating a second balance system.
+
+It adds:
+
+- `source_event_id` to `financial_events`, allowing a weekly allocation event to point directly to the confirmed Thursday income event that produced it;
+- `entry_role` to `financial_event_entries`, allowing SYP entries in one allocation event to be identified as `weeklyExpensesEnvelope` or `weeklySavingsEnvelope`.
+
+A confirmed weekly SYP income can be allocated once through an event with recurrence key:
+
+`allocation:income:weeklySyp:YYYY-MM-DD`
+
+The existing unique recurrence-key index prevents duplicate allocation of the same salary occurrence.
+
+Allocation entries use `affects_balance = 0`. The cash already entered the SYP balance when the income was confirmed, so splitting it into an expenses envelope and a savings envelope must not create or destroy money. Any unallocated remainder stays ordinary available SYP. The workflow only operates on SYP weekly income and never consumes USD savings automatically.
+
+The default proposed allocation comes from the current Settings values, but the user can change both envelope amounts before confirming that week's allocation. If the received salary is smaller than the configured defaults, the proposal is capped to the amount actually received. Historical allocation records remain unchanged when Settings defaults are edited later.
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
@@ -174,7 +194,7 @@ Dedicated repository methods also exist for add/update/delete operations so late
 
 ## Future financial tables
 
-Envelopes and saving-goal-specific data belong to later bounded roadmap Issues. They must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the ledger rather than maintaining independent balances.
+Saving-goal-specific data belongs to later bounded roadmap Issues. It must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the ledger rather than maintaining independent balances.
 
 ## Backup
 
