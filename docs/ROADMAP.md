@@ -68,8 +68,8 @@ Confirmed weekly SYP income can now be allocated from Home into expenses/commitm
 ### #15 — P4-T01 — Build multi-currency balance and valuation engine — COMPLETED
 Home now derives separate USD, SYP, SYP (N) and gold balances directly from balance-affecting ledger entries and shows a clearly labelled estimated USD total when all non-zero assets have a defined valuation. SYP uses the current Settings reference exchange rate and gold uses the current USD-per-gram reference price; changing either reference changes the estimate only, never history or owned balances. SYP (N) remains separate and is not guessed into the USD estimate until a trustworthy reference conversion is defined.
 
-### #16 — P4-T02 — Integrate saving goals with challenges
-Turn the existing challenge grid into the gamified interface for real financial goals and optional deadlines.
+### #16 — P4-T02 — Integrate saving goals with challenges — COMPLETED
+The existing challenge is now the saving-goal record: it keeps its target, currency, grid and sequence while adding an optional deadline and note. Goal details can be edited inside the challenge, deadline state is shown on challenge cards, and the detail screen derives required weekly/monthly saving pace from the remaining amount without storing duplicate progress data.
 
 ### #17 — P4-T03 — Sync challenge progress with savings transactions
 Ensure completing/undoing challenge cells reconciles exactly with financial savings records.
