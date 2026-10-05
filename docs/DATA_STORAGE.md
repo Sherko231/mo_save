@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `3`
+- Current schema version: `4`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -112,6 +112,22 @@ Examples of the posting model:
 
 Historical events are append-only by normal workflows. Corrections require the explicit `updateEvent` or `deleteEvent` paths; updates keep the original event id and creation timestamp and replace the event entries atomically.
 
+## Schema v4 — Recurring occurrence identity
+
+Schema v4 adds nullable `recurrence_key` to `financial_events` plus a partial unique index for non-null values.
+
+Recurring income schedules are derived from the current financial settings and the real calendar instead of assuming four weeks per month. Each generated occurrence receives a stable key such as:
+
+`income:weeklySyp:2026-10-08`
+
+or:
+
+`income:monthlyUsd:2026-10-01`
+
+When the user confirms receipt, the resulting income event stores that key. The unique index prevents one scheduled occurrence from being confirmed twice. The actual amount entered by the user is stored in the ledger entry; later changes to salary defaults do not rewrite that historical transaction.
+
+A configured monthly payday that does not exist in a shorter month is clamped to that month's final calendar day. Weekly occurrences are enumerated from actual dates, so months with five Thursdays naturally contain five weekly salary occurrences.
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
@@ -137,7 +153,7 @@ Dedicated repository methods also exist for add/update/delete operations so late
 
 ## Future financial tables
 
-Recurring-income definitions, planned expenses, envelopes and saving-goal-specific data belong to later bounded roadmap Issues. They must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the v3 ledger rather than maintaining independent balances.
+Planned expenses, envelopes and saving-goal-specific data belong to later bounded roadmap Issues. They must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the ledger rather than maintaining independent balances.
 
 ## Backup
 

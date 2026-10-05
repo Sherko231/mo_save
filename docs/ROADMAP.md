@@ -20,7 +20,7 @@ Already implemented on `main`:
 - sequence editable inside challenge details;
 - challenge detail remains inside the Challenges tab so bottom navigation stays visible.
 
-These features are foundation only. User-facing income, expense and balance workflows are introduced by the later roadmap phases.
+These features are foundation only. User-facing expense and balance workflows are introduced by the later roadmap phases.
 
 ---
 
@@ -50,8 +50,8 @@ SQLite schema v3 now provides a financial-event ledger with signed fixed-point e
 
 ## Phase 3 — Income, expenses and weekly plan
 
-### #12 — P3-T01 — Implement recurring income and receipt confirmation
-Support Thursday SYP income and monthly USD income using real calendar recurrence, including five-Thursday months.
+### #12 — P3-T01 — Implement recurring income and receipt confirmation — COMPLETED
+The Home tab now derives weekly and monthly income occurrences from the real calendar, naturally handles four- and five-Thursday months, shows upcoming/expected income, and lets the user edit the actual received amount before recording it as a uniquely identified income ledger event.
 
 ### #13 — P3-T02 — Add recurring expense plan and actual expense logging
 Track planned monthly expenses and actual one-off/recurring spending.
