@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:sqflite/sqflite.dart';
 
 import '../models/financial_event.dart';
@@ -6,6 +8,13 @@ import 'local_database.dart';
 class FinancialLedgerStorage {
   FinancialLedgerStorage({LocalDatabase? database})
       : _database = database ?? LocalDatabase.instance;
+
+  static final StreamController<void> _changesController =
+      StreamController<void>.broadcast();
+
+  /// Emits after successful ledger mutations so derived balance views can
+  /// refresh without storing duplicate running totals.
+  static Stream<void> get changes => _changesController.stream;
 
   final LocalDatabase _database;
 
@@ -85,6 +94,7 @@ class FinancialLedgerStorage {
     await database.transaction((transaction) async {
       await _insertEvent(transaction, event);
     });
+    _notifyChanged();
   }
 
   /// Explicit user-authorized correction of an existing historical event.
@@ -123,16 +133,20 @@ class FinancialLedgerStorage {
       );
       await _insertEntries(transaction, event);
     });
+    _notifyChanged();
   }
 
   /// Explicit user-authorized deletion of a historical event.
   Future<void> deleteEvent(String eventId) async {
     final Database database = await _database.database;
-    await database.delete(
+    final int deleted = await database.delete(
       'financial_events',
       where: 'id = ?',
       whereArgs: <Object?>[eventId],
     );
+    if (deleted > 0) {
+      _notifyChanged();
+    }
   }
 
   /// Returns owned-asset balances derived exclusively from balance-affecting
@@ -326,5 +340,11 @@ class FinancialLedgerStorage {
       }
     }
     throw StateError('Unknown ledger entry role: $name');
+  }
+
+  static void _notifyChanged() {
+    if (!_changesController.isClosed) {
+      _changesController.add(null);
+    }
   }
 }

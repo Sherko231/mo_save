@@ -20,7 +20,7 @@ Already implemented on `main`:
 - sequence editable inside challenge details;
 - challenge detail remains inside the Challenges tab so bottom navigation stays visible.
 
-These features are foundation only. Balance, goal and asset workflows are introduced by later roadmap phases.
+These features are foundation only. Goal and asset workflows are introduced by later roadmap phases.
 
 ---
 
@@ -65,8 +65,8 @@ Confirmed weekly SYP income can now be allocated from Home into expenses/commitm
 
 ## Phase 4 — Balances, goals, conversions and gold
 
-### #15 — P4-T01 — Build multi-currency balance and valuation engine
-Maintain separate balances and an estimated combined USD valuation without corrupting historical values.
+### #15 — P4-T01 — Build multi-currency balance and valuation engine — COMPLETED
+Home now derives separate USD, SYP, SYP (N) and gold balances directly from balance-affecting ledger entries and shows a clearly labelled estimated USD total when all non-zero assets have a defined valuation. SYP uses the current Settings reference exchange rate and gold uses the current USD-per-gram reference price; changing either reference changes the estimate only, never history or owned balances. SYP (N) remains separate and is not guessed into the USD estimate until a trustworthy reference conversion is defined.
 
 ### #16 — P4-T02 — Integrate saving goals with challenges
 Turn the existing challenge grid into the gamified interface for real financial goals and optional deadlines.

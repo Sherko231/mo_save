@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/expected_income.dart';
 import '../models/financial_event.dart';
 import '../services/recurring_income_service.dart';
+import 'home_balance_section.dart';
 import 'home_envelope_section.dart';
 import 'home_expenses_section.dart';
 
@@ -234,6 +235,10 @@ class _HomePageState extends State<HomePage> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 18),
+            HomeBalanceSection(refreshToken: _incomeRefreshToken),
+            const SizedBox(height: 18),
+            const Divider(),
+            const SizedBox(height: 12),
             if (_nextExpected != null) _UpcomingIncomeCard(income: _nextExpected!),
             if (_nextExpected != null) const SizedBox(height: 18),
             Row(
