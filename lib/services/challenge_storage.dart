@@ -114,6 +114,22 @@ class ChallengeStorage {
     );
   }
 
+  Future<void> saveChallenges(List<SavingChallenge> challenges) async {
+    final Database database = await _readyDatabase();
+
+    await database.transaction((transaction) async {
+      await transaction.delete('challenges');
+
+      for (int index = 0; index < challenges.length; index++) {
+        await _insertChallenge(
+          transaction,
+          challenges[index],
+          sortOrder: index,
+        );
+      }
+    });
+  }
+
   Future<Database> _readyDatabase() async {
     final Database database = await _database.database;
     await _ensureLegacyMigration(database);
