@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `4`
+- Current schema version: `5`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -128,6 +128,27 @@ When the user confirms receipt, the resulting income event stores that key. The 
 
 A configured monthly payday that does not exist in a shorter month is clamped to that month's final calendar day. Weekly occurrences are enumerated from actual dates, so months with five Thursdays naturally contain five weekly salary occurrences.
 
+## Schema v5 — Recurring expense plan
+
+### `recurring_expense_items`
+
+The current monthly expense plan is stored as editable items rather than as one duplicated total.
+
+Each item stores:
+
+- `id` — stable item id;
+- `name` — Arabic user-visible category/name;
+- `unit` — cash unit (`syp`, `usd` or `sypNew`);
+- `amount_micros` — positive planned monthly amount using the same fixed-point representation as the ledger;
+- `sort_order` — display order;
+- `created_at_ms` and `updated_at_ms`.
+
+The first expense-plan load seeds the approved client defaults exactly once through an `app_metadata` flag. The seeded SYP items are: Amper 240,000; Internet 200,000; Electricity 150,000; Gas 100,000; Telephone 30,000; services 140,000; family 200,000; side expenses 100,000; personal spending 1,000,000. Their calculated SYP total is 2,160,000.
+
+The seed marker remains even if the user deletes every item, so an intentionally cleared plan is not silently recreated on the next launch. Items can be added, edited or deleted later and monthly planned totals are always recalculated from the current item rows.
+
+Actual spending is not stored in the plan table. Every actual expense is a normal `expense` financial event with a negative balance-affecting ledger entry plus its date, category and optional note. The selected-month UI compares totals derived from the plan rows against totals derived from expense ledger events.
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
@@ -153,7 +174,7 @@ Dedicated repository methods also exist for add/update/delete operations so late
 
 ## Future financial tables
 
-Planned expenses, envelopes and saving-goal-specific data belong to later bounded roadmap Issues. They must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the ledger rather than maintaining independent balances.
+Envelopes and saving-goal-specific data belong to later bounded roadmap Issues. They must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the ledger rather than maintaining independent balances.
 
 ## Backup
 
