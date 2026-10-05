@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../models/financial_event.dart';
 import '../models/saving_challenge.dart';
 import 'local_database.dart';
 
@@ -16,11 +17,15 @@ class ChallengeStorage {
   static const String _legacyStorageKey = 'saving_challenges_v1';
   static const String _legacyMigrationFlag =
       'legacy_shared_preferences_challenges_v1_migrated';
+  static const String _contributionBackfillFlag =
+      'challenge_grid_contributions_v1_backfilled';
+  static const String _contributionCategory = 'challengeGrid';
 
   final LocalDatabase _database;
   final SharedPreferencesAsync _preferences;
 
   Future<void>? _legacyMigration;
+  Future<void>? _contributionBackfill;
 
   Future<List<SavingChallenge>> loadChallenges() async {
     final Database database = await _readyDatabase();
@@ -74,6 +79,7 @@ class ChallengeStorage {
         challenge,
         sortOrder: nextSortOrder,
       );
+      await _syncChallengeContribution(transaction, challenge);
     });
   }
 
@@ -106,30 +112,53 @@ class ChallengeStorage {
         whereArgs: <Object?>[challenge.id],
       );
       await _insertCells(transaction, challenge);
+      await _syncChallengeContribution(transaction, challenge);
     });
   }
 
   Future<void> deleteChallenge(String challengeId) async {
     final Database database = await _readyDatabase();
-    await database.delete(
-      'challenges',
-      where: 'id = ?',
-      whereArgs: <Object?>[challengeId],
-    );
+    await database.transaction((transaction) async {
+      await transaction.delete(
+        'financial_events',
+        where: 'recurrence_key = ?',
+        whereArgs: <Object?>[_contributionRecurrenceKey(challengeId)],
+      );
+      await transaction.delete(
+        'challenges',
+        where: 'id = ?',
+        whereArgs: <Object?>[challengeId],
+      );
+    });
   }
 
+  /// Compatibility path for callers that still submit the full list.
+  ///
+  /// Dedicated challenge-grid saving contributions are removed before the
+  /// challenge rows are replaced, then recreated from the persisted completion
+  /// state in the same transaction. This keeps the ledger and grid exact.
   Future<void> saveChallenges(List<SavingChallenge> challenges) async {
     final Database database = await _readyDatabase();
 
     await database.transaction((transaction) async {
+      await transaction.delete(
+        'financial_events',
+        where: 'event_type = ? AND category = ?',
+        whereArgs: <Object?>[
+          FinancialEventType.savingContribution.name,
+          _contributionCategory,
+        ],
+      );
       await transaction.delete('challenges');
 
       for (int index = 0; index < challenges.length; index++) {
+        final SavingChallenge challenge = challenges[index];
         await _insertChallenge(
           transaction,
-          challenges[index],
+          challenge,
           sortOrder: index,
         );
+        await _syncChallengeContribution(transaction, challenge);
       }
     });
   }
@@ -137,6 +166,7 @@ class ChallengeStorage {
   Future<Database> _readyDatabase() async {
     final Database database = await _database.database;
     await _ensureLegacyMigration(database);
+    await _ensureContributionBackfill(database);
     return database;
   }
 
@@ -218,6 +248,76 @@ class ChallengeStorage {
     }
   }
 
+  Future<void> _ensureContributionBackfill(Database database) async {
+    final Future<void>? activeBackfill = _contributionBackfill;
+    if (activeBackfill != null) {
+      return activeBackfill;
+    }
+
+    final Future<void> backfill = _backfillChallengeContributions(database);
+    _contributionBackfill = backfill;
+
+    try {
+      await backfill;
+    } catch (_) {
+      _contributionBackfill = null;
+      rethrow;
+    }
+  }
+
+  Future<void> _backfillChallengeContributions(Database database) async {
+    final List<Map<String, Object?>> migrated = await database.query(
+      'app_metadata',
+      columns: <String>['value'],
+      where: 'key = ?',
+      whereArgs: <Object?>[_contributionBackfillFlag],
+      limit: 1,
+    );
+
+    if (migrated.isNotEmpty && migrated.first['value'] == '1') {
+      return;
+    }
+
+    await database.transaction((transaction) async {
+      final List<Map<String, Object?>> challenges = await transaction.query(
+        'challenges',
+        columns: <String>['id', 'currency'],
+      );
+
+      for (final Map<String, Object?> row in challenges) {
+        final String challengeId = row['id']! as String;
+        final ChallengeCurrency currency =
+            _parseCurrency(row['currency']! as String);
+        final List<Map<String, Object?>> totalRows = await transaction.rawQuery(
+          '''
+          SELECT COALESCE(SUM(value), 0) AS saved_amount
+          FROM challenge_cells
+          WHERE challenge_id = ? AND is_completed = 1
+          ''',
+          <Object?>[challengeId],
+        );
+        final int savedAmount =
+            (totalRows.single['saved_amount']! as num).toInt();
+
+        await _syncContributionValues(
+          transaction,
+          challengeId: challengeId,
+          currency: currency,
+          savedAmount: savedAmount,
+        );
+      }
+
+      await transaction.insert(
+        'app_metadata',
+        <String, Object?>{
+          'key': _contributionBackfillFlag,
+          'value': '1',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+  }
+
   static List<SavingChallenge> _decodeLegacyChallenges(String raw) {
     final Object? decoded = jsonDecode(raw);
     if (decoded is! List<dynamic>) {
@@ -283,6 +383,113 @@ class ChallengeStorage {
         conflictAlgorithm: ConflictAlgorithm.abort,
       );
     }
+  }
+
+  static Future<void> _syncChallengeContribution(
+    DatabaseExecutor database,
+    SavingChallenge challenge,
+  ) {
+    return _syncContributionValues(
+      database,
+      challengeId: challenge.id,
+      currency: challenge.currency,
+      savedAmount: challenge.savedAmount,
+    );
+  }
+
+  static Future<void> _syncContributionValues(
+    DatabaseExecutor database, {
+    required String challengeId,
+    required ChallengeCurrency currency,
+    required int savedAmount,
+  }) async {
+    final String recurrenceKey = _contributionRecurrenceKey(challengeId);
+    final List<Map<String, Object?>> existing = await database.query(
+      'financial_events',
+      columns: <String>['id', 'created_at_ms'],
+      where: 'recurrence_key = ?',
+      whereArgs: <Object?>[recurrenceKey],
+      limit: 1,
+    );
+
+    if (savedAmount <= 0) {
+      if (existing.isNotEmpty) {
+        await database.delete(
+          'financial_events',
+          where: 'id = ?',
+          whereArgs: <Object?>[existing.single['id']],
+        );
+      }
+      return;
+    }
+
+    final int nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final String eventId = existing.isEmpty
+        ? _contributionEventId(challengeId)
+        : existing.single['id']! as String;
+    final int createdAtMs = existing.isEmpty
+        ? nowMs
+        : (existing.single['created_at_ms']! as num).toInt();
+
+    final Map<String, Object?> eventRow = <String, Object?>{
+      'event_type': FinancialEventType.savingContribution.name,
+      'occurred_at_ms': nowMs,
+      'note': null,
+      'category': _contributionCategory,
+      'related_challenge_id': challengeId,
+      'related_goal_id': challengeId,
+      'recurrence_key': recurrenceKey,
+      'source_event_id': null,
+      'created_at_ms': createdAtMs,
+      'updated_at_ms': nowMs,
+    };
+
+    if (existing.isEmpty) {
+      await database.insert(
+        'financial_events',
+        <String, Object?>{'id': eventId, ...eventRow},
+        conflictAlgorithm: ConflictAlgorithm.abort,
+      );
+    } else {
+      await database.update(
+        'financial_events',
+        eventRow,
+        where: 'id = ?',
+        whereArgs: <Object?>[eventId],
+      );
+      await database.delete(
+        'financial_event_entries',
+        where: 'event_id = ?',
+        whereArgs: <Object?>[eventId],
+      );
+    }
+
+    await database.insert(
+      'financial_event_entries',
+      <String, Object?>{
+        'event_id': eventId,
+        'position': 0,
+        'unit': _financialUnitForCurrency(currency).name,
+        'amount_micros': savedAmount * LedgerEntry.microsPerUnit,
+        'affects_balance': 0,
+        'entry_role': null,
+      },
+      conflictAlgorithm: ConflictAlgorithm.abort,
+    );
+  }
+
+  static String _contributionRecurrenceKey(String challengeId) =>
+      'challenge-progress:$challengeId';
+
+  static String _contributionEventId(String challengeId) =>
+      'evt_challenge_progress_$challengeId';
+
+  static FinancialUnit _financialUnitForCurrency(ChallengeCurrency currency) {
+    return switch (currency) {
+      ChallengeCurrency.usd => FinancialUnit.usd,
+      ChallengeCurrency.syp => FinancialUnit.syp,
+      ChallengeCurrency.sypNew => FinancialUnit.sypNew,
+    };
   }
 
   static DateTime? _readDeadline(Object? raw) {
