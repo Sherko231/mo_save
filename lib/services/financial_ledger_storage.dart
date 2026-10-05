@@ -217,6 +217,7 @@ class FinancialLedgerStorage {
                   amountMicros: (entry['amount_micros']! as num).toInt(),
                   affectsBalance:
                       (entry['affects_balance']! as num).toInt() == 1,
+                  role: _parseEntryRole(entry['entry_role'] as String?),
                 ),
               )
               .toList(growable: false),
@@ -225,6 +226,7 @@ class FinancialLedgerStorage {
           relatedChallengeId: row['related_challenge_id'] as String?,
           relatedGoalId: row['related_goal_id'] as String?,
           recurrenceKey: row['recurrence_key'] as String?,
+          sourceEventId: row['source_event_id'] as String?,
           createdAt: DateTime.fromMillisecondsSinceEpoch(
             (row['created_at_ms']! as num).toInt(),
             isUtc: true,
@@ -264,6 +266,7 @@ class FinancialLedgerStorage {
       'related_challenge_id': _normalizeOptionalText(event.relatedChallengeId),
       'related_goal_id': _normalizeOptionalText(event.relatedGoalId),
       'recurrence_key': _normalizeOptionalText(event.recurrenceKey),
+      'source_event_id': _normalizeOptionalText(event.sourceEventId),
       'created_at_ms': event.createdAt.toUtc().millisecondsSinceEpoch,
       'updated_at_ms': event.updatedAt.toUtc().millisecondsSinceEpoch,
     };
@@ -283,6 +286,7 @@ class FinancialLedgerStorage {
           'unit': entry.unit.name,
           'amount_micros': entry.amountMicros,
           'affects_balance': entry.affectsBalance ? 1 : 0,
+          'entry_role': entry.role?.name,
         },
         conflictAlgorithm: ConflictAlgorithm.abort,
       );
@@ -310,5 +314,17 @@ class FinancialLedgerStorage {
       }
     }
     throw StateError('Unknown financial unit: $name');
+  }
+
+  static LedgerEntryRole? _parseEntryRole(String? name) {
+    if (name == null) {
+      return null;
+    }
+    for (final LedgerEntryRole role in LedgerEntryRole.values) {
+      if (role.name == name) {
+        return role;
+      }
+    }
+    throw StateError('Unknown ledger entry role: $name');
   }
 }
