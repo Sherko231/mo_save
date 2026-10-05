@@ -9,7 +9,7 @@ class LocalDatabase {
   static final LocalDatabase instance = LocalDatabase._();
 
   static const String databaseName = 'mo_save.db';
-  static const int schemaVersion = 2;
+  static const int schemaVersion = 3;
 
   static bool _databaseFactoryConfigured = false;
 
@@ -41,6 +41,7 @@ class LocalDatabase {
       onCreate: (database, version) async {
         await _createSchemaV1(database);
         await _createSchemaV2(database);
+        await _createSchemaV3(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         await _runMigrations(database, oldVersion, newVersion);
@@ -122,6 +123,60 @@ class LocalDatabase {
     ''');
   }
 
+  static Future<void> _createSchemaV3(DatabaseExecutor database) async {
+    await database.execute('''
+      CREATE TABLE financial_events (
+        id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL,
+        occurred_at_ms INTEGER NOT NULL,
+        note TEXT,
+        category TEXT,
+        related_challenge_id TEXT,
+        related_goal_id TEXT,
+        created_at_ms INTEGER NOT NULL,
+        updated_at_ms INTEGER NOT NULL,
+        FOREIGN KEY (related_challenge_id)
+          REFERENCES challenges(id)
+          ON DELETE SET NULL
+      )
+    ''');
+
+    await database.execute('''
+      CREATE TABLE financial_event_entries (
+        event_id TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        unit TEXT NOT NULL,
+        amount_micros INTEGER NOT NULL CHECK (amount_micros != 0),
+        affects_balance INTEGER NOT NULL DEFAULT 1
+          CHECK (affects_balance IN (0, 1)),
+        PRIMARY KEY (event_id, position),
+        FOREIGN KEY (event_id)
+          REFERENCES financial_events(id)
+          ON DELETE CASCADE
+      )
+    ''');
+
+    await database.execute('''
+      CREATE INDEX financial_events_occurred_at_idx
+      ON financial_events(occurred_at_ms)
+    ''');
+
+    await database.execute('''
+      CREATE INDEX financial_events_type_idx
+      ON financial_events(event_type)
+    ''');
+
+    await database.execute('''
+      CREATE INDEX financial_events_challenge_idx
+      ON financial_events(related_challenge_id)
+    ''');
+
+    await database.execute('''
+      CREATE INDEX financial_event_entries_unit_idx
+      ON financial_event_entries(unit)
+    ''');
+  }
+
   static Future<void> _runMigrations(
     DatabaseExecutor database,
     int oldVersion,
@@ -131,6 +186,9 @@ class LocalDatabase {
       switch (version) {
         case 2:
           await _createSchemaV2(database);
+          break;
+        case 3:
+          await _createSchemaV3(database);
           break;
         default:
           throw StateError('Missing database migration for schema v$version.');
