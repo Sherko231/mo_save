@@ -20,7 +20,7 @@ Already implemented on `main`:
 - sequence editable inside challenge details;
 - challenge detail remains inside the Challenges tab so bottom navigation stays visible.
 
-These features are foundation only. Envelope, balance, goal and asset workflows are introduced by later roadmap phases.
+These features are foundation only. Balance, goal and asset workflows are introduced by later roadmap phases.
 
 ---
 
@@ -56,8 +56,8 @@ The Home tab now derives weekly and monthly income occurrences from the real cal
 ### #13 — P3-T02 — Add recurring expense plan and actual expense logging — COMPLETED
 SQLite schema v5 now stores an editable recurring monthly expense plan seeded once from the client's approved SYP items. Home shows planned versus actual spending for the selected month, supports SYP/USD/SYP (N), lets the user add/edit/delete plan items, and records one-off or recurring actual spending as dated expense ledger transactions with category and optional note.
 
-### #14 — P3-T03 — Implement weekly envelope allocation
-Split confirmed Thursday income into expenses/commitments and surplus/savings with editable defaults.
+### #14 — P3-T03 — Implement weekly envelope allocation — COMPLETED
+Confirmed weekly SYP income can now be allocated from Home into expenses/commitments and savings using the current Settings defaults as an editable proposal. The allocation is stored as a uniquely linked, non-balance-affecting ledger event, can leave an explicit unallocated remainder, and never consumes USD savings automatically.
 
 **Phase exit:** the user can record incoming money, actual spending and the weekly allocation plan without manual calculations.
 
