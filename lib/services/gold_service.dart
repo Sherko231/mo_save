@@ -41,7 +41,7 @@ class GoldService {
       category: 'gold',
     );
 
-    await _recordAssetExchange(
+    await _recordEvent(
       event,
       requiredUnit: sourceUnit,
       requiredMicros: cashPaidMicros,
@@ -82,7 +82,7 @@ class GoldService {
       category: 'gold',
     );
 
-    await _recordAssetExchange(
+    await _recordEvent(
       event,
       requiredUnit: FinancialUnit.goldGram,
       requiredMicros: goldSoldMicros,
@@ -90,29 +90,71 @@ class GoldService {
     return event;
   }
 
-  Future<void> _recordAssetExchange(
-    FinancialEvent event, {
-    required FinancialUnit requiredUnit,
-    required int requiredMicros,
+  /// Records an explicit gold-quantity correction without pretending it was a
+  /// purchase or sale. A negative correction cannot take holdings below zero.
+  /// The correction UI itself belongs to the later history/correction task.
+  Future<FinancialEvent> recordCorrection({
+    required int goldDeltaMicros,
+    required DateTime occurredAt,
+    String? note,
   }) async {
+    if (goldDeltaMicros == 0) {
+      throw ArgumentError('Gold correction must be non-zero.');
+    }
+
+    final FinancialEvent event = FinancialEvent.create(
+      type: FinancialEventType.manualAdjustment,
+      occurredAt: occurredAt,
+      entries: <LedgerEntry>[
+        LedgerEntry(
+          unit: FinancialUnit.goldGram,
+          amountMicros: goldDeltaMicros,
+        ),
+      ],
+      note: note,
+      category: 'goldCorrection',
+    );
+
+    await _recordEvent(
+      event,
+      requiredUnit:
+          goldDeltaMicros < 0 ? FinancialUnit.goldGram : null,
+      requiredMicros: goldDeltaMicros < 0 ? -goldDeltaMicros : null,
+    );
+    return event;
+  }
+
+  Future<void> _recordEvent(
+    FinancialEvent event, {
+    FinancialUnit? requiredUnit,
+    int? requiredMicros,
+  }) async {
+    if ((requiredUnit == null) != (requiredMicros == null)) {
+      throw ArgumentError(
+        'requiredUnit and requiredMicros must either both be set or both be null.',
+      );
+    }
+
     final Database database = await _database.database;
 
     await database.transaction((transaction) async {
-      final List<Map<String, Object?>> rows = await transaction.rawQuery(
-        '''
-        SELECT COALESCE(SUM(amount_micros), 0) AS balance_micros
-        FROM financial_event_entries
-        WHERE affects_balance = 1 AND unit = ?
-        ''',
-        <Object?>[requiredUnit.name],
-      );
-      final int available = (rows.single['balance_micros']! as num).toInt();
-      if (available < requiredMicros) {
-        throw InsufficientBalanceException(
-          unit: requiredUnit,
-          availableMicros: available,
-          requiredMicros: requiredMicros,
+      if (requiredUnit != null && requiredMicros != null) {
+        final List<Map<String, Object?>> rows = await transaction.rawQuery(
+          '''
+          SELECT COALESCE(SUM(amount_micros), 0) AS balance_micros
+          FROM financial_event_entries
+          WHERE affects_balance = 1 AND unit = ?
+          ''',
+          <Object?>[requiredUnit.name],
         );
+        final int available = (rows.single['balance_micros']! as num).toInt();
+        if (available < requiredMicros) {
+          throw InsufficientBalanceException(
+            unit: requiredUnit,
+            availableMicros: available,
+            requiredMicros: requiredMicros,
+          );
+        }
       }
 
       await transaction.insert(
