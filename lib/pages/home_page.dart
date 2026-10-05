@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/expected_income.dart';
 import '../models/financial_event.dart';
 import '../services/recurring_income_service.dart';
+import 'home_envelope_section.dart';
 import 'home_expenses_section.dart';
 
 class HomePage extends StatefulWidget {
@@ -26,6 +27,7 @@ class _HomePageState extends State<HomePage> {
   ExpectedIncome? _nextExpected;
   bool _isLoading = true;
   String? _confirmingKey;
+  int _incomeRefreshToken = 0;
 
   static const List<String> _monthNames = <String>[
     '',
@@ -76,6 +78,7 @@ class _HomePageState extends State<HomePage> {
         _occurrences = occurrences;
         _nextExpected = nextExpected;
         _isLoading = false;
+        _incomeRefreshToken++;
       });
     } catch (_) {
       if (!mounted) {
@@ -274,6 +277,13 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
+            const SizedBox(height: 18),
+            const Divider(),
+            const SizedBox(height: 12),
+            HomeEnvelopeSection(
+              month: _selectedMonth,
+              refreshToken: _incomeRefreshToken,
+            ),
             const SizedBox(height: 18),
             const Divider(),
             const SizedBox(height: 12),
