@@ -63,6 +63,23 @@ class FinancialLedgerStorage {
     return events.single;
   }
 
+  Future<FinancialEvent?> loadEventByRecurrenceKey(String recurrenceKey) async {
+    final Database database = await _database.database;
+    final List<Map<String, Object?>> rows = await database.query(
+      'financial_events',
+      where: 'recurrence_key = ?',
+      whereArgs: <Object?>[recurrenceKey],
+      limit: 1,
+    );
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    final List<FinancialEvent> events = await _hydrateEvents(database, rows);
+    return events.single;
+  }
+
   Future<void> addEvent(FinancialEvent event) async {
     final Database database = await _database.database;
     await database.transaction((transaction) async {
@@ -207,6 +224,7 @@ class FinancialLedgerStorage {
           category: row['category'] as String?,
           relatedChallengeId: row['related_challenge_id'] as String?,
           relatedGoalId: row['related_goal_id'] as String?,
+          recurrenceKey: row['recurrence_key'] as String?,
           createdAt: DateTime.fromMillisecondsSinceEpoch(
             (row['created_at_ms']! as num).toInt(),
             isUtc: true,
@@ -245,6 +263,7 @@ class FinancialLedgerStorage {
       'category': _normalizeOptionalText(event.category),
       'related_challenge_id': _normalizeOptionalText(event.relatedChallengeId),
       'related_goal_id': _normalizeOptionalText(event.relatedGoalId),
+      'recurrence_key': _normalizeOptionalText(event.recurrenceKey),
       'created_at_ms': event.createdAt.toUtc().millisecondsSinceEpoch,
       'updated_at_ms': event.updatedAt.toUtc().millisecondsSinceEpoch,
     };
