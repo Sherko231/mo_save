@@ -12,8 +12,8 @@ class FinancialLedgerStorage {
   static final StreamController<void> _changesController =
       StreamController<void>.broadcast();
 
-  /// Emits after successful ledger mutations so derived balance views can
-  /// refresh without storing duplicate running totals.
+  /// Emits after successful ledger mutations so derived balance and history
+  /// views can refresh without storing duplicate running totals.
   static Stream<void> get changes => _changesController.stream;
 
   final LocalDatabase _database;
@@ -94,7 +94,7 @@ class FinancialLedgerStorage {
     await database.transaction((transaction) async {
       await _insertEvent(transaction, event);
     });
-    _notifyChanged();
+    notifyChanged();
   }
 
   /// Explicit user-authorized correction of an existing historical event.
@@ -133,7 +133,7 @@ class FinancialLedgerStorage {
       );
       await _insertEntries(transaction, event);
     });
-    _notifyChanged();
+    notifyChanged();
   }
 
   /// Explicit user-authorized deletion of a historical event.
@@ -145,7 +145,7 @@ class FinancialLedgerStorage {
       whereArgs: <Object?>[eventId],
     );
     if (deleted > 0) {
-      _notifyChanged();
+      notifyChanged();
     }
   }
 
@@ -342,7 +342,9 @@ class FinancialLedgerStorage {
     throw StateError('Unknown ledger entry role: $name');
   }
 
-  static void _notifyChanged() {
+  /// Notifies derived views after a successful ledger mutation performed by a
+  /// coordinated storage workflow such as challenge-grid reconciliation.
+  static void notifyChanged() {
     if (!_changesController.isClosed) {
       _changesController.add(null);
     }
