@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/financial_event.dart';
 import '../models/saving_challenge.dart';
+import 'financial_ledger_storage.dart';
 import 'local_database.dart';
 
 class ChallengeStorage {
@@ -81,6 +82,7 @@ class ChallengeStorage {
       );
       await _syncChallengeContribution(transaction, challenge);
     });
+    FinancialLedgerStorage.notifyChanged();
   }
 
   Future<void> updateChallenge(SavingChallenge challenge) async {
@@ -114,6 +116,7 @@ class ChallengeStorage {
       await _insertCells(transaction, challenge);
       await _syncChallengeContribution(transaction, challenge);
     });
+    FinancialLedgerStorage.notifyChanged();
   }
 
   Future<void> deleteChallenge(String challengeId) async {
@@ -130,6 +133,7 @@ class ChallengeStorage {
         whereArgs: <Object?>[challengeId],
       );
     });
+    FinancialLedgerStorage.notifyChanged();
   }
 
   /// Compatibility path for callers that still submit the full list.
@@ -161,6 +165,7 @@ class ChallengeStorage {
         await _syncChallengeContribution(transaction, challenge);
       }
     });
+    FinancialLedgerStorage.notifyChanged();
   }
 
   Future<Database> _readyDatabase() async {
@@ -316,6 +321,7 @@ class ChallengeStorage {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     });
+    FinancialLedgerStorage.notifyChanged();
   }
 
   static List<SavingChallenge> _decodeLegacyChallenges(String raw) {
