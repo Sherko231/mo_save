@@ -9,9 +9,11 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 ## Database
 
 - File: `mo_save.db`
-- Engine: SQLite through `sqflite`
+- Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
 - Current schema version: `1`
 - Foreign keys are enabled for every opened connection.
+
+The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
 
 Schema versioning is controlled by `LocalDatabase.schemaVersion`. Future schema changes must increment that value and add an explicit migration step instead of silently recreating the database.
 

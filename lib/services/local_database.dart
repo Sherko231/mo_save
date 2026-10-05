@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class LocalDatabase {
   LocalDatabase._();
@@ -9,6 +10,8 @@ class LocalDatabase {
 
   static const String databaseName = 'mo_save.db';
   static const int schemaVersion = 1;
+
+  static bool _databaseFactoryConfigured = false;
 
   Database? _database;
 
@@ -24,6 +27,8 @@ class LocalDatabase {
   }
 
   Future<Database> _openDatabase() async {
+    _configureDatabaseFactory();
+
     final String root = await getDatabasesPath();
     final String path = '$root${Platform.pathSeparator}$databaseName';
 
@@ -40,6 +45,19 @@ class LocalDatabase {
         await _runMigrations(database, oldVersion, newVersion);
       },
     );
+  }
+
+  static void _configureDatabaseFactory() {
+    if (_databaseFactoryConfigured) {
+      return;
+    }
+
+    if (Platform.isWindows || Platform.isLinux) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
+    _databaseFactoryConfigured = true;
   }
 
   static Future<void> _createSchemaV1(DatabaseExecutor database) async {
