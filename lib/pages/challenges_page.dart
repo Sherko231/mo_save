@@ -70,18 +70,13 @@ class _ChallengesPageState extends State<ChallengesPage> {
       return;
     }
 
-    final List<SavingChallenge> updated = <SavingChallenge>[
-      ..._challenges,
-      challenge,
-    ];
-
     try {
-      await _storage.saveChallenges(updated);
+      await _storage.addChallenge(challenge);
       if (!mounted) {
         return;
       }
       setState(() {
-        _challenges = updated;
+        _challenges = <SavingChallenge>[..._challenges, challenge];
       });
     } catch (_) {
       if (!mounted) {
@@ -99,15 +94,14 @@ class _ChallengesPageState extends State<ChallengesPage> {
       return false;
     }
 
-    final List<SavingChallenge> updated =
-        List<SavingChallenge>.from(_challenges);
-    updated[index] = challenge;
-
     try {
-      await _storage.saveChallenges(updated);
+      await _storage.updateChallenge(challenge);
       if (!mounted) {
         return false;
       }
+      final List<SavingChallenge> updated =
+          List<SavingChallenge>.from(_challenges);
+      updated[index] = challenge;
       setState(() {
         _challenges = updated;
       });
@@ -142,17 +136,15 @@ class _ChallengesPageState extends State<ChallengesPage> {
       return;
     }
 
-    final List<SavingChallenge> updated = _challenges
-        .where((item) => item.id != challenge.id)
-        .toList(growable: false);
-
     try {
-      await _storage.saveChallenges(updated);
+      await _storage.deleteChallenge(challenge.id);
       if (!mounted) {
         return;
       }
       setState(() {
-        _challenges = updated;
+        _challenges = _challenges
+            .where((item) => item.id != challenge.id)
+            .toList(growable: false);
         if (_openedChallengeId == challenge.id) {
           _openedChallengeId = null;
         }
@@ -252,6 +244,15 @@ class _ChallengesPageState extends State<ChallengesPage> {
                               '${challenge.cellCount} cells',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
+                            if (challenge.deadline != null) ...<Widget>[
+                              const SizedBox(height: 4),
+                              Text(
+                                challenge.isDeadlineOverdue()
+                                    ? 'Deadline ${_formatDate(challenge.deadline!)} • overdue'
+                                    : 'Deadline ${_formatDate(challenge.deadline!)}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -289,6 +290,10 @@ class _ChallengesPageState extends State<ChallengesPage> {
       },
     );
   }
+
+  static String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
 }
 
 class _CreateChallengeSheet extends StatefulWidget {
@@ -304,16 +309,35 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   final TextEditingController _targetController = TextEditingController();
   final TextEditingController _cellCountController =
       TextEditingController(text: '50');
+  final TextEditingController _noteController = TextEditingController();
 
   ChallengeCurrency _currency = ChallengeCurrency.usd;
   ChallengeSequence _sequence = ChallengeSequence.ordered;
+  DateTime? _deadline;
 
   @override
   void dispose() {
     _nameController.dispose();
     _targetController.dispose();
     _cellCountController.dispose();
+    _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDeadline() async {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _deadline ?? today.add(const Duration(days: 30)),
+      firstDate: today,
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _deadline = picked;
+      });
+    }
   }
 
   void _submit() {
@@ -333,6 +357,8 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
         currency: _currency,
         sequence: _sequence,
         cellCount: cellCount,
+        deadline: _deadline,
+        goalNote: _noteController.text,
       ),
     );
   }
@@ -429,7 +455,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               TextFormField(
                 controller: _cellCountController,
                 keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
+                textInputAction: TextInputAction.next,
                 inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly,
                 ],
@@ -457,6 +483,46 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Goal deadline (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        _deadline == null
+                            ? 'No deadline'
+                            : _ChallengesPageState._formatDate(_deadline!),
+                      ),
+                    ),
+                    if (_deadline != null)
+                      IconButton(
+                        onPressed: () => setState(() => _deadline = null),
+                        tooltip: 'Remove deadline',
+                        icon: const Icon(Icons.close),
+                      ),
+                    IconButton(
+                      onPressed: _pickDeadline,
+                      tooltip: 'Choose deadline',
+                      icon: const Icon(Icons.calendar_today_outlined),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _noteController,
+                maxLines: 2,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'Goal note (optional)',
+                  hintText: 'Example: university tuition, marriage, business capital',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 20),
               Text(

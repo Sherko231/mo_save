@@ -9,7 +9,7 @@ class LocalDatabase {
   static final LocalDatabase instance = LocalDatabase._();
 
   static const String databaseName = 'mo_save.db';
-  static const int schemaVersion = 6;
+  static const int schemaVersion = 7;
 
   static bool _databaseFactoryConfigured = false;
 
@@ -45,6 +45,7 @@ class LocalDatabase {
         await _createSchemaV4(database);
         await _createSchemaV5(database);
         await _createSchemaV6(database);
+        await _createSchemaV7(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         await _runMigrations(database, oldVersion, newVersion);
@@ -236,6 +237,18 @@ class LocalDatabase {
     ''');
   }
 
+  static Future<void> _createSchemaV7(DatabaseExecutor database) async {
+    await database.execute('''
+      ALTER TABLE challenges
+      ADD COLUMN deadline_ms INTEGER
+    ''');
+
+    await database.execute('''
+      ALTER TABLE challenges
+      ADD COLUMN goal_note TEXT
+    ''');
+  }
+
   static Future<void> _runMigrations(
     DatabaseExecutor database,
     int oldVersion,
@@ -257,6 +270,9 @@ class LocalDatabase {
           break;
         case 6:
           await _createSchemaV6(database);
+          break;
+        case 7:
+          await _createSchemaV7(database);
           break;
         default:
           throw StateError('Missing database migration for schema v$version.');

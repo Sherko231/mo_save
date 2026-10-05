@@ -70,6 +70,18 @@ enum ChallengeCurrency {
   }
 }
 
+class GoalPace {
+  const GoalPace({
+    required this.daysRemaining,
+    required this.weeklyAmount,
+    required this.monthlyAmount,
+  });
+
+  final int daysRemaining;
+  final int weeklyAmount;
+  final int monthlyAmount;
+}
+
 class ChallengeCell {
   const ChallengeCell({
     required this.value,
@@ -108,6 +120,8 @@ class SavingChallenge {
     required this.sequence,
     required this.cellCount,
     required this.cells,
+    this.deadline,
+    this.goalNote,
   });
 
   final String id;
@@ -118,9 +132,19 @@ class SavingChallenge {
   final int cellCount;
   final List<ChallengeCell> cells;
 
+  /// Optional date-only deadline for the financial goal.
+  final DateTime? deadline;
+
+  /// Optional user-entered context/purpose for the goal.
+  final String? goalNote;
+
   int get savedAmount => cells
       .where((cell) => cell.isCompleted)
       .fold<int>(0, (sum, cell) => sum + cell.value);
+
+  int get remainingAmount => max(0, targetAmount.toInt() - savedAmount);
+
+  bool get isComplete => remainingAmount == 0;
 
   double get progress {
     if (targetAmount <= 0) {
@@ -129,9 +153,51 @@ class SavingChallenge {
     return (savedAmount / targetAmount).clamp(0.0, 1.0).toDouble();
   }
 
+  bool isDeadlineOverdue([DateTime? now]) {
+    final DateTime? due = deadline;
+    if (due == null || isComplete) {
+      return false;
+    }
+    final DateTime today = _dateOnlyUtc(now ?? DateTime.now());
+    return _dateOnlyUtc(due).isBefore(today);
+  }
+
+  GoalPace? goalPace([DateTime? now]) {
+    final DateTime? due = deadline;
+    if (due == null || isComplete) {
+      return null;
+    }
+
+    final DateTime today = _dateOnlyUtc(now ?? DateTime.now());
+    final DateTime dueDay = _dateOnlyUtc(due);
+    if (dueDay.isBefore(today)) {
+      return null;
+    }
+
+    final int daysRemaining = dueDay.difference(today).inDays + 1;
+    final double weeksRemaining = max(1.0, daysRemaining / 7.0);
+    final double monthsRemaining = max(1.0, daysRemaining / 30.4375);
+
+    return GoalPace(
+      daysRemaining: daysRemaining,
+      weeklyAmount: _roundUpToStep(
+        remainingAmount / weeksRemaining,
+        currency.cellStep,
+      ),
+      monthlyAmount: _roundUpToStep(
+        remainingAmount / monthsRemaining,
+        currency.cellStep,
+      ),
+    );
+  }
+
   SavingChallenge copyWith({
     ChallengeSequence? sequence,
     List<ChallengeCell>? cells,
+    DateTime? deadline,
+    bool clearDeadline = false,
+    String? goalNote,
+    bool clearGoalNote = false,
   }) {
     return SavingChallenge(
       id: id,
@@ -141,6 +207,8 @@ class SavingChallenge {
       sequence: sequence ?? this.sequence,
       cellCount: cellCount,
       cells: cells ?? this.cells,
+      deadline: clearDeadline ? null : (deadline ?? this.deadline),
+      goalNote: clearGoalNote ? null : (goalNote ?? this.goalNote),
     );
   }
 
@@ -169,6 +237,8 @@ class SavingChallenge {
     required ChallengeCurrency currency,
     required ChallengeSequence sequence,
     required int cellCount,
+    DateTime? deadline,
+    String? goalNote,
   }) {
     if (targetAmount <= 0 || targetAmount != targetAmount.roundToDouble()) {
       throw ArgumentError('Target must be a positive whole-unit amount.');
@@ -206,6 +276,8 @@ class SavingChallenge {
       sequence: sequence,
       cellCount: cellCount,
       cells: values.map((value) => ChallengeCell(value: value)).toList(),
+      deadline: deadline == null ? null : _dateOnlyUtc(deadline),
+      goalNote: _normalizeOptionalText(goalNote),
     );
   }
 
@@ -217,6 +289,8 @@ class SavingChallenge {
         'sequence': sequence.name,
         'cellCount': cellCount,
         'cells': cells.map((cell) => cell.toJson()).toList(growable: false),
+        'deadline': deadline?.toUtc().toIso8601String(),
+        'goalNote': goalNote,
       };
 
   factory SavingChallenge.fromJson(Map<String, dynamic> json) {
@@ -230,6 +304,8 @@ class SavingChallenge {
       (value) => value.name == json['sequence'],
       orElse: () => ChallengeSequence.ordered,
     );
+    final DateTime? deadline = _parseDeadline(json['deadline']);
+    final String? goalNote = _normalizeOptionalText(json['goalNote'] as String?);
 
     final List<dynamic>? rawCells = json['cells'] as List<dynamic>?;
     if (rawCells != null && rawCells.isNotEmpty) {
@@ -259,6 +335,8 @@ class SavingChallenge {
         sequence: sequence,
         cellCount: count,
         cells: migratedCells,
+        deadline: deadline,
+        goalNote: goalNote,
       );
     }
 
@@ -288,6 +366,8 @@ class SavingChallenge {
           sequence: sequence,
           cellCount: safeCount,
           cells: values.map((value) => ChallengeCell(value: value)).toList(),
+          deadline: deadline,
+          goalNote: goalNote,
         );
       }
     }
@@ -300,6 +380,8 @@ class SavingChallenge {
       sequence: sequence,
       cellCount: 0,
       cells: const <ChallengeCell>[],
+      deadline: deadline,
+      goalNote: goalNote,
     );
   }
 
@@ -396,6 +478,30 @@ class SavingChallenge {
     }
 
     return values;
+  }
+
+  static DateTime _dateOnlyUtc(DateTime value) {
+    return DateTime.utc(value.year, value.month, value.day);
+  }
+
+  static int _roundUpToStep(double amount, int step) {
+    if (amount <= 0) {
+      return 0;
+    }
+    return (amount / step).ceil() * step;
+  }
+
+  static DateTime? _parseDeadline(Object? raw) {
+    if (raw is! String || raw.trim().isEmpty) {
+      return null;
+    }
+    final DateTime? parsed = DateTime.tryParse(raw);
+    return parsed == null ? null : _dateOnlyUtc(parsed);
+  }
+
+  static String? _normalizeOptionalText(String? value) {
+    final String? trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   static int _stableSeed(String source) {

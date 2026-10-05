@@ -68,6 +68,134 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     );
   }
 
+  Future<void> _editGoalDetails() async {
+    if (_isSaving) {
+      return;
+    }
+
+    final TextEditingController noteController = TextEditingController(
+      text: _challenge.goalNote ?? '',
+    );
+    DateTime? deadline = _challenge.deadline;
+
+    final _GoalDetailsDraft? draft = await showDialog<_GoalDetailsDraft>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Goal details'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    TextField(
+                      controller: noteController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Goal note (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Deadline (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              deadline == null
+                                  ? 'No deadline'
+                                  : _formatDate(deadline!),
+                            ),
+                          ),
+                          if (deadline != null)
+                            IconButton(
+                              onPressed: () {
+                                setDialogState(() {
+                                  deadline = null;
+                                });
+                              },
+                              tooltip: 'Remove deadline',
+                              icon: const Icon(Icons.close),
+                            ),
+                          IconButton(
+                            onPressed: () async {
+                              final DateTime now = DateTime.now();
+                              final DateTime today =
+                                  DateTime(now.year, now.month, now.day);
+                              final DateTime initial = deadline == null ||
+                                      deadline!.isBefore(today)
+                                  ? today
+                                  : deadline!;
+                              final DateTime? picked = await showDatePicker(
+                                context: dialogContext,
+                                initialDate: initial,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setDialogState(() {
+                                  deadline = picked;
+                                });
+                              }
+                            },
+                            tooltip: 'Choose deadline',
+                            icon: const Icon(Icons.calendar_today_outlined),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(
+                      _GoalDetailsDraft(
+                        deadline: deadline,
+                        note: noteController.text.trim(),
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    noteController.dispose();
+
+    if (draft == null || !mounted) {
+      return;
+    }
+
+    final SavingChallenge previous = _challenge;
+    final SavingChallenge updated = _challenge.copyWith(
+      deadline: draft.deadline,
+      clearDeadline: draft.deadline == null,
+      goalNote: draft.note.isEmpty ? null : draft.note,
+      clearGoalNote: draft.note.isEmpty,
+    );
+
+    await _saveChange(
+      previous,
+      updated,
+      'Could not save the goal details locally.',
+    );
+  }
+
   Future<void> _saveChange(
     SavingChallenge previous,
     SavingChallenge updated,
@@ -101,6 +229,9 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final GoalPace? pace = _challenge.goalPace();
+    final bool overdue = _challenge.isDeadlineOverdue();
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -143,6 +274,61 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                   '/${_challenge.cellCount} cells',
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            Card(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            'Saving goal',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _isSaving ? null : _editGoalDetails,
+                          tooltip: 'Edit goal details',
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                      ],
+                    ),
+                    if (_challenge.goalNote != null) ...<Widget>[
+                      Text(_challenge.goalNote!),
+                      const SizedBox(height: 8),
+                    ],
+                    if (_challenge.deadline == null)
+                      const Text('No deadline')
+                    else ...<Widget>[
+                      Text(
+                        'Deadline: ${_formatDate(_challenge.deadline!)}'
+                        '${overdue ? ' • overdue' : ''}',
+                      ),
+                      if (pace != null && !_challenge.isComplete) ...<Widget>[
+                        const SizedBox(height: 8),
+                        Text(
+                          '${pace.daysRemaining} days remaining • '
+                          '${_challenge.currency.formatAmount(pace.weeklyAmount)} / week • '
+                          '${_challenge.currency.formatAmount(pace.monthlyAmount)} / month',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ],
+                    if (_challenge.isComplete) ...<Widget>[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Goal completed',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -211,6 +397,20 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
       ),
     );
   }
+
+  static String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+}
+
+class _GoalDetailsDraft {
+  const _GoalDetailsDraft({
+    required this.deadline,
+    required this.note,
+  });
+
+  final DateTime? deadline;
+  final String note;
 }
 
 class _SavingCell extends StatelessWidget {
