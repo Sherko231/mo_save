@@ -70,18 +70,13 @@ class _ChallengesPageState extends State<ChallengesPage> {
       return;
     }
 
-    final List<SavingChallenge> updated = <SavingChallenge>[
-      ..._challenges,
-      challenge,
-    ];
-
     try {
-      await _storage.saveChallenges(updated);
+      await _storage.addChallenge(challenge);
       if (!mounted) {
         return;
       }
       setState(() {
-        _challenges = updated;
+        _challenges = <SavingChallenge>[..._challenges, challenge];
       });
     } catch (_) {
       if (!mounted) {
@@ -99,15 +94,14 @@ class _ChallengesPageState extends State<ChallengesPage> {
       return false;
     }
 
-    final List<SavingChallenge> updated =
-        List<SavingChallenge>.from(_challenges);
-    updated[index] = challenge;
-
     try {
-      await _storage.saveChallenges(updated);
+      await _storage.updateChallenge(challenge);
       if (!mounted) {
         return false;
       }
+      final List<SavingChallenge> updated =
+          List<SavingChallenge>.from(_challenges);
+      updated[index] = challenge;
       setState(() {
         _challenges = updated;
       });
@@ -142,17 +136,15 @@ class _ChallengesPageState extends State<ChallengesPage> {
       return;
     }
 
-    final List<SavingChallenge> updated = _challenges
-        .where((item) => item.id != challenge.id)
-        .toList(growable: false);
-
     try {
-      await _storage.saveChallenges(updated);
+      await _storage.deleteChallenge(challenge.id);
       if (!mounted) {
         return;
       }
       setState(() {
-        _challenges = updated;
+        _challenges = _challenges
+            .where((item) => item.id != challenge.id)
+            .toList(growable: false);
         if (_openedChallengeId == challenge.id) {
           _openedChallengeId = null;
         }
