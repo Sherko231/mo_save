@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'pages/challenges_page.dart';
+import 'pages/home_page.dart';
 import 'pages/settings_page.dart';
 
 void main() {
@@ -41,7 +42,7 @@ class _AppShellState extends State<AppShell> {
         child: IndexedStack(
           index: _selectedIndex,
           children: <Widget>[
-            const _PlaceholderPage(label: 'الرئيسية'),
+            HomePage(isActive: _selectedIndex == 0),
             ChallengesPage(isActive: _selectedIndex == 1),
             const SettingsPage(),
           ],
@@ -74,22 +75,6 @@ class _AppShellState extends State<AppShell> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.headlineMedium,
       ),
     );
   }
