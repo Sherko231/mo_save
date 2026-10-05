@@ -20,7 +20,7 @@ Already implemented on `main`:
 - sequence editable inside challenge details;
 - challenge detail remains inside the Challenges tab so bottom navigation stays visible.
 
-These features are foundation only. The financial ledger and transaction-driven balances are not implemented yet.
+These features are foundation only. User-facing income, expense and balance workflows are introduced by the later roadmap phases.
 
 ---
 
@@ -41,8 +41,8 @@ Challenge persistence now uses a versioned SQLite database. Existing SharedPrefe
 ### #10 — P2-T01 — Add editable financial settings — COMPLETED
 The Settings tab now persists editable weekly/monthly income defaults, paydays, reference exchange rate, USD-per-gram gold price and weekly envelope defaults in SQLite schema v2.
 
-### #11 — P2-T02 — Add transaction ledger and financial event model
-Create the single source of truth for income, expenses, savings, conversions, gold and adjustments.
+### #11 — P2-T02 — Add transaction ledger and financial event model — COMPLETED
+SQLite schema v3 now provides a financial-event ledger with signed fixed-point entries for USD, SYP, SYP (N) and gold grams. Income, expenses, saving contributions, conversions, gold operations and manual adjustments share one event model, and owned balances are derived from ledger entries instead of cached totals.
 
 **Phase exit:** the app has a durable model for future money movements and editable defaults.
 
