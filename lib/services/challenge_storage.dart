@@ -429,6 +429,26 @@ class ChallengeStorage {
       return;
     }
 
+    final FinancialUnit unit = _financialUnitForCurrency(currency);
+    final int desiredMicros = savedAmount * LedgerEntry.microsPerUnit;
+
+    if (existing.isNotEmpty) {
+      final String existingEventId = existing.single['id']! as String;
+      final List<Map<String, Object?>> entries = await database.query(
+        'financial_event_entries',
+        columns: <String>['unit', 'amount_micros', 'affects_balance'],
+        where: 'event_id = ?',
+        whereArgs: <Object?>[existingEventId],
+        orderBy: 'position ASC',
+      );
+      if (entries.length == 1 &&
+          entries.single['unit'] == unit.name &&
+          (entries.single['amount_micros']! as num).toInt() == desiredMicros &&
+          (entries.single['affects_balance']! as num).toInt() == 0) {
+        return;
+      }
+    }
+
     final int nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
     final String eventId = existing.isEmpty
         ? _contributionEventId(challengeId)
@@ -475,8 +495,8 @@ class ChallengeStorage {
       <String, Object?>{
         'event_id': eventId,
         'position': 0,
-        'unit': _financialUnitForCurrency(currency).name,
-        'amount_micros': savedAmount * LedgerEntry.microsPerUnit,
+        'unit': unit.name,
+        'amount_micros': desiredMicros,
         'affects_balance': 0,
         'entry_role': null,
       },
