@@ -1,0 +1,165 @@
+# Mo Save — Client-Ready Roadmap
+
+This roadmap is the ordered implementation plan from the repository's current state to a client-ready Android build.
+
+Work should proceed one bounded GitHub Issue at a time. Do not skip dependencies unless the owner explicitly authorizes it.
+
+## Phase 0 — Existing foundation
+
+Already implemented on `main`:
+
+- bottom navigation: Home / Challenges / Settings;
+- no global top app header;
+- Android safe-area handling;
+- local challenge create/delete;
+- saving challenge grid with exact target sum;
+- challenge progress and progress on challenge cards;
+- currencies: USD, SYP and SYP (N);
+- denomination rules for SYP and SYP (N);
+- Ordered / Random / Reversed sequence modes;
+- sequence editable inside challenge details;
+- challenge detail remains inside the Challenges tab so bottom navigation stays visible.
+
+These features are foundation only. The current persistence is not yet suitable for the full financial ledger.
+
+---
+
+## Phase 1 — Lock scope and data foundation
+
+### #8 — P1-T01 — Resolve remaining product decisions
+Confirm the remaining client choices before financial calculations are frozen.
+
+### #9 — P1-T02 — Introduce robust local database and migrate current challenges
+Move financial persistence to a versioned local database and migrate existing challenge data.
+
+**Phase exit:** product assumptions are explicit and existing user challenge data is safe in the new persistence layer.
+
+---
+
+## Phase 2 — Core financial model
+
+### #10 — P2-T01 — Add editable financial settings
+Persist salary defaults, paydays, exchange rate, gold price and envelope defaults.
+
+### #11 — P2-T02 — Add transaction ledger and financial event model
+Create the single source of truth for income, expenses, savings, conversions, gold and adjustments.
+
+**Phase exit:** the app has a durable model for future money movements and editable defaults.
+
+---
+
+## Phase 3 — Income, expenses and weekly plan
+
+### #12 — P3-T01 — Implement recurring income and receipt confirmation
+Support Thursday SYP income and monthly USD income using real calendar recurrence, including five-Thursday months.
+
+### #13 — P3-T02 — Add recurring expense plan and actual expense logging
+Track planned monthly expenses and actual one-off/recurring spending.
+
+### #14 — P3-T03 — Implement weekly envelope allocation
+Split confirmed Thursday income into expenses/commitments and surplus/savings with editable defaults.
+
+**Phase exit:** the user can record incoming money, actual spending and the weekly allocation plan without manual calculations.
+
+---
+
+## Phase 4 — Balances, goals, conversions and gold
+
+### #15 — P4-T01 — Build multi-currency balance and valuation engine
+Maintain separate balances and an estimated combined USD valuation without corrupting historical values.
+
+### #16 — P4-T02 — Integrate saving goals with challenges
+Turn the existing challenge grid into the gamified interface for real financial goals and optional deadlines.
+
+### #17 — P4-T03 — Sync challenge progress with savings transactions
+Ensure completing/undoing challenge cells reconciles exactly with financial savings records.
+
+### #18 — P4-T04 — Add explicit currency conversion transactions
+Record real SYP↔USD conversions separately from the Settings reference exchange rate.
+
+### #19 — P4-T05 — Add gold holdings and purchase workflow
+Track grams, purchase transactions and estimated value without double-counting the source cash.
+
+**Phase exit:** all savings assets and goals reconcile to the transaction ledger.
+
+---
+
+## Phase 5 — Main user experience
+
+### #20 — P5-T01 — Build the Home financial dashboard
+Show current-month income, expenses, balances, gold, estimated total, upcoming income and goal progress.
+
+### #21 — P5-T02 — Add transaction history and correction flows
+Provide an auditable timeline with filters and safe corrections.
+
+**Phase exit:** the user can understand current status and trace how every balance was produced.
+
+---
+
+## Phase 6 — Automation and configuration
+
+### #22 — P6-T01 — Add local payday and goal notifications
+Add Android reminders for Thursday income, monthly income and optional goals.
+
+### #23 — P6-T02 — Complete Settings and initial setup UX
+Make a fresh install configurable without code changes and clearly separate future defaults from historical records.
+
+**Phase exit:** the daily workflow is configurable and reminders operate locally.
+
+---
+
+## Phase 7 — Data safety and production UX
+
+### #24 — P7-T01 — Add local backup, export and restore
+Protect local financial history against reinstall/device loss.
+
+### #25 — P7-T02 — Finalize localization, RTL and financial number formatting
+Apply the approved language strategy and consistent financial formatting.
+
+### #26 — P7-T03 — Harden validation, empty states and destructive actions
+Handle invalid amounts, impossible operations, errors and destructive actions safely.
+
+**Phase exit:** the app is understandable, recoverable and resilient enough for real client data.
+
+---
+
+## Phase 8 — Verification and delivery
+
+### #27 — P8-T01 — Add automated tests and migration QA
+Cover critical financial calculations, reconciliation and persistence migrations.
+
+### #28 — P8-T02 — Prepare branding and Android release build
+Finalize app identity, signing and a production Android build.
+
+### #29 — P8-T03 — Client acceptance test and final handoff
+Run the client's real workflow, fix release blockers and deliver the final signed build plus usage notes.
+
+**Phase exit:** client-approved production release.
+
+---
+
+## Client-ready definition
+
+The application is considered ready for delivery only when all of the following are true:
+
+- all Issues #8–#29 are completed or explicitly removed from scope by the owner;
+- current financial balances reconcile with the transaction history;
+- challenge progress reconciles with saving contributions;
+- exchange-rate changes affect estimates only;
+- gold purchases do not double-count cash and gold;
+- four- and five-Thursday months behave correctly;
+- existing data survives supported migrations;
+- backup and restore are verified on a clean install;
+- Android system navigation does not overlap app controls;
+- the final signed release build installs and runs on the client's target device;
+- the client completes acceptance testing and approves the agreed scope.
+
+## Execution order
+
+Use the Issue numbers above as the default implementation order. Each implementation task should:
+
+1. start from the latest verified `main`;
+2. change only the bounded Issue scope;
+3. preserve unrelated work and existing client data;
+4. update documentation when product behavior changes;
+5. be merged before starting the next dependent task.
