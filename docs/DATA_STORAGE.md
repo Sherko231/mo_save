@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `6`
+- Current schema version: `7`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -83,7 +83,7 @@ One row represents one user-visible financial event.
 - `note` — optional free-text note;
 - `category` — optional category;
 - `related_challenge_id` — optional link to an existing challenge; deleting the challenge clears this link but does not delete the financial history;
-- `related_goal_id` — reserved link for the saving-goal model introduced later;
+- `related_goal_id` — reserved link for future goal/history compatibility;
 - `created_at_ms` and `updated_at_ms` — audit timestamps.
 
 ### `financial_event_entries`
@@ -169,6 +169,21 @@ Allocation entries use `affects_balance = 0`. The cash already entered the SYP b
 
 The default proposed allocation comes from the current Settings values, but the user can change both envelope amounts before confirming that week's allocation. If the received salary is smaller than the configured defaults, the proposal is capped to the amount actually received. Historical allocation records remain unchanged when Settings defaults are edited later.
 
+## Schema v7 — Saving-goal metadata
+
+Schema v7 upgrades the existing challenge row so the challenge itself is the financial saving goal instead of introducing a duplicate goal table.
+
+It adds nullable columns to `challenges`:
+
+- `deadline_ms` — optional date-only goal deadline stored as a UTC timestamp;
+- `goal_note` — optional user-entered purpose/context for the goal.
+
+Existing challenges migrate with both values null, so their grid, progress, currency, sequence and completion state remain unchanged.
+
+Required pace is calculated from the current remaining challenge amount and the deadline at display time. Weekly and monthly pace are rounded upward to the challenge currency denomination step. Pace is not stored as a second value, so changing progress or the deadline cannot leave stale calculations behind.
+
+The challenge target remains the goal target. Issue #17 is responsible for reconciling grid completion with saving-contribution ledger events; schema v7 does not create duplicate balances or money movements.
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
@@ -194,7 +209,7 @@ Dedicated repository methods also exist for add/update/delete operations so late
 
 ## Future financial tables
 
-Saving-goal-specific data belongs to later bounded roadmap Issues. It must be introduced through numbered SQLite migrations so existing client data survives application upgrades. Actual money movements created by those features must post into the ledger rather than maintaining independent balances.
+Future goal-contribution, conversion, gold and other bounded roadmap work must continue to use numbered SQLite migrations when persistent schema changes are required. Actual money movements must post into the ledger rather than maintaining independent balances.
 
 ## Backup
 
