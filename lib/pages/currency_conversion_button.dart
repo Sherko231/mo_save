@@ -247,11 +247,11 @@ class _CurrencyConversionSheetState extends State<_CurrencyConversionSheet> {
                   segments: const <ButtonSegment<FinancialUnit>>[
                     ButtonSegment<FinancialUnit>(
                       value: FinancialUnit.syp,
-                      label: Text('ل.س ← USD', textDirection: TextDirection.ltr),
+                      label: Text('SYP → USD', textDirection: TextDirection.ltr),
                     ),
                     ButtonSegment<FinancialUnit>(
                       value: FinancialUnit.usd,
-                      label: Text('USD ← ل.س', textDirection: TextDirection.ltr),
+                      label: Text('USD → SYP', textDirection: TextDirection.ltr),
                     ),
                   ],
                   selected: <FinancialUnit>{_sourceUnit},
