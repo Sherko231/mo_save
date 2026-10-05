@@ -28,6 +28,12 @@ If a non-zero SYP balance has no configured exchange rate, or a non-zero gold ba
 
 Changing a reference exchange rate or gold price changes only the current estimate. It never rewrites ledger events, owned balances, or challenge progress.
 
+## Real SYP/USD conversions
+
+A real SYP↔USD conversion is an explicit ledger event and never uses the Settings reference rate as a transaction amount. The user enters the amount actually paid and the amount actually received; both balance changes are posted atomically and the historical executed SYP-per-USD rate is stored with the event.
+
+Changing `reference_syp_per_usd` later therefore has no effect on historical conversion amounts or their executed rates. See `docs/CURRENCY_CONVERSIONS.md` for the posting and audit rules.
+
 ## Display precision
 
 Balance cards use these deterministic display rules:

@@ -7,6 +7,7 @@ import '../models/financial_event.dart';
 import '../services/balance_valuation_service.dart';
 import '../services/financial_ledger_storage.dart';
 import '../utils/financial_format.dart';
+import 'currency_conversion_button.dart';
 
 class HomeBalanceSection extends StatefulWidget {
   const HomeBalanceSection({
@@ -158,6 +159,8 @@ class _HomeBalanceSectionState extends State<HomeBalanceSection> {
             );
           },
         ),
+        const SizedBox(height: 10),
+        CurrencyConversionButton(snapshot: snapshot),
         const SizedBox(height: 8),
         Text(
           'الأرصدة محسوبة من سجل الحركات الفعلي. تغيير سعر الصرف أو سعر الذهب يغيّر التقدير فقط ولا يغيّر الأرصدة.',

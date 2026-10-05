@@ -69,6 +69,7 @@ class FinancialEvent {
     this.relatedGoalId,
     this.recurrenceKey,
     this.sourceEventId,
+    this.executedSypPerUsd,
     required this.createdAt,
     required this.updatedAt,
   }) : entries = List<LedgerEntry>.unmodifiable(entries) {
@@ -95,6 +96,25 @@ class FinancialEvent {
         'Source event id must be null or non-empty.',
       );
     }
+    if (executedSypPerUsd != null && executedSypPerUsd! <= 0) {
+      throw ArgumentError.value(
+        executedSypPerUsd,
+        'executedSypPerUsd',
+        'Executed exchange rate must be greater than zero.',
+      );
+    }
+    if (type == FinancialEventType.currencyConversion &&
+        executedSypPerUsd == null) {
+      throw ArgumentError(
+        'Currency conversion events must store the executed SYP/USD rate.',
+      );
+    }
+    if (type != FinancialEventType.currencyConversion &&
+        executedSypPerUsd != null) {
+      throw ArgumentError(
+        'Executed exchange rate is only valid for currency conversions.',
+      );
+    }
   }
 
   factory FinancialEvent.create({
@@ -107,6 +127,7 @@ class FinancialEvent {
     String? relatedGoalId,
     String? recurrenceKey,
     String? sourceEventId,
+    double? executedSypPerUsd,
     String? id,
   }) {
     final DateTime now = DateTime.now().toUtc();
@@ -121,6 +142,7 @@ class FinancialEvent {
       relatedGoalId: relatedGoalId,
       recurrenceKey: recurrenceKey,
       sourceEventId: sourceEventId,
+      executedSypPerUsd: executedSypPerUsd,
       createdAt: now,
       updatedAt: now,
     );
@@ -145,6 +167,12 @@ class FinancialEvent {
   ///
   /// Weekly envelope allocation points to the confirmed Thursday income event.
   final String? sourceEventId;
+
+  /// Historical rate actually used by a real SYP <-> USD conversion.
+  ///
+  /// The convention is always SYP per 1 USD regardless of conversion direction.
+  /// It is separate from the mutable Settings reference rate.
+  final double? executedSypPerUsd;
 
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -171,6 +199,8 @@ class FinancialEvent {
     bool clearRecurrenceKey = false,
     String? sourceEventId,
     bool clearSourceEventId = false,
+    double? executedSypPerUsd,
+    bool clearExecutedSypPerUsd = false,
     DateTime? updatedAt,
   }) {
     return FinancialEvent(
@@ -189,6 +219,9 @@ class FinancialEvent {
           clearRecurrenceKey ? null : (recurrenceKey ?? this.recurrenceKey),
       sourceEventId:
           clearSourceEventId ? null : (sourceEventId ?? this.sourceEventId),
+      executedSypPerUsd: clearExecutedSypPerUsd
+          ? null
+          : (executedSypPerUsd ?? this.executedSypPerUsd),
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now().toUtc(),
     );

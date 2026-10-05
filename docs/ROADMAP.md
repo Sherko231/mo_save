@@ -74,8 +74,8 @@ The existing challenge is now the saving-goal record: it keeps its target, curre
 ### #17 — P4-T03 — Sync challenge progress with savings transactions — COMPLETED
 Challenge-cell completion is now reconciled atomically with one canonical non-balance-affecting saving-contribution ledger event per goal. Its amount always equals the sum of completed cells; undoing cells reduces or removes that event, repeated toggles cannot create duplicates, and a one-time backfill creates matching contribution records for progress that existed before this workflow.
 
-### #18 — P4-T04 — Add explicit currency conversion transactions
-Record real SYP↔USD conversions separately from the Settings reference exchange rate.
+### #18 — P4-T04 — Add explicit currency conversion transactions — COMPLETED
+Home now records real SYP↔USD conversions as one atomic two-entry ledger event: the actual source amount is deducted and the actual destination amount is added. Each event stores the historical executed rate in SYP per USD, independent of the mutable Settings reference rate, and the workflow rejects conversions that exceed the current source balance.
 
 ### #19 — P4-T05 — Add gold holdings and purchase workflow
 Track grams, purchase transactions and estimated value without double-counting the source cash.

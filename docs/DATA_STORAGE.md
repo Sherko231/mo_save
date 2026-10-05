@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `7`
+- Current schema version: `8`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -182,7 +182,17 @@ Existing challenges migrate with both values null, so their grid, progress, curr
 
 Required pace is calculated from the current remaining challenge amount and the deadline at display time. Weekly and monthly pace are rounded upward to the challenge currency denomination step. Pace is not stored as a second value, so changing progress or the deadline cannot leave stale calculations behind.
 
-The challenge target remains the goal target. Issue #17 is responsible for reconciling grid completion with saving-contribution ledger events; schema v7 does not create duplicate balances or money movements.
+The challenge target remains the goal target. Challenge-grid completion is reconciled with canonical non-balance-affecting saving-contribution events as documented in `docs/CHALLENGE_LEDGER.md`.
+
+## Schema v8 — Executed SYP/USD conversion metadata
+
+Schema v8 adds nullable `executed_syp_per_usd` to `financial_events`.
+
+The field stores the historical rate actually used by a real SYP↔USD conversion, always using the convention `SYP per 1 USD` regardless of conversion direction. Application validation requires the value for `currencyConversion` events and rejects it on other event types.
+
+The source and destination amounts remain fixed-point signed rows in `financial_event_entries`. One conversion therefore contains exactly one negative source entry and one positive destination entry. Both are inserted in the same SQLite transaction, and the source balance is checked inside that transaction before the event is committed.
+
+The Settings `reference_syp_per_usd` value remains estimate-only and is never copied into a real conversion automatically. See `docs/CURRENCY_CONVERSIONS.md` for the complete conversion and audit rules.
 
 ## Legacy SharedPreferences migration
 
@@ -209,7 +219,7 @@ Dedicated repository methods also exist for add/update/delete operations so late
 
 ## Future financial tables
 
-Future goal-contribution, conversion, gold and other bounded roadmap work must continue to use numbered SQLite migrations when persistent schema changes are required. Actual money movements must post into the ledger rather than maintaining independent balances.
+Gold and other bounded roadmap work must continue to use numbered SQLite migrations when persistent schema changes are required. Actual money movements must post into the ledger rather than maintaining independent balances.
 
 ## Backup
 

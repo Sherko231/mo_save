@@ -5,6 +5,22 @@ import 'package:sqflite/sqflite.dart';
 import '../models/financial_event.dart';
 import 'local_database.dart';
 
+class InsufficientBalanceException implements Exception {
+  const InsufficientBalanceException({
+    required this.unit,
+    required this.availableMicros,
+    required this.requiredMicros,
+  });
+
+  final FinancialUnit unit;
+  final int availableMicros;
+  final int requiredMicros;
+
+  @override
+  String toString() =>
+      'Insufficient balance for ${unit.name}: $availableMicros < $requiredMicros';
+}
+
 class FinancialLedgerStorage {
   FinancialLedgerStorage({LocalDatabase? database})
       : _database = database ?? LocalDatabase.instance;
@@ -90,8 +106,45 @@ class FinancialLedgerStorage {
   }
 
   Future<void> addEvent(FinancialEvent event) async {
+    if (event.type == FinancialEventType.currencyConversion) {
+      await addCurrencyConversion(event);
+      return;
+    }
+
     final Database database = await _database.database;
     await database.transaction((transaction) async {
+      await _insertEvent(transaction, event);
+    });
+    notifyChanged();
+  }
+
+  /// Adds one real SYP <-> USD conversion as one atomic ledger event.
+  ///
+  /// The source balance is checked inside the same SQLite transaction that
+  /// posts the negative source entry and positive destination entry.
+  Future<void> addCurrencyConversion(FinancialEvent event) async {
+    final _ConversionPosting posting = _validateCurrencyConversion(event);
+    final Database database = await _database.database;
+
+    await database.transaction((transaction) async {
+      final List<Map<String, Object?>> rows = await transaction.rawQuery(
+        '''
+        SELECT COALESCE(SUM(amount_micros), 0) AS balance_micros
+        FROM financial_event_entries
+        WHERE affects_balance = 1 AND unit = ?
+        ''',
+        <Object?>[posting.sourceUnit.name],
+      );
+      final int available =
+          (rows.single['balance_micros']! as num).toInt();
+      if (available < posting.sourceAmountMicros) {
+        throw InsufficientBalanceException(
+          unit: posting.sourceUnit,
+          availableMicros: available,
+          requiredMicros: posting.sourceAmountMicros,
+        );
+      }
+
       await _insertEvent(transaction, event);
     });
     notifyChanged();
@@ -102,6 +155,10 @@ class FinancialLedgerStorage {
   /// The event keeps its original id and creation timestamp. Entries are
   /// replaced atomically with the corrected event payload.
   Future<void> updateEvent(FinancialEvent event) async {
+    if (event.type == FinancialEventType.currencyConversion) {
+      _validateCurrencyConversion(event);
+    }
+
     final Database database = await _database.database;
     await database.transaction((transaction) async {
       final List<Map<String, Object?>> existing = await transaction.query(
@@ -241,6 +298,8 @@ class FinancialLedgerStorage {
           relatedGoalId: row['related_goal_id'] as String?,
           recurrenceKey: row['recurrence_key'] as String?,
           sourceEventId: row['source_event_id'] as String?,
+          executedSypPerUsd:
+              (row['executed_syp_per_usd'] as num?)?.toDouble(),
           createdAt: DateTime.fromMillisecondsSinceEpoch(
             (row['created_at_ms']! as num).toInt(),
             isUtc: true,
@@ -281,6 +340,7 @@ class FinancialLedgerStorage {
       'related_goal_id': _normalizeOptionalText(event.relatedGoalId),
       'recurrence_key': _normalizeOptionalText(event.recurrenceKey),
       'source_event_id': _normalizeOptionalText(event.sourceEventId),
+      'executed_syp_per_usd': event.executedSypPerUsd,
       'created_at_ms': event.createdAt.toUtc().millisecondsSinceEpoch,
       'updated_at_ms': event.updatedAt.toUtc().millisecondsSinceEpoch,
     };
@@ -307,6 +367,62 @@ class FinancialLedgerStorage {
     }
   }
 
+  static _ConversionPosting _validateCurrencyConversion(FinancialEvent event) {
+    if (event.type != FinancialEventType.currencyConversion) {
+      throw ArgumentError('Event is not a currency conversion.');
+    }
+    if (event.entries.length != 2 ||
+        event.entries.any((entry) => !entry.affectsBalance)) {
+      throw ArgumentError(
+        'Currency conversion must contain exactly two balance entries.',
+      );
+    }
+
+    final List<LedgerEntry> negative = event.entries
+        .where((entry) => entry.amountMicros < 0)
+        .toList(growable: false);
+    final List<LedgerEntry> positive = event.entries
+        .where((entry) => entry.amountMicros > 0)
+        .toList(growable: false);
+    if (negative.length != 1 || positive.length != 1) {
+      throw ArgumentError(
+        'Currency conversion must have one source and one destination entry.',
+      );
+    }
+
+    final LedgerEntry source = negative.single;
+    final LedgerEntry destination = positive.single;
+    final Set<FinancialUnit> pair = <FinancialUnit>{
+      source.unit,
+      destination.unit,
+    };
+    if (pair.length != 2 ||
+        !pair.contains(FinancialUnit.syp) ||
+        !pair.contains(FinancialUnit.usd)) {
+      throw ArgumentError('Only SYP <-> USD conversions are supported.');
+    }
+
+    final int sypMicros = source.unit == FinancialUnit.syp
+        ? source.amountMicros.abs()
+        : destination.amountMicros.abs();
+    final int usdMicros = source.unit == FinancialUnit.usd
+        ? source.amountMicros.abs()
+        : destination.amountMicros.abs();
+    final double derivedRate = sypMicros / usdMicros;
+    final double storedRate = event.executedSypPerUsd!;
+    final double tolerance = derivedRate.abs() * 0.000000001 + 0.000000001;
+    if ((storedRate - derivedRate).abs() > tolerance) {
+      throw ArgumentError(
+        'Stored executed exchange rate does not match conversion amounts.',
+      );
+    }
+
+    return _ConversionPosting(
+      sourceUnit: source.unit,
+      sourceAmountMicros: source.amountMicros.abs(),
+    );
+  }
+
   static String? _normalizeOptionalText(String? value) {
     final String? trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
@@ -327,7 +443,7 @@ class FinancialLedgerStorage {
         return unit;
       }
     }
-    throw StateError('Unknown financial unit: $name');
+    throw StateError('Unknown ledger entry unit: $name');
   }
 
   static LedgerEntryRole? _parseEntryRole(String? name) {
@@ -349,4 +465,14 @@ class FinancialLedgerStorage {
       _changesController.add(null);
     }
   }
+}
+
+class _ConversionPosting {
+  const _ConversionPosting({
+    required this.sourceUnit,
+    required this.sourceAmountMicros,
+  });
+
+  final FinancialUnit sourceUnit;
+  final int sourceAmountMicros;
 }
