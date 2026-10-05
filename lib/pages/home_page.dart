@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/expected_income.dart';
 import '../models/financial_event.dart';
 import '../services/recurring_income_service.dart';
+import 'home_expenses_section.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -273,6 +274,10 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
+            const SizedBox(height: 18),
+            const Divider(),
+            const SizedBox(height: 12),
+            HomeExpensesSection(month: _selectedMonth),
           ],
         ),
       ),
