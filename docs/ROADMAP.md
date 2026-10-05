@@ -71,8 +71,8 @@ Home now derives separate USD, SYP, SYP (N) and gold balances directly from bala
 ### #16 — P4-T02 — Integrate saving goals with challenges — COMPLETED
 The existing challenge is now the saving-goal record: it keeps its target, currency, grid and sequence while adding an optional deadline and note. Goal details can be edited inside the challenge, deadline state is shown on challenge cards, and the detail screen derives required weekly/monthly saving pace from the remaining amount without storing duplicate progress data.
 
-### #17 — P4-T03 — Sync challenge progress with savings transactions
-Ensure completing/undoing challenge cells reconciles exactly with financial savings records.
+### #17 — P4-T03 — Sync challenge progress with savings transactions — COMPLETED
+Challenge-cell completion is now reconciled atomically with one canonical non-balance-affecting saving-contribution ledger event per goal. Its amount always equals the sum of completed cells; undoing cells reduces or removes that event, repeated toggles cannot create duplicates, and a one-time backfill creates matching contribution records for progress that existed before this workflow.
 
 ### #18 — P4-T04 — Add explicit currency conversion transactions
 Record real SYP↔USD conversions separately from the Settings reference exchange rate.
