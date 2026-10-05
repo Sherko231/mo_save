@@ -9,7 +9,7 @@ class LocalDatabase {
   static final LocalDatabase instance = LocalDatabase._();
 
   static const String databaseName = 'mo_save.db';
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   static bool _databaseFactoryConfigured = false;
 
@@ -40,6 +40,7 @@ class LocalDatabase {
       },
       onCreate: (database, version) async {
         await _createSchemaV1(database);
+        await _createSchemaV2(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         await _runMigrations(database, oldVersion, newVersion);
@@ -100,6 +101,27 @@ class LocalDatabase {
     ''');
   }
 
+  static Future<void> _createSchemaV2(DatabaseExecutor database) async {
+    await database.execute('''
+      CREATE TABLE financial_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        weekly_syp_income INTEGER NOT NULL CHECK (weekly_syp_income >= 0),
+        weekly_payday INTEGER NOT NULL CHECK (weekly_payday BETWEEN 1 AND 7),
+        monthly_usd_income REAL NOT NULL CHECK (monthly_usd_income >= 0),
+        monthly_payday INTEGER NOT NULL CHECK (monthly_payday BETWEEN 1 AND 31),
+        reference_syp_per_usd REAL NOT NULL DEFAULT 0
+          CHECK (reference_syp_per_usd >= 0),
+        gold_usd_per_gram REAL NOT NULL DEFAULT 0
+          CHECK (gold_usd_per_gram >= 0),
+        weekly_expenses_allocation INTEGER NOT NULL
+          CHECK (weekly_expenses_allocation >= 0),
+        weekly_savings_allocation INTEGER NOT NULL
+          CHECK (weekly_savings_allocation >= 0),
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
   static Future<void> _runMigrations(
     DatabaseExecutor database,
     int oldVersion,
@@ -107,6 +129,9 @@ class LocalDatabase {
   ) async {
     for (int version = oldVersion + 1; version <= newVersion; version++) {
       switch (version) {
+        case 2:
+          await _createSchemaV2(database);
+          break;
         default:
           throw StateError('Missing database migration for schema v$version.');
       }

@@ -20,7 +20,7 @@ Already implemented on `main`:
 - sequence editable inside challenge details;
 - challenge detail remains inside the Challenges tab so bottom navigation stays visible.
 
-These features are foundation only. The current persistence is not yet suitable for the full financial ledger.
+These features are foundation only. The financial ledger and transaction-driven balances are not implemented yet.
 
 ---
 
@@ -38,8 +38,8 @@ Challenge persistence now uses a versioned SQLite database. Existing SharedPrefe
 
 ## Phase 2 — Core financial model
 
-### #10 — P2-T01 — Add editable financial settings
-Persist salary defaults, paydays, exchange rate, gold price and envelope defaults.
+### #10 — P2-T01 — Add editable financial settings — COMPLETED
+The Settings tab now persists editable weekly/monthly income defaults, paydays, reference exchange rate, USD-per-gram gold price and weekly envelope defaults in SQLite schema v2.
 
 ### #11 — P2-T02 — Add transaction ledger and financial event model
 Create the single source of truth for income, expenses, savings, conversions, gold and adjustments.

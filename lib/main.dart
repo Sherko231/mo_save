@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'pages/challenges_page.dart';
+import 'pages/settings_page.dart';
 
 void main() {
   runApp(const MoSaveApp());
@@ -40,9 +41,9 @@ class _AppShellState extends State<AppShell> {
         child: IndexedStack(
           index: _selectedIndex,
           children: <Widget>[
-            const _PlaceholderPage(label: 'Home'),
+            const _PlaceholderPage(label: 'الرئيسية'),
             ChallengesPage(isActive: _selectedIndex == 1),
-            const _PlaceholderPage(label: 'Settings'),
+            const SettingsPage(),
           ],
         ),
       ),
@@ -59,17 +60,17 @@ class _AppShellState extends State<AppShell> {
             NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home),
-              label: 'Home',
+              label: 'الرئيسية',
             ),
             NavigationDestination(
               icon: Icon(Icons.emoji_events_outlined),
               selectedIcon: Icon(Icons.emoji_events),
-              label: 'Challenges',
+              label: 'التحديات',
             ),
             NavigationDestination(
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings),
-              label: 'Settings',
+              label: 'الإعدادات',
             ),
           ],
         ),
