@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/financial_balance_snapshot.dart';
 import '../models/financial_event.dart';
 import '../services/balance_valuation_service.dart';
+import '../services/financial_ledger_storage.dart';
 import '../utils/financial_format.dart';
 
 class HomeBalanceSection extends StatefulWidget {
@@ -20,12 +23,16 @@ class HomeBalanceSection extends StatefulWidget {
 class _HomeBalanceSectionState extends State<HomeBalanceSection> {
   final BalanceValuationService _service = BalanceValuationService();
 
+  StreamSubscription<void>? _ledgerSubscription;
   FinancialBalanceSnapshot? _snapshot;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _ledgerSubscription = FinancialLedgerStorage.changes.listen((_) {
+      _load(showLoading: false);
+    });
     _load();
   }
 
@@ -35,6 +42,12 @@ class _HomeBalanceSectionState extends State<HomeBalanceSection> {
     if (oldWidget.refreshToken != widget.refreshToken) {
       _load(showLoading: false);
     }
+  }
+
+  @override
+  void dispose() {
+    _ledgerSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _load({bool showLoading = true}) async {
