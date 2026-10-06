@@ -6,6 +6,7 @@ import '../models/financial_event.dart';
 import '../models/weekly_envelope_allocation.dart';
 import '../services/recurring_income_service.dart';
 import '../services/weekly_envelope_service.dart';
+import '../utils/financial_format.dart';
 
 class HomeEnvelopeSection extends StatefulWidget {
   const HomeEnvelopeSection({
@@ -49,9 +50,7 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
 
   Future<void> _load({bool showLoading = true}) async {
     if (showLoading && mounted) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
     }
 
     try {
@@ -71,21 +70,15 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
             await _envelopeService.loadAllocation(occurrence);
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _receivedWeekly = receivedWeekly;
         _allocations = allocations;
         _isLoading = false;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر تحميل تقسيم راتب الخميس.')),
       );
@@ -97,18 +90,14 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
     try {
       suggestion = await _envelopeService.suggestedSplit(occurrence);
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر تحميل إعدادات التقسيم.')),
       );
       return;
     }
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     final TextEditingController expensesController = TextEditingController(
       text: _wholeSyp(suggestion.expensesMicros).toString(),
@@ -128,117 +117,113 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
             final int received = _wholeSyp(suggestion.receivedMicros);
             final int unallocated = received - expenses - savings;
 
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: AlertDialog(
-                title: const Text('تقسيم راتب الخميس'),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Text('المبلغ المستلم: ${_formatSyp(suggestion.receivedMicros)}'),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: expensesController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        onChanged: (_) => setDialogState(() {
-                          errorText = null;
-                        }),
-                        decoration: const InputDecoration(
-                          labelText: 'المصاريف والالتزامات',
-                          suffixText: 'ل.س',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: savingsController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        onChanged: (_) => setDialogState(() {
-                          errorText = null;
-                        }),
-                        decoration: const InputDecoration(
-                          labelText: 'الادخار',
-                          suffixText: 'ل.س',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        unallocated >= 0
-                            ? 'غير موزع: ${_formatWholeSyp(unallocated)}'
-                            : 'التوزيع أكبر من الراتب بـ ${_formatWholeSyp(-unallocated)}',
-                      ),
-                      if (errorText != null) ...<Widget>[
-                        const SizedBox(height: 8),
-                        Text(
-                          errorText!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
+            return AlertDialog(
+              title: const Text('تقسيم راتب الخميس'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text(
+                      'المبلغ المستلم: ${FinancialFormat.assetBalance(suggestion.receivedMicros, FinancialUnit.syp)}',
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: expensesController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly,
                       ],
-                      const SizedBox(height: 10),
+                      onChanged: (_) => setDialogState(() => errorText = null),
+                      decoration: const InputDecoration(
+                        labelText: 'المصاريف والالتزامات',
+                        suffixText: 'ل.س',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: savingsController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      onChanged: (_) => setDialogState(() => errorText = null),
+                      decoration: const InputDecoration(
+                        labelText: 'الادخار',
+                        suffixText: 'ل.س',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      unallocated >= 0
+                          ? 'غير موزع: ${FinancialFormat.amount(unallocated, FinancialUnit.syp)}'
+                          : 'التوزيع أكبر من الراتب بـ ${FinancialFormat.amount(-unallocated, FinancialUnit.syp)}',
+                    ),
+                    if (errorText != null) ...<Widget>[
+                      const SizedBox(height: 8),
                       Text(
-                        'هذا التقسيم يخصص راتب الليرة فقط ولا يسحب شيئاً من مدخرات الدولار.',
-                        style: Theme.of(context).textTheme.bodySmall,
+                        errorText!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'هذا التقسيم يخصص راتب الليرة فقط ولا يسحب شيئاً من مدخرات الدولار.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-                actions: <Widget>[
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('إلغاء'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      final int? parsedExpenses =
-                          int.tryParse(expensesController.text.trim());
-                      final int? parsedSavings =
-                          int.tryParse(savingsController.text.trim());
-                      if (parsedExpenses == null || parsedSavings == null) {
-                        setDialogState(() {
-                          errorText = 'أدخل أرقاماً صحيحة.';
-                        });
-                        return;
-                      }
-                      if (parsedExpenses < 0 || parsedSavings < 0) {
-                        setDialogState(() {
-                          errorText = 'المبالغ لا يمكن أن تكون سالبة.';
-                        });
-                        return;
-                      }
-                      if (parsedExpenses == 0 && parsedSavings == 0) {
-                        setDialogState(() {
-                          errorText = 'خصص جزءاً من الراتب على الأقل.';
-                        });
-                        return;
-                      }
-                      if (parsedExpenses + parsedSavings > received) {
-                        setDialogState(() {
-                          errorText = 'مجموع التقسيم لا يمكن أن يتجاوز الراتب المستلم.';
-                        });
-                        return;
-                      }
-                      Navigator.of(dialogContext).pop(
-                        _EnvelopeInput(
-                          expenses: parsedExpenses,
-                          savings: parsedSavings,
-                        ),
-                      );
-                    },
-                    child: const Text('تأكيد التقسيم'),
-                  ),
-                ],
               ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('إلغاء'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final int? parsedExpenses =
+                        int.tryParse(expensesController.text.trim());
+                    final int? parsedSavings =
+                        int.tryParse(savingsController.text.trim());
+                    if (parsedExpenses == null || parsedSavings == null) {
+                      setDialogState(() {
+                        errorText = 'أدخل أرقاماً صحيحة.';
+                      });
+                      return;
+                    }
+                    if (parsedExpenses < 0 || parsedSavings < 0) {
+                      setDialogState(() {
+                        errorText = 'المبالغ لا يمكن أن تكون سالبة.';
+                      });
+                      return;
+                    }
+                    if (parsedExpenses == 0 && parsedSavings == 0) {
+                      setDialogState(() {
+                        errorText = 'خصص جزءاً من الراتب على الأقل.';
+                      });
+                      return;
+                    }
+                    if (parsedExpenses + parsedSavings > received) {
+                      setDialogState(() {
+                        errorText =
+                            'مجموع التقسيم لا يمكن أن يتجاوز الراتب المستلم.';
+                      });
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(
+                      _EnvelopeInput(
+                        expenses: parsedExpenses,
+                        savings: parsedSavings,
+                      ),
+                    );
+                  },
+                  child: const Text('تأكيد التقسيم'),
+                ),
+              ],
             );
           },
         );
@@ -248,13 +233,9 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
     expensesController.dispose();
     savingsController.dispose();
 
-    if (input == null || !mounted) {
-      return;
-    }
+    if (input == null || !mounted) return;
 
-    setState(() {
-      _allocatingKey = occurrence.recurrenceKey;
-    });
+    setState(() => _allocatingKey = occurrence.recurrenceKey);
 
     try {
       await _envelopeService.allocate(
@@ -263,25 +244,19 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
         savingsMicros: LedgerEntry.amountToMicros(input.savings),
       );
       await _load(showLoading: false);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حفظ تقسيم راتب الخميس.')),
       );
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر حفظ التقسيم أو تم تقسيم الراتب مسبقاً.')),
+        const SnackBar(
+          content: Text('تعذر حفظ التقسيم أو تم تقسيم الراتب مسبقاً.'),
+        ),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _allocatingKey = null;
-        });
-      }
+      if (mounted) setState(() => _allocatingKey = null);
     }
   }
 
@@ -323,11 +298,20 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
             spacing: 8,
             runSpacing: 8,
             children: <Widget>[
-              Chip(label: Text('للمصاريف: ${_formatSyp(totalExpenses)}')),
-              Chip(label: Text('للادخار: ${_formatSyp(totalSavings)}')),
+              Chip(
+                label: Text(
+                  'للمصاريف: ${FinancialFormat.assetBalance(totalExpenses, FinancialUnit.syp)}',
+                ),
+              ),
+              Chip(
+                label: Text(
+                  'للادخار: ${FinancialFormat.assetBalance(totalSavings, FinancialUnit.syp)}',
+                ),
+              ),
             ],
           ),
-        if (totalExpenses > 0 || totalSavings > 0) const SizedBox(height: 10),
+        if (totalExpenses > 0 || totalSavings > 0)
+          const SizedBox(height: 10),
         if (_receivedWeekly.isEmpty)
           const Card(
             child: Padding(
@@ -371,9 +355,8 @@ class _AllocationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final WeeklyEnvelopeAllocation? current = allocation;
     final int received = occurrence.receivedAmountMicros ?? 0;
-    final int unallocated = current == null
-        ? received
-        : received - current.allocatedMicros;
+    final int unallocated =
+        current == null ? received : received - current.allocatedMicros;
 
     return Card(
       child: Padding(
@@ -388,20 +371,26 @@ class _AllocationCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'راتب ${occurrence.scheduledDate.day}/${occurrence.scheduledDate.month}',
+                        'راتب ${FinancialFormat.date(occurrence.scheduledDate)}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 3),
-                      Text('المستلم: ${_formatSyp(received)}'),
+                      Text(
+                        'المستلم: ${FinancialFormat.assetBalance(received, FinancialUnit.syp)}',
+                      ),
                     ],
                   ),
                 ),
                 Chip(
                   avatar: Icon(
-                    current == null ? Icons.pending_outlined : Icons.check_circle,
+                    current == null
+                        ? Icons.pending_outlined
+                        : Icons.check_circle,
                     size: 18,
                   ),
-                  label: Text(current == null ? 'بانتظار التقسيم' : 'تم التوزيع'),
+                  label: Text(
+                    current == null ? 'بانتظار التقسيم' : 'تم التوزيع',
+                  ),
                 ),
               ],
             ),
@@ -411,10 +400,22 @@ class _AllocationCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: <Widget>[
-                  Chip(label: Text('مصاريف ${_formatSyp(current.expensesMicros)}')),
-                  Chip(label: Text('ادخار ${_formatSyp(current.savingsMicros)}')),
+                  Chip(
+                    label: Text(
+                      'مصاريف ${FinancialFormat.assetBalance(current.expensesMicros, FinancialUnit.syp)}',
+                    ),
+                  ),
+                  Chip(
+                    label: Text(
+                      'ادخار ${FinancialFormat.assetBalance(current.savingsMicros, FinancialUnit.syp)}',
+                    ),
+                  ),
                   if (unallocated > 0)
-                    Chip(label: Text('غير موزع ${_formatSyp(unallocated)}')),
+                    Chip(
+                      label: Text(
+                        'غير موزع ${FinancialFormat.assetBalance(unallocated, FinancialUnit.syp)}',
+                      ),
+                    ),
                 ],
               ),
             ] else ...<Widget>[
@@ -445,18 +446,3 @@ class _EnvelopeInput {
 }
 
 int _wholeSyp(int micros) => (micros / LedgerEntry.microsPerUnit).round();
-
-String _formatSyp(int micros) => _formatWholeSyp(_wholeSyp(micros));
-
-String _formatWholeSyp(int amount) {
-  final String digits = amount.toString();
-  final StringBuffer buffer = StringBuffer();
-  for (int index = 0; index < digits.length; index++) {
-    final int remaining = digits.length - index;
-    buffer.write(digits[index]);
-    if (remaining > 1 && remaining % 3 == 1) {
-      buffer.write(',');
-    }
-  }
-  return '${buffer.toString()} ل.س';
-}
