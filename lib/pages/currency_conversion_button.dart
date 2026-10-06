@@ -5,6 +5,7 @@ import '../models/financial_balance_snapshot.dart';
 import '../models/financial_event.dart';
 import '../services/currency_conversion_service.dart';
 import '../services/financial_ledger_storage.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 class CurrencyConversionButton extends StatefulWidget {
@@ -84,18 +85,18 @@ class _CurrencyConversionButtonState extends State<CurrencyConversionButton> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.tonalIcon(
-        onPressed: _isSaving ? null : _openConversion,
-        icon: _isSaving
-            ? const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.currency_exchange),
-        label: const Text('تسجيل تحويل بين الليرة والدولار'),
-      ),
+    return UxActionTile(
+      icon: Icons.currency_exchange_rounded,
+      tone: const Color(0xFF6C5AA6),
+      title: 'تحويل عملة',
+      subtitle: 'سجّل تحويلاً فعلياً بين الليرة والدولار',
+      onTap: _isSaving ? () {} : _openConversion,
+      trailing: _isSaving
+          ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.chevron_left_rounded),
     );
   }
 }
