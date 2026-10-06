@@ -54,6 +54,9 @@ class BackupService {
         _notificationPreferencesStorage = notificationPreferencesStorage ??
             NotificationPreferencesStorage();
 
+  final LocalDatabase _database;
+  final NotificationPreferencesStorage _notificationPreferencesStorage;
+
   static const String backupExtension = 'mosave';
   static const String _format = 'mo_save_backup';
   static const int _formatVersion = 1;
