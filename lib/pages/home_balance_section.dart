@@ -6,6 +6,8 @@ import '../models/financial_balance_snapshot.dart';
 import '../models/financial_event.dart';
 import '../services/balance_valuation_service.dart';
 import '../services/financial_ledger_storage.dart';
+import '../ui/app_theme.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'currency_conversion_button.dart';
 import 'gold_purchase_button.dart';
@@ -116,7 +118,8 @@ class _HomeBalanceSectionState extends State<HomeBalanceSection> {
               children: <Widget>[
                 _AssetCard(
                   width: width,
-                  icon: Icons.attach_money,
+                  icon: Icons.attach_money_rounded,
+                  tone: const Color(0xFF4C6E9C),
                   label: 'الدولار',
                   value: FinancialFormat.assetBalance(
                     snapshot.balanceMicros(FinancialUnit.usd),
@@ -125,7 +128,8 @@ class _HomeBalanceSectionState extends State<HomeBalanceSection> {
                 ),
                 _AssetCard(
                   width: width,
-                  icon: Icons.account_balance_wallet_outlined,
+                  icon: Icons.account_balance_wallet_rounded,
+                  tone: Theme.of(context).colorScheme.primary,
                   label: 'الليرة السورية',
                   value: FinancialFormat.assetBalance(
                     snapshot.balanceMicros(FinancialUnit.syp),
@@ -137,7 +141,8 @@ class _HomeBalanceSectionState extends State<HomeBalanceSection> {
                 ),
                 _AssetCard(
                   width: width,
-                  icon: Icons.currency_exchange,
+                  icon: Icons.currency_exchange_rounded,
+                  tone: const Color(0xFF6C5AA6),
                   label: 'الليرة السورية الجديدة',
                   value: FinancialFormat.assetBalance(
                     snapshot.balanceMicros(FinancialUnit.sypNew),
@@ -146,7 +151,8 @@ class _HomeBalanceSectionState extends State<HomeBalanceSection> {
                 ),
                 _AssetCard(
                   width: width,
-                  icon: Icons.diamond_outlined,
+                  icon: Icons.diamond_rounded,
+                  tone: AppPalette.gold,
                   label: 'الذهب',
                   value: FinancialFormat.assetBalance(
                     snapshot.balanceMicros(FinancialUnit.goldGram),
@@ -181,90 +187,94 @@ class _EstimatedTotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
     final double? total = snapshot.estimatedTotalUsd;
     final List<String> warnings = snapshot.valuationWarnings;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
+    return UxSoftCard(
+      tone: colors.primary,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              UxIconBadge(
+                icon: Icons.donut_large_rounded,
+                tone: colors.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'القيمة الإجمالية التقريبية',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      total == null
+                          ? 'غير متاحة بالكامل'
+                          : FinancialFormat.estimatedUsd(total),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (snapshot.referenceSypPerUsd > 0 ||
+              snapshot.goldUsdPerGram > 0) ...<Widget>[
+            const SizedBox(height: 13),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: <Widget>[
-                const CircleAvatar(
-                  child: Icon(Icons.pie_chart_outline),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'القيمة الإجمالية التقريبية',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        total == null
-                            ? 'غير متاحة بالكامل'
-                            : FinancialFormat.estimatedUsd(total),
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ],
+                if (snapshot.referenceSypPerUsd > 0)
+                  UxStatusPill(
+                    icon: Icons.currency_exchange_rounded,
+                    label:
+                        FinancialFormat.referenceRate(snapshot.referenceSypPerUsd),
                   ),
-                ),
+                if (snapshot.goldUsdPerGram > 0)
+                  UxStatusPill(
+                    icon: Icons.diamond_outlined,
+                    label:
+                        FinancialFormat.goldReference(snapshot.goldUsdPerGram),
+                    color: AppPalette.gold,
+                  ),
               ],
             ),
-            if (snapshot.referenceSypPerUsd > 0 ||
-                snapshot.goldUsdPerGram > 0) ...<Widget>[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  if (snapshot.referenceSypPerUsd > 0)
-                    Chip(
-                      label: Text(
-                        'الصرف: ${FinancialFormat.referenceRate(snapshot.referenceSypPerUsd)}',
+          ],
+          if (warnings.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 12),
+            ...warnings.map(
+              (warning) => Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 17,
+                      color: colors.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        warning,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
                       ),
                     ),
-                  if (snapshot.goldUsdPerGram > 0)
-                    Chip(
-                      label: Text(
-                        'الذهب: ${FinancialFormat.goldReference(snapshot.goldUsdPerGram)}',
-                      ),
-                    ),
-                ],
-              ),
-            ],
-            if (warnings.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 10),
-              ...warnings.map(
-                (warning) => Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Icon(
-                        Icons.info_outline,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          warning,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -274,6 +284,7 @@ class _AssetCard extends StatelessWidget {
   const _AssetCard({
     required this.width,
     required this.icon,
+    required this.tone,
     required this.label,
     required this.value,
     this.estimate,
@@ -281,41 +292,57 @@ class _AssetCard extends StatelessWidget {
 
   final double width;
   final IconData icon;
+  final Color tone;
   final String label;
   final String value;
   final String? estimate;
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
     return SizedBox(
       width: width,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: <Widget>[
-              Icon(icon),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(label, style: Theme.of(context).textTheme.labelLarge),
-                    const SizedBox(height: 3),
-                    Text(value, style: Theme.of(context).textTheme.titleMedium),
-                    if (estimate != null) ...<Widget>[
-                      const SizedBox(height: 2),
-                      Text(
-                        estimate!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+      child: UxSoftCard(
+        tone: tone,
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: <Widget>[
+            UxIconBadge(
+              icon: icon,
+              tone: tone,
+              size: 42,
+              iconSize: 21,
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (estimate != null) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      estimate!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: tone,
+                          ),
+                    ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
