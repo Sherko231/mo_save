@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import '../models/financial_event.dart';
 import '../services/financial_ledger_storage.dart';
 import '../services/transaction_history_service.dart';
+import '../ui/app_theme.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 class TransactionHistoryPage extends StatefulWidget {
@@ -127,9 +129,10 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           onRefresh: () => _load(showLoading: false),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
             children: <Widget>[
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   IconButton(
                     tooltip: 'رجوع',
@@ -137,19 +140,10 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                     icon: const BackButtonIcon(),
                   ),
                   const SizedBox(width: 4),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'سجل الحركات',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        Text(
-                          'كل حركة مالية محفوظة في السجل المالي.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                  const Expanded(
+                    child: UxPageHeader(
+                      title: 'سجل الحركات',
+                      subtitle: 'كل حركة محفوظة وقابلة للتدقيق',
                     ),
                   ),
                 ],
@@ -181,17 +175,10 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                   child: Center(child: CircularProgressIndicator()),
                 )
               else if (_records.isEmpty)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Column(
-                      children: <Widget>[
-                        Icon(Icons.receipt_long_outlined, size: 36),
-                        SizedBox(height: 10),
-                        Text('لا توجد حركات مطابقة لهذا الشهر.'),
-                      ],
-                    ),
-                  ),
+                const UxEmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'لا توجد حركات',
+                  body: 'لا توجد حركات مطابقة للشهر والفلاتر المحددة.',
                 )
               else ...<Widget>[
                 Text(
@@ -230,31 +217,40 @@ class _MonthSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          children: <Widget>[
-            IconButton(
-              tooltip: 'الشهر السابق',
-              onPressed: onPrevious,
-              icon: const Icon(Icons.chevron_right),
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    return UxSoftCard(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: Row(
+        children: <Widget>[
+          IconButton(
+            tooltip: 'الشهر السابق',
+            onPressed: onPrevious,
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+          Expanded(
+            child: Column(
+              children: <Widget>[
+                Text(
+                  'الفترة',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
             ),
-            Expanded(
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            IconButton(
-              tooltip: 'الشهر التالي',
-              onPressed: onNext,
-              icon: const Icon(Icons.chevron_left),
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            tooltip: 'الشهر التالي',
+            onPressed: onNext,
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+        ],
       ),
     );
   }
@@ -354,61 +350,73 @@ class _TransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final FinancialEvent event = record.event;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              CircleAvatar(child: Icon(_eventIcon(event.type))),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final Color tone = record.isDeleted
+        ? colors.error
+        : _eventTone(event.type, colors);
+
+    return UxSoftCard(
+      tone: tone,
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          UxIconBadge(
+            icon: _eventIcon(event.type),
+            tone: tone,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            _eventTypeLabel(event.type),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        if (record.isDeleted)
-                          const Chip(
-                            label: Text('محذوفة'),
-                            visualDensity: VisualDensity.compact,
-                          )
-                        else if (record.revisionCount > 0)
-                          Chip(
-                            label: Text('معدّلة ${record.revisionCount}×'),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                      ],
+                    Expanded(
+                      child: Text(
+                        _eventTypeLabel(event.type),
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _eventSummary(event),
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${FinancialFormat.dateTime(event.occurredAt)}'
-                      '${event.category == null ? '' : ' • ${event.category}'}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    if (record.isDeleted)
+                      UxStatusPill(
+                        label: 'محذوفة',
+                        icon: Icons.delete_outline,
+                        color: colors.error,
+                      )
+                    else if (record.revisionCount > 0)
+                      UxStatusPill(
+                        label: 'معدّلة ${record.revisionCount}×',
+                        icon: Icons.history_rounded,
+                        color: colors.tertiary,
+                      ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_left),
-            ],
+                const SizedBox(height: 5),
+                Text(
+                  _eventSummary(event),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: tone,
+                      ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${FinancialFormat.dateTime(event.occurredAt)}'
+                  '${event.category == null ? '' : ' • ${event.category}'}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 6),
+          Icon(
+            Icons.chevron_left_rounded,
+            color: colors.onSurfaceVariant,
+          ),
+        ],
       ),
     );
   }
@@ -974,6 +982,19 @@ class _MetadataDraft {
   final DateTime date;
   final String category;
   final String note;
+}
+
+Color _eventTone(FinancialEventType type, ColorScheme colors) {
+  return switch (type) {
+    FinancialEventType.income => colors.primary,
+    FinancialEventType.expense => colors.error,
+    FinancialEventType.savingContribution => const Color(0xFF4C6E9C),
+    FinancialEventType.weeklyAllocation => colors.secondary,
+    FinancialEventType.currencyConversion => const Color(0xFF6C5AA6),
+    FinancialEventType.goldPurchase => AppPalette.gold,
+    FinancialEventType.goldSale => const Color(0xFF9A7A34),
+    FinancialEventType.manualAdjustment => colors.onSurfaceVariant,
+  };
 }
 
 String _eventTypeLabel(FinancialEventType type) {
