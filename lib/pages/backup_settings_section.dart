@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/backup_service.dart';
+import '../services/notification_preferences_storage.dart';
 import '../services/notification_service.dart';
 
 class BackupSettingsSection extends StatefulWidget {
@@ -17,6 +18,8 @@ class BackupSettingsSection extends StatefulWidget {
 
 class _BackupSettingsSectionState extends State<BackupSettingsSection> {
   final BackupService _backupService = BackupService();
+  final NotificationPreferencesStorage _notificationPreferencesStorage =
+      NotificationPreferencesStorage();
   bool _isBusy = false;
 
   Future<void> _exportBackup() async {
@@ -117,12 +120,7 @@ class _BackupSettingsSectionState extends State<BackupSettingsSection> {
     setState(() => _isBusy = true);
     try {
       await _backupService.restoreBackupBytes(selected.bytes);
-      try {
-        await NotificationService.instance.rescheduleAll();
-      } catch (_) {
-        // Financial restore is complete even if Android cannot reschedule an
-        // optional local notification immediately.
-      }
+      await _refreshRestoredNotifications();
       await widget.onRestored?.call();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -144,6 +142,25 @@ class _BackupSettingsSectionState extends State<BackupSettingsSection> {
       );
     } finally {
       if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  Future<void> _refreshRestoredNotifications() async {
+    try {
+      NotificationPreferences preferences =
+          await _notificationPreferencesStorage.load();
+      if (preferences.anyEnabled) {
+        final bool granted =
+            await NotificationService.instance.requestPermission();
+        if (!granted) {
+          preferences = NotificationPreferences.disabled;
+          await _notificationPreferencesStorage.save(preferences);
+        }
+      }
+      await NotificationService.instance.rescheduleAll();
+    } catch (_) {
+      // Financial restore is already complete. Notification scheduling remains
+      // optional and can be retried later from Settings.
     }
   }
 
