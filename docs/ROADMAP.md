@@ -101,8 +101,8 @@ Home now opens a chronological ledger history with month/type/currency filters, 
 ### #22 — P6-T01 — Add local payday and goal notifications — COMPLETED
 Android now supports three independently controlled local reminder types from Settings: weekly payday, monthly USD payday, and optional saving-goal deadlines. Reminders use the device timezone, reschedule after startup/settings changes, keep 29–31 monthly paydays aligned with the real calendar, refresh goal reminders when challenge/ledger state changes, and use inexact Android alarms so no exact-alarm permission is required.
 
-### #23 — P6-T02 — Complete Settings and initial setup UX
-Make a fresh install configurable without code changes and clearly separate future defaults from historical records.
+### #23 — P6-T02 — Complete Settings and initial setup UX — COMPLETED
+A truly fresh database now opens a one-time Arabic setup screen prefilled with the approved client plan. The same screen exposes all client-adjustable income/payday, recurring-expense, valuation, envelope and notification defaults, clearly explains that Settings affect future defaults rather than historical ledger records, and hands off to the normal app only after saving. Existing installations are detected and marked complete without forcing onboarding over prior data.
 
 **Phase exit:** the daily workflow is configurable and reminders operate locally.
 
