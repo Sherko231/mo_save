@@ -90,7 +90,7 @@ class _CurrencyConversionButtonState extends State<CurrencyConversionButton> {
       tone: const Color(0xFF6C5AA6),
       title: 'تحويل عملة',
       subtitle: 'سجّل تحويلاً فعلياً بين الليرة والدولار',
-      onTap: _isSaving ? () {} : _openConversion,
+      onTap: _isSaving ? null : _openConversion,
       trailing: _isSaving
           ? const SizedBox.square(
               dimension: 20,
