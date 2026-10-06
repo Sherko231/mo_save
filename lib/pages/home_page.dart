@@ -8,6 +8,7 @@ import '../models/financial_event.dart';
 import '../services/financial_ledger_storage.dart';
 import '../services/home_dashboard_service.dart';
 import '../services/recurring_income_service.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'home_balance_section.dart';
 import 'home_dashboard_overview.dart';
@@ -88,7 +89,7 @@ class _HomePageState extends State<HomePage> {
       setState(() => _isLoading = false);
       if (showError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تحميل لوحة التحكم المالية.')),
+          const SnackBar(content: Text('تعذر تحميل بياناتك المالية.')),
         );
       }
     }
@@ -115,6 +116,19 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  List<ExpectedIncome> get _incomeNeedingAttention {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    return _occurrences.where((occurrence) {
+      final DateTime scheduled = DateTime(
+        occurrence.scheduledDate.year,
+        occurrence.scheduledDate.month,
+        occurrence.scheduledDate.day,
+      );
+      return !occurrence.isReceived && !scheduled.isAfter(today);
+    }).toList(growable: false);
+  }
+
   Future<void> _confirmReceived(ExpectedIncome occurrence) async {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
@@ -125,7 +139,7 @@ class _HomePageState extends State<HomePage> {
     );
     if (scheduled.isAfter(today)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا يمكن تأكيد الدخل قبل موعده.')),
+        const SnackBar(content: Text('يمكن تأكيد الدخل في موعده فقط.')),
       );
       return;
     }
@@ -143,70 +157,66 @@ class _HomePageState extends State<HomePage> {
       builder: (dialogContext) {
         String? errorText;
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('تأكيد استلام الدخل'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Text(_incomeTitle(occurrence)),
-                  const SizedBox(height: 6),
-                  Text('موعده: ${FinancialFormat.date(occurrence.scheduledDate)}'),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    keyboardType: TextInputType.numberWithOptions(
-                      decimal: !isSyp,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      if (isSyp)
-                        FilteringTextInputFormatter.digitsOnly
-                      else
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    onChanged: (_) => setDialogState(() => errorText = null),
-                    decoration: InputDecoration(
-                      labelText: 'المبلغ المستلم فعلياً',
-                      suffixText: FinancialFormat.unitShort(occurrence.unit),
-                      errorText: errorText,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('إلغاء'),
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(_incomeTitle(occurrence)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  'أكد المبلغ الذي استلمته فعلياً. يمكنك تعديله إذا اختلف عن المتوقع.',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                FilledButton(
-                  onPressed: () {
-                    final String raw = controller.text.trim();
-                    final num? parsed = isSyp
-                        ? int.tryParse(raw)
-                        : double.tryParse(raw);
-                    if (parsed == null || parsed <= 0) {
-                      setDialogState(() {
-                        errorText = 'أدخل مبلغاً أكبر من صفر.';
-                      });
-                      return;
-                    }
-                    Navigator.of(dialogContext).pop(parsed);
-                  },
-                  child: const Text('تأكيد'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.numberWithOptions(decimal: !isSyp),
+                  inputFormatters: <TextInputFormatter>[
+                    if (isSyp)
+                      FilteringTextInputFormatter.digitsOnly
+                    else
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  onChanged: (_) => setDialogState(() => errorText = null),
+                  decoration: InputDecoration(
+                    labelText: 'المبلغ المستلم',
+                    suffixText: FinancialFormat.unitShort(occurrence.unit),
+                    helperText:
+                        'موعد الدفعة ${FinancialFormat.date(occurrence.scheduledDate)}',
+                    errorText: errorText,
+                  ),
                 ),
               ],
-            );
-          },
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final String raw = controller.text.trim();
+                  final num? parsed =
+                      isSyp ? int.tryParse(raw) : double.tryParse(raw);
+                  if (parsed == null || parsed <= 0) {
+                    setDialogState(() {
+                      errorText = 'أدخل مبلغاً أكبر من صفر.';
+                    });
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(parsed);
+                },
+                child: const Text('تأكيد الاستلام'),
+              ),
+            ],
+          ),
         );
       },
     );
     controller.dispose();
 
     if (amount == null || !mounted) return;
-
     setState(() => _confirmingKey = occurrence.recurrenceKey);
 
     try {
@@ -217,7 +227,7 @@ class _HomePageState extends State<HomePage> {
       await _reload(showLoading: false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسجيل الدخل المستلم.')),
+        const SnackBar(content: Text('تم تسجيل الدخل.')),
       );
     } on StateError catch (error) {
       if (!mounted) return;
@@ -226,7 +236,7 @@ class _HomePageState extends State<HomePage> {
         SnackBar(
           content: Text(
             future
-                ? 'لا يمكن تأكيد الدخل قبل موعده.'
+                ? 'يمكن تأكيد الدخل في موعده فقط.'
                 : 'تم تسجيل هذه الدفعة مسبقاً.',
           ),
         ),
@@ -234,7 +244,7 @@ class _HomePageState extends State<HomePage> {
     } on ArgumentError catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('المبلغ المستلم غير صالح.')),
+        const SnackBar(content: Text('المبلغ غير صالح.')),
       );
     } catch (_) {
       if (!mounted) return;
@@ -254,20 +264,25 @@ class _HomePageState extends State<HomePage> {
 
     final HomeDashboardSnapshot? dashboard = _dashboard;
     if (dashboard == null) {
-      return Center(
-        child: FilledButton.icon(
+      return UxEmptyState(
+        icon: Icons.cloud_off_outlined,
+        title: 'تعذر تحميل بياناتك',
+        body: 'جرّب إعادة التحميل. بياناتك المحلية لن تتأثر.',
+        action: FilledButton.icon(
           onPressed: _reload,
           icon: const Icon(Icons.refresh),
-          label: const Text('إعادة تحميل لوحة التحكم'),
+          label: const Text('إعادة المحاولة'),
         ),
       );
     }
+
+    final List<ExpectedIncome> attention = _incomeNeedingAttention;
 
     return RefreshIndicator(
       onRefresh: () => _reload(showLoading: false),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 104),
         children: <Widget>[
           HomeDashboardOverview(
             snapshot: dashboard,
@@ -275,55 +290,67 @@ class _HomePageState extends State<HomePage> {
             onPreviousMonth: () => _changeMonth(-1),
             onNextMonth: () => _changeMonth(1),
           ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _openHistory,
-            icon: const Icon(Icons.receipt_long_outlined),
-            label: const Text('سجل الحركات والتصحيحات'),
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 12),
-          HomeBalanceSection(refreshToken: _incomeRefreshToken),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 12),
-          Text(
-            'تفاصيل الدخل',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          _MonthSummary(occurrences: _occurrences),
-          const SizedBox(height: 12),
-          if (_occurrences.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('لا يوجد دخل متكرر متوقع في هذا الشهر.'),
-              ),
-            )
-          else
-            ..._occurrences.map(
+          if (attention.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 18),
+            const UxSectionHeader(
+              title: 'يحتاج انتباهك',
+              subtitle: 'دفعات حان موعدها ولم تُسجل بعد',
+            ),
+            const SizedBox(height: 8),
+            ...attention.map(
               (occurrence) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _IncomeOccurrenceCard(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _AttentionIncomeCard(
                   occurrence: occurrence,
                   isConfirming: _confirmingKey == occurrence.recurrenceKey,
                   onConfirm: () => _confirmReceived(occurrence),
                 ),
               ),
             ),
+          ],
           const SizedBox(height: 18),
-          const Divider(),
-          const SizedBox(height: 12),
-          HomeEnvelopeSection(
-            month: _selectedMonth,
-            refreshToken: _incomeRefreshToken,
+          _HistoryShortcut(onTap: _openHistory),
+          const SizedBox(height: 16),
+          const UxSectionHeader(
+            title: 'التفاصيل والإجراءات',
+            subtitle: 'افتح فقط القسم الذي تحتاجه',
           ),
-          const SizedBox(height: 18),
-          const Divider(),
-          const SizedBox(height: 12),
-          HomeExpensesSection(month: _selectedMonth),
+          const SizedBox(height: 8),
+          UxDisclosureCard(
+            title: 'الأرصدة والتحويلات',
+            subtitle: 'تفاصيل الأصول، تحويل العملة وشراء الذهب',
+            icon: Icons.account_balance_wallet_outlined,
+            child: HomeBalanceSection(refreshToken: _incomeRefreshToken),
+          ),
+          const SizedBox(height: 8),
+          UxDisclosureCard(
+            title: 'الدخل',
+            subtitle: '${_occurrences.length} دفعات ضمن الشهر المحدد',
+            icon: Icons.payments_outlined,
+            initiallyExpanded: attention.isNotEmpty,
+            child: _IncomeDetails(
+              occurrences: _occurrences,
+              confirmingKey: _confirmingKey,
+              onConfirm: _confirmReceived,
+            ),
+          ),
+          const SizedBox(height: 8),
+          UxDisclosureCard(
+            title: 'تقسيم راتب الأسبوع',
+            subtitle: 'المصاريف والادخار لكل دفعة أسبوعية',
+            icon: Icons.call_split_outlined,
+            child: HomeEnvelopeSection(
+              month: _selectedMonth,
+              refreshToken: _incomeRefreshToken,
+            ),
+          ),
+          const SizedBox(height: 8),
+          UxDisclosureCard(
+            title: 'المصاريف',
+            subtitle: 'الخطة الشهرية والتسجيل الفعلي',
+            icon: Icons.receipt_long_outlined,
+            child: HomeExpensesSection(month: _selectedMonth),
+          ),
         ],
       ),
     );
@@ -331,37 +358,34 @@ class _HomePageState extends State<HomePage> {
 
   static String _incomeTitle(ExpectedIncome occurrence) {
     return occurrence.kind == RecurringIncomeKind.weeklySyp
-        ? 'راتب الخميس'
+        ? 'راتب الأسبوع'
         : 'راتب الشهر';
   }
 }
 
-class _MonthSummary extends StatelessWidget {
-  const _MonthSummary({required this.occurrences});
+class _HistoryShortcut extends StatelessWidget {
+  const _HistoryShortcut({required this.onTap});
 
-  final List<ExpectedIncome> occurrences;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final int weeklyCount = occurrences
-        .where((item) => item.kind == RecurringIncomeKind.weeklySyp)
-        .length;
-    final int receivedCount = occurrences.where((item) => item.isReceived).length;
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: <Widget>[
-        Chip(label: Text('$weeklyCount دفعات أسبوعية')),
-        Chip(label: Text('${occurrences.length} دفعات متوقعة')),
-        Chip(label: Text('$receivedCount مستلمة')),
-      ],
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        minTileHeight: 68,
+        onTap: onTap,
+        leading: const Icon(Icons.history_rounded),
+        title: const Text('سجل الحركات'),
+        subtitle: const Text('راجع كل الدخل والمصاريف والتحويلات والتصحيحات'),
+        trailing: const Icon(Icons.chevron_left_rounded),
+      ),
     );
   }
 }
 
-class _IncomeOccurrenceCard extends StatelessWidget {
-  const _IncomeOccurrenceCard({
+class _AttentionIncomeCard extends StatelessWidget {
+  const _AttentionIncomeCard({
     required this.occurrence,
     required this.isConfirming,
     required this.onConfirm,
@@ -380,8 +404,7 @@ class _IncomeOccurrenceCard extends StatelessWidget {
       occurrence.scheduledDate.month,
       occurrence.scheduledDate.day,
     );
-    final bool isPast = scheduled.isBefore(today);
-    final bool isFuture = scheduled.isAfter(today);
+    final String timing = scheduled.isBefore(today) ? 'متأخر' : 'اليوم';
 
     return Card(
       child: Padding(
@@ -400,65 +423,30 @@ class _IncomeOccurrenceCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 3),
-                      Text(FinancialFormat.date(occurrence.scheduledDate)),
+                      Text('$timing • ${FinancialFormat.date(occurrence.scheduledDate)}'),
                     ],
                   ),
                 ),
-                _StatusChip(
-                  label: occurrence.isReceived
-                      ? 'تم الاستلام'
-                      : isPast
-                          ? 'غير مستلم'
-                          : isFuture
-                              ? 'قادم'
-                              : 'موعده اليوم',
-                  received: occurrence.isReceived,
+                Text(
+                  FinancialFormat.assetBalance(
+                    occurrence.expectedAmountMicros,
+                    occurrence.unit,
+                  ),
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: _AmountColumn(
-                    label: 'المتوقع',
-                    value: FinancialFormat.assetBalance(
-                      occurrence.expectedAmountMicros,
-                      occurrence.unit,
-                    ),
-                  ),
-                ),
-                if (occurrence.isReceived)
-                  Expanded(
-                    child: _AmountColumn(
-                      label: 'المستلم فعلياً',
-                      value: FinancialFormat.assetBalance(
-                        occurrence.receivedAmountMicros ?? 0,
-                        occurrence.unit,
-                      ),
-                    ),
-                  ),
-              ],
+            FilledButton.icon(
+              onPressed: isConfirming ? null : onConfirm,
+              icon: isConfirming
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_rounded),
+              label: Text(isConfirming ? 'جاري التسجيل...' : 'تأكيد الاستلام'),
             ),
-            if (!occurrence.isReceived) ...<Widget>[
-              const SizedBox(height: 14),
-              FilledButton.icon(
-                onPressed: isConfirming || isFuture ? null : onConfirm,
-                icon: isConfirming
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        isFuture
-                            ? Icons.schedule
-                            : Icons.check_circle_outline,
-                      ),
-                label: Text(
-                  isFuture ? 'يمكن التأكيد في موعده' : 'تأكيد الاستلام',
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -466,45 +454,120 @@ class _IncomeOccurrenceCard extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.label,
-    required this.received,
+class _IncomeDetails extends StatelessWidget {
+  const _IncomeDetails({
+    required this.occurrences,
+    required this.confirmingKey,
+    required this.onConfirm,
   });
 
-  final String label;
-  final bool received;
+  final List<ExpectedIncome> occurrences;
+  final String? confirmingKey;
+  final Future<void> Function(ExpectedIncome occurrence) onConfirm;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(
-        received ? Icons.check_circle : Icons.schedule,
-        size: 18,
-      ),
-      label: Text(label),
+    if (occurrences.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: Text('لا يوجد دخل متكرر متوقع في هذا الشهر.'),
+      );
+    }
+
+    return Column(
+      children: occurrences
+          .map(
+            (occurrence) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _IncomeOccurrenceRow(
+                occurrence: occurrence,
+                isConfirming: confirmingKey == occurrence.recurrenceKey,
+                onConfirm: () => onConfirm(occurrence),
+              ),
+            ),
+          )
+          .toList(growable: false),
     );
   }
 }
 
-class _AmountColumn extends StatelessWidget {
-  const _AmountColumn({
-    required this.label,
-    required this.value,
+class _IncomeOccurrenceRow extends StatelessWidget {
+  const _IncomeOccurrenceRow({
+    required this.occurrence,
+    required this.isConfirming,
+    required this.onConfirm,
   });
 
-  final String label;
-  final String value;
+  final ExpectedIncome occurrence;
+  final bool isConfirming;
+  final VoidCallback onConfirm;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(label, style: Theme.of(context).textTheme.labelMedium),
-        const SizedBox(height: 2),
-        Text(value, style: Theme.of(context).textTheme.titleMedium),
-      ],
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime scheduled = DateTime(
+      occurrence.scheduledDate.year,
+      occurrence.scheduledDate.month,
+      occurrence.scheduledDate.day,
+    );
+    final bool isFuture = scheduled.isAfter(today);
+
+    final String status = occurrence.isReceived
+        ? 'مستلم'
+        : isFuture
+            ? 'قادم'
+            : scheduled.isBefore(today)
+                ? 'غير مستلم'
+                : 'اليوم';
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    _HomePageState._incomeTitle(occurrence),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${FinancialFormat.date(occurrence.scheduledDate)} • $status',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                Text(
+                  FinancialFormat.assetBalance(
+                    occurrence.receivedAmountMicros ??
+                        occurrence.expectedAmountMicros,
+                    occurrence.unit,
+                  ),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                if (!occurrence.isReceived && !isFuture)
+                  TextButton(
+                    onPressed: isConfirming ? null : onConfirm,
+                    child: Text(isConfirming ? '...' : 'تأكيد'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
