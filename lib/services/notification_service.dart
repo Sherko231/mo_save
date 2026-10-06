@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -8,6 +9,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../models/financial_settings.dart';
 import '../models/saving_challenge.dart';
 import 'challenge_storage.dart';
+import 'financial_ledger_storage.dart';
 import 'financial_settings_storage.dart';
 import 'notification_preferences_storage.dart';
 
@@ -44,6 +46,8 @@ class NotificationService {
   final ChallengeStorage _challengeStorage = ChallengeStorage();
 
   bool _initialized = false;
+  StreamSubscription<void>? _ledgerSubscription;
+  Future<void>? _goalReschedule;
 
   bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -65,6 +69,17 @@ class NotificationService {
     );
     await _plugin.initialize(settings: settings);
     _initialized = true;
+  }
+
+  /// Starts one app-lifetime listener after the initial startup reschedule.
+  /// Challenge mutations emit through the ledger change stream, so goal
+  /// deadline reminders are refreshed without coupling challenge persistence
+  /// directly to the notifications plugin.
+  void startAutomaticRefresh() {
+    if (!_isAndroid || _ledgerSubscription != null) return;
+    _ledgerSubscription = FinancialLedgerStorage.changes.listen((_) {
+      _queueGoalReschedule();
+    });
   }
 
   Future<bool> requestPermission() async {
@@ -110,6 +125,17 @@ class NotificationService {
         await _preferencesStorage.load();
     if (!preferences.goalDeadlinesEnabled) return;
     await _scheduleGoalReminders();
+  }
+
+  void _queueGoalReschedule() {
+    if (_goalReschedule != null) return;
+    final Future<void> task = rescheduleGoalNotifications();
+    _goalReschedule = task;
+    unawaited(
+      task.catchError((_) {}).whenComplete(() {
+        _goalReschedule = null;
+      }),
+    );
   }
 
   Future<void> _scheduleWeeklyIncome(FinancialSettings settings) async {
