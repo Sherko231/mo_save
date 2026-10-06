@@ -136,7 +136,10 @@ class _MonthControl extends StatelessWidget {
           IconButton(
             tooltip: 'الشهر السابق',
             onPressed: onPrevious,
-            icon: const Icon(Icons.chevron_right_rounded),
+            icon: const Icon(
+              Icons.chevron_right_rounded,
+              textDirection: TextDirection.ltr,
+            ),
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 98),
@@ -149,7 +152,10 @@ class _MonthControl extends StatelessWidget {
           IconButton(
             tooltip: 'الشهر التالي',
             onPressed: onNext,
-            icon: const Icon(Icons.chevron_left_rounded),
+            icon: const Icon(
+              Icons.chevron_left_rounded,
+              textDirection: TextDirection.ltr,
+            ),
           ),
         ],
       ),
