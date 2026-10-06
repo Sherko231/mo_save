@@ -89,8 +89,8 @@ Home now records gold purchases from SYP or USD as one atomic ledger event that 
 ### #20 — P5-T01 — Build the Home financial dashboard — COMPLETED
 Home now opens with one at-a-glance dashboard for the selected month: expected and received income by currency, planned versus actual expenses, current SYP/USD balances, gold grams and estimated value, combined estimated USD value, the next expected income, and compact saving-goal progress. The dashboard aggregates the existing ledger/settings/challenge sources without introducing cached financial totals, while the existing detailed income, allocation, expense and asset workflows remain available below it.
 
-### #21 — P5-T02 — Add transaction history and correction flows
-Provide an auditable timeline with filters and safe corrections.
+### #21 — P5-T02 — Add transaction history and correction flows — COMPLETED
+Home now opens a chronological ledger history with month/type/currency filters, transaction detail, revision history and explicit metadata-edit, amount-correction and deletion flows. Corrections recalculate from ledger entries, reject mutations that would worsen a negative owned balance or break dependent events, keep challenge-owned saving contributions read-only, and store every pre-edit/pre-delete snapshot in SQLite schema v9 so deleted/corrected history remains auditable.
 
 **Phase exit:** the user can understand current status and trace how every balance was produced.
 
