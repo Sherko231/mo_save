@@ -7,14 +7,19 @@ import '../services/expense_plan_storage.dart';
 import '../utils/financial_format.dart';
 
 class ExpensePlanSheet extends StatefulWidget {
-  const ExpensePlanSheet({super.key});
+  const ExpensePlanSheet({
+    super.key,
+    this.storage,
+  });
+
+  final ExpensePlanStorage? storage;
 
   @override
   State<ExpensePlanSheet> createState() => _ExpensePlanSheetState();
 }
 
 class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
-  final ExpensePlanStorage _storage = ExpensePlanStorage();
+  late final ExpensePlanStorage _storage;
   List<RecurringExpenseItem> _items = const <RecurringExpenseItem>[];
   bool _isLoading = true;
   bool _changed = false;
@@ -22,6 +27,7 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
   @override
   void initState() {
     super.initState();
+    _storage = widget.storage ?? ExpensePlanStorage();
     _reload();
   }
 
