@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../models/financial_settings.dart';
 import '../services/financial_settings_storage.dart';
+import '../services/notification_preferences_storage.dart';
+import '../services/notification_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -14,6 +16,9 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final FinancialSettingsStorage _storage = FinancialSettingsStorage();
+  final NotificationPreferencesStorage _notificationPreferencesStorage =
+      NotificationPreferencesStorage();
+  final NotificationService _notificationService = NotificationService.instance;
 
   final TextEditingController _weeklyIncomeController = TextEditingController();
   final TextEditingController _monthlyIncomeController = TextEditingController();
@@ -26,6 +31,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   int _weeklyPayday = DateTime.thursday;
   int _monthlyPayday = 1;
+  bool _weeklyIncomeNotificationEnabled = false;
+  bool _monthlyIncomeNotificationEnabled = false;
+  bool _goalDeadlineNotificationEnabled = false;
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -59,12 +67,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadSettings() async {
     try {
       final FinancialSettings settings = await _storage.loadSettings();
-      if (!mounted) {
-        return;
-      }
+      final NotificationPreferences notifications =
+          await _notificationPreferencesStorage.load();
+      if (!mounted) return;
 
       _weeklyIncomeController.text = settings.weeklySypIncome.toString();
-      _monthlyIncomeController.text = _formatEditableDouble(settings.monthlyUsdIncome);
+      _monthlyIncomeController.text =
+          _formatEditableDouble(settings.monthlyUsdIncome);
       _exchangeRateController.text = settings.referenceSypPerUsd == 0
           ? ''
           : _formatEditableDouble(settings.referenceSypPerUsd);
@@ -79,15 +88,14 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _weeklyPayday = settings.weeklyPayday;
         _monthlyPayday = settings.monthlyPayday;
+        _weeklyIncomeNotificationEnabled = notifications.weeklyIncomeEnabled;
+        _monthlyIncomeNotificationEnabled = notifications.monthlyIncomeEnabled;
+        _goalDeadlineNotificationEnabled = notifications.goalDeadlinesEnabled;
         _isLoading = false;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر تحميل الإعدادات المالية.')),
       );
@@ -95,9 +103,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final int weeklyIncome = int.parse(_weeklyIncomeController.text.trim());
     final int expensesAllocation =
@@ -124,31 +130,53 @@ class _SettingsPageState extends State<SettingsPage> {
       weeklyExpensesAllocation: expensesAllocation,
       weeklySavingsAllocation: savingsAllocation,
     );
+    NotificationPreferences notificationPreferences = NotificationPreferences(
+      weeklyIncomeEnabled: _weeklyIncomeNotificationEnabled,
+      monthlyIncomeEnabled: _monthlyIncomeNotificationEnabled,
+      goalDeadlinesEnabled: _goalDeadlineNotificationEnabled,
+    );
 
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
     try {
       await _storage.saveSettings(settings);
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الإعدادات.')),
-      );
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر حفظ الإعدادات.')),
+        const SnackBar(content: Text('تعذر حفظ الإعدادات المالية.')),
       );
+      setState(() => _isSaving = false);
+      return;
+    }
+
+    String message = 'تم حفظ الإعدادات.';
+    try {
+      if (notificationPreferences.anyEnabled) {
+        final bool granted = await _notificationService.requestPermission();
+        if (!granted) {
+          notificationPreferences = NotificationPreferences.disabled;
+          if (mounted) {
+            setState(() {
+              _weeklyIncomeNotificationEnabled = false;
+              _monthlyIncomeNotificationEnabled = false;
+              _goalDeadlineNotificationEnabled = false;
+            });
+          }
+          message =
+              'تم حفظ الإعدادات، لكن صلاحية الإشعارات غير ممنوحة فتم إيقاف التنبيهات.';
+        }
+      }
+
+      await _notificationPreferencesStorage.save(notificationPreferences);
+      await _notificationService.rescheduleAll();
+    } catch (_) {
+      message = 'تم حفظ الإعدادات المالية، لكن تعذر تحديث التنبيهات المحلية.';
     } finally {
       if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
       }
     }
   }
@@ -209,9 +237,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       .toList(growable: false),
                   onChanged: (value) {
                     if (value != null) {
-                      setState(() {
-                        _weeklyPayday = value;
-                      });
+                      setState(() => _weeklyPayday = value);
                     }
                   },
                 ),
@@ -246,9 +272,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   onChanged: (value) {
                     if (value != null) {
-                      setState(() {
-                        _monthlyPayday = value;
-                      });
+                      setState(() => _monthlyPayday = value);
                     }
                   },
                 ),
@@ -329,6 +353,48 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 14),
+            _SectionCard(
+              title: 'التنبيهات المحلية',
+              children: <Widget>[
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _weeklyIncomeNotificationEnabled,
+                  onChanged: (value) => setState(
+                    () => _weeklyIncomeNotificationEnabled = value,
+                  ),
+                  title: const Text('تذكير راتب الأسبوع'),
+                  subtitle: const Text('في يوم القبض الأسبوعي المحدد أعلاه.'),
+                ),
+                const Divider(),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _monthlyIncomeNotificationEnabled,
+                  onChanged: (value) => setState(
+                    () => _monthlyIncomeNotificationEnabled = value,
+                  ),
+                  title: const Text('تذكير الراتب الشهري'),
+                  subtitle: const Text('في يوم القبض الشهري المحدد أعلاه.'),
+                ),
+                const Divider(),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _goalDeadlineNotificationEnabled,
+                  onChanged: (value) => setState(
+                    () => _goalDeadlineNotificationEnabled = value,
+                  ),
+                  title: const Text('تذكيرات مواعيد أهداف الادخار'),
+                  subtitle: const Text(
+                    'تذكير قبل أسبوع وتذكير في يوم الموعد للأهداف غير المكتملة.',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'التنبيهات تعمل محلياً بدون إنترنت وتظهر قرابة الساعة 9 صباحاً حسب توقيت الجهاز. لا يستخدم التطبيق منبهات Android الدقيقة.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _isSaving ? null : _saveSettings,
@@ -364,9 +430,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   static String? _validateOptionalPositiveDouble(String? value) {
     final String text = (value ?? '').trim();
-    if (text.isEmpty) {
-      return null;
-    }
+    if (text.isEmpty) return null;
     final double? parsed = double.tryParse(text);
     if (parsed == null || parsed <= 0) {
       return 'أدخل قيمة أكبر من صفر أو اترك الحقل فارغاً.';
