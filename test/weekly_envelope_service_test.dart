@@ -101,8 +101,8 @@ void main() {
         savingsMicros: LedgerEntry.amountToMicros(345000),
       );
 
-      expect(
-        () => service.allocate(
+      await expectLater(
+        service.allocate(
           occurrence: occurrence,
           expensesMicros: LedgerEntry.amountToMicros(500000),
           savingsMicros: LedgerEntry.amountToMicros(300000),
