@@ -1,18 +1,8 @@
-import java.io.FileInputStream
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-}
-
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-val hasReleaseSigning = keystorePropertiesFile.exists()
-if (hasReleaseSigning) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -38,34 +28,12 @@ android {
         versionName = flutter.versionName
     }
 
-    if (hasReleaseSigning) {
-        signingConfigs {
-            create("release") {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = (keystoreProperties["storeFile"] as String?)?.let { file(it) }
-                storePassword = keystoreProperties["storePassword"] as String
-            }
-        }
-    }
-
     buildTypes {
         release {
-            if (hasReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
-            }
-        }
-    }
-}
-
-// Release artifacts must never silently fall back to Flutter's debug key.
-// Debug/profile builds remain usable without local signing secrets.
-tasks.configureEach {
-    if ((name == "assembleRelease" || name == "bundleRelease") && !hasReleaseSigning) {
-        doFirst {
-            throw GradleException(
-                "Missing android/key.properties. Configure the private release keystore before building a production artifact."
-            )
+            // Mo Save is distributed directly, not through an app store.
+            // Use Android's automatically managed debug signing so release APKs
+            // can be built locally without any private signing configuration.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
