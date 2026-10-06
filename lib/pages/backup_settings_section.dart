@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/backup_service.dart';
 import '../services/notification_preferences_storage.dart';
 import '../services/notification_service.dart';
+import '../ui/ux_components.dart';
 
 class BackupSettingsSection extends StatefulWidget {
   const BackupSettingsSection({
@@ -166,43 +167,78 @@ class _BackupSettingsSectionState extends State<BackupSettingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              'النسخ الاحتياطي والاستعادة',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'احفظ ملفاً يحتوي الإعدادات والسجل المالي والتحديات وخطة المصاريف. يمكنك استعادته على تثبيت جديد.',
-            ),
-            const SizedBox(height: 14),
-            FilledButton.tonalIcon(
-              onPressed: _isBusy ? null : _exportBackup,
-              icon: const Icon(Icons.download_outlined),
-              label: const Text('تصدير نسخة احتياطية'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _isBusy ? null : _restoreBackup,
-              icon: const Icon(Icons.restore_outlined),
-              label: const Text('استعادة من ملف'),
-            ),
-            if (_isBusy) ...<Widget>[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(),
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
+    return UxSoftCard(
+      tone: colors.primary,
+      padding: const EdgeInsets.all(17),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              UxIconBadge(
+                icon: Icons.shield_rounded,
+                tone: colors.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'حماية بياناتك',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'ملف واحد يحفظ الإعدادات والسجل والأهداف وخطة المصاريف.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
             ],
-            const SizedBox(height: 8),
-            Text(
-              'الاستعادة تستبدل البيانات الحالية كاملة ولا تدمج سجلين مختلفين.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _isBusy ? null : _exportBackup,
+            icon: const Icon(Icons.download_rounded),
+            label: const Text('تصدير نسخة احتياطية'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _isBusy ? null : _restoreBackup,
+            icon: const Icon(Icons.restore_rounded),
+            label: const Text('استعادة من ملف'),
+          ),
+          if (_isBusy) ...<Widget>[
+            const SizedBox(height: 14),
+            const LinearProgressIndicator(minHeight: 6),
           ],
-        ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(
+                Icons.info_outline_rounded,
+                size: 17,
+                color: colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'الاستعادة تستبدل البيانات الحالية كاملة ولا تدمج سجلين مختلفين.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,8 @@ import '../models/financial_balance_snapshot.dart';
 import '../models/financial_event.dart';
 import '../services/financial_ledger_storage.dart';
 import '../services/gold_service.dart';
+import '../ui/app_theme.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 class GoldPurchaseButton extends StatefulWidget {
@@ -77,18 +79,18 @@ class _GoldPurchaseButtonState extends State<GoldPurchaseButton> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.tonalIcon(
-        onPressed: _isSaving ? null : _openPurchase,
-        icon: _isSaving
-            ? const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.diamond_outlined),
-        label: const Text('تسجيل شراء ذهب'),
-      ),
+    return UxActionTile(
+      icon: Icons.diamond_rounded,
+      tone: AppPalette.gold,
+      title: 'شراء ذهب',
+      subtitle: 'حوّل جزءاً من رصيدك إلى غرامات ذهب',
+      onTap: _isSaving ? null : _openPurchase,
+      trailing: _isSaving
+          ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.chevron_left_rounded),
     );
   }
 }

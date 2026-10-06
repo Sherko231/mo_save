@@ -7,6 +7,7 @@ Single-user, offline-first Flutter app for personal finance tracking and gamifie
 - [Product scope](docs/PRODUCT.md)
 - [Client-ready roadmap](docs/ROADMAP.md)
 - [UX redesign and interaction architecture](docs/UX_REDESIGN.md)
+- [Visual design system](docs/UI_DESIGN_SYSTEM.md)
 - [Local data storage](docs/DATA_STORAGE.md)
 - [Balance and valuation rules](docs/VALUATION.md)
 - [Challenge/ledger reconciliation](docs/CHALLENGE_LEDGER.md)

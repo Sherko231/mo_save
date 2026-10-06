@@ -5,6 +5,7 @@ import '../models/financial_event.dart';
 import '../models/recurring_expense_item.dart';
 import '../services/expense_service.dart';
 import '../services/financial_ledger_storage.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'expense_plan_sheet.dart';
 
@@ -351,56 +352,63 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
           ],
         ),
         const SizedBox(height: 6),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                if (visibleUnits.isEmpty)
-                  const Text('لا توجد مصاريف مخططة أو فعلية لهذا الشهر.')
-                else
-                  ...visibleUnits.map(
-                    (unit) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: _MoneyStat(
-                              label:
-                                  'المخطط — ${FinancialFormat.unitLabel(unit)}',
-                              value: FinancialFormat.assetBalance(
-                                snapshot.plannedTotalsMicros[unit] ?? 0,
-                                unit,
-                              ),
+        UxSoftCard(
+          tone: Theme.of(context).colorScheme.error,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              if (visibleUnits.isEmpty)
+                Text(
+                  'لا توجد مصاريف مخططة أو فعلية لهذا الشهر.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                )
+              else
+                ...visibleUnits.map(
+                  (unit) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _MoneyStat(
+                            icon: Icons.event_note_outlined,
+                            label:
+                                'المخطط — ${FinancialFormat.unitLabel(unit)}',
+                            value: FinancialFormat.assetBalance(
+                              snapshot.plannedTotalsMicros[unit] ?? 0,
+                              unit,
                             ),
+                            tone: Theme.of(context).colorScheme.tertiary,
                           ),
-                          Expanded(
-                            child: _MoneyStat(
-                              label: 'المصروف فعلياً',
-                              value: FinancialFormat.assetBalance(
-                                snapshot.actualTotalsMicros[unit] ?? 0,
-                                unit,
-                              ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _MoneyStat(
+                            icon: Icons.payments_outlined,
+                            label: 'المصروف فعلياً',
+                            value: FinancialFormat.assetBalance(
+                              snapshot.actualTotalsMicros[unit] ?? 0,
+                              unit,
                             ),
+                            tone: Theme.of(context).colorScheme.error,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                const SizedBox(height: 4),
-                FilledButton.icon(
-                  onPressed: _isSavingExpense ? null : _logExpense,
-                  icon: _isSavingExpense
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add_card_outlined),
-                  label: const Text('تسجيل مصروف فعلي'),
                 ),
-              ],
-            ),
+              const SizedBox(height: 4),
+              FilledButton.icon(
+                onPressed: _isSavingExpense ? null : _logExpense,
+                icon: _isSavingExpense
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_card_rounded),
+                label: const Text('تسجيل مصروف فعلي'),
+              ),
+            ],
           ),
         ),
         if (snapshot.actualEvents.isNotEmpty) ...<Widget>[
@@ -413,18 +421,53 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
           ...snapshot.actualEvents.take(5).map(
             (event) {
               final LedgerEntry entry = event.entries.first;
-              return Card(
-                child: ListTile(
-                  leading:
-                      const CircleAvatar(child: Icon(Icons.payments_outlined)),
-                  title: Text(event.category ?? 'مصروف'),
-                  subtitle: Text(FinancialFormat.date(event.occurredAt)),
-                  trailing: Text(
-                    FinancialFormat.assetBalance(
-                      entry.amountMicros.abs(),
-                      entry.unit,
-                    ),
-                    style: Theme.of(context).textTheme.titleSmall,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: UxSoftCard(
+                  tone: Theme.of(context).colorScheme.error,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                  child: Row(
+                    children: <Widget>[
+                      UxIconBadge(
+                        icon: Icons.payments_outlined,
+                        tone: Theme.of(context).colorScheme.error,
+                        size: 38,
+                        iconSize: 19,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              event.category ?? 'مصروف',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            Text(
+                              FinancialFormat.date(event.occurredAt),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        FinancialFormat.assetBalance(
+                          entry.amountMicros.abs(),
+                          entry.unit,
+                        ),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -437,17 +480,36 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
 }
 
 class _MoneyStat extends StatelessWidget {
-  const _MoneyStat({required this.label, required this.value});
+  const _MoneyStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
 
+  final IconData icon;
   final String label;
   final String value;
+  final Color tone;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(label, style: Theme.of(context).textTheme.labelMedium),
+        UxIconBadge(
+          icon: icon,
+          tone: tone,
+          size: 34,
+          iconSize: 17,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
         const SizedBox(height: 3),
         Text(value, style: Theme.of(context).textTheme.titleMedium),
       ],

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/financial_event.dart';
 import '../models/recurring_expense_item.dart';
 import '../services/expense_plan_storage.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 class ExpensePlanSheet extends StatefulWidget {
@@ -248,6 +249,7 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
     final int sypTotal = _items
         .where((item) => item.unit == FinancialUnit.syp)
         .fold<int>(0, (sum, item) => sum + item.amountMicros);
@@ -259,89 +261,117 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
       },
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
           child: Column(
             children: <Widget>[
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'خطة المصاريف الشهرية',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        if (!_isLoading)
-                          Text(
-                            'إجمالي الليرة السورية: ${FinancialFormat.assetBalance(sypTotal, FinancialUnit.syp)}',
-                          ),
-                      ],
+                    child: UxPageHeader(
+                      title: 'خطة المصاريف',
+                      subtitle: _isLoading
+                          ? 'حمّل خطتك الشهرية'
+                          : '${_items.length} بنود • ${FinancialFormat.assetBalance(sypTotal, FinancialUnit.syp)}',
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(_changed),
                     tooltip: 'إغلاق',
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close_rounded),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 14),
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _items.isEmpty
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(24),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(Icons.receipt_long_outlined, size: 40),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    'لا توجد مصاريف مخططة. أضف أول بند شهري أو اترك الخطة فارغة.',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
+                        ? UxEmptyState(
+                            icon: Icons.receipt_long_outlined,
+                            title: 'الخطة فارغة',
+                            body:
+                                'أضف المصاريف المتكررة حتى تعرف ما المخطط له كل شهر.',
+                            action: FilledButton.icon(
+                              onPressed: _addItem,
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('إضافة أول بند'),
                             ),
                           )
                         : ListView.separated(
+                            padding: const EdgeInsets.only(bottom: 8),
                             itemCount: _items.length,
                             separatorBuilder: (_, __) =>
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final RecurringExpenseItem item = _items[index];
-                              return Card(
-                                child: ListTile(
-                                  title: Text(item.name),
-                                  subtitle: Text(
-                                    FinancialFormat.assetBalance(
-                                      item.amountMicros,
-                                      item.unit,
+                              return UxSoftCard(
+                                onTap: () => _editItem(item),
+                                tone: colors.error,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 13,
+                                  vertical: 11,
+                                ),
+                                child: Row(
+                                  children: <Widget>[
+                                    UxIconBadge(
+                                      icon: Icons.receipt_long_outlined,
+                                      tone: colors.error,
+                                      size: 38,
+                                      iconSize: 19,
                                     ),
-                                  ),
-                                  onTap: () => _editItem(item),
-                                  trailing: IconButton(
-                                    tooltip: 'حذف',
-                                    onPressed: () => _deleteItem(item),
-                                    icon: const Icon(Icons.delete_outline),
-                                  ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            item.name,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleSmall,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            FinancialFormat.assetBalance(
+                                              item.amountMicros,
+                                              item.unit,
+                                            ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: colors.error,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'حذف',
+                                      onPressed: () => _deleteItem(item),
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               );
                             },
                           ),
               ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _addItem,
-                  icon: const Icon(Icons.add),
-                  label: const Text('إضافة مصروف شهري'),
+              if (_items.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _addItem,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('إضافة مصروف شهري'),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

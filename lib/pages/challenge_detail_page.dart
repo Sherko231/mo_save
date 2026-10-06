@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/saving_challenge.dart';
+import '../ui/app_theme.dart';
+import '../ui/ux_components.dart';
 import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 
@@ -228,7 +230,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -374,93 +376,146 @@ class _GoalHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    ChallengeFormat.amount(
-                      challenge.savedAmount,
-                      challenge.currency,
-                    ),
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ),
-                Text(
-                  FinancialFormat.progress(challenge.progress),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+    return UxHeroCard(
+      gradient: overdue
+          ? LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: <Color>[
+                colors.error,
+                Color.lerp(colors.error, AppPalette.forest, 0.48)!,
               ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              'من ${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: challenge.progress,
-              minHeight: 9,
-              borderRadius: BorderRadius.circular(99),
-            ),
-            if (challenge.isComplete) ...<Widget>[
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Icon(Icons.check_circle_rounded, color: colors.primary),
-                  const SizedBox(width: 8),
-                  const Text('تم إكمال الهدف'),
-                ],
-              ),
-            ] else if (challenge.deadline != null) ...<Widget>[
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Icon(
-                    overdue ? Icons.warning_amber_rounded : Icons.event_outlined,
-                    size: 19,
-                    color: overdue ? colors.error : colors.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Text(
-                      overdue
-                          ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
-                          : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: overdue ? colors.error : colors.onSurfaceVariant,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-              if (pace case final GoalPace goalPace) ...<Widget>[
-                const SizedBox(height: 6),
-                Text(
-                  'للوصول بالموعد: ${ChallengeFormat.amount(goalPace.weeklyAmount, challenge.currency)} أسبوعياً',
-                  style: Theme.of(context).textTheme.bodySmall,
+            )
+          : AppPalette.heroGradient,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  challenge.isComplete ? 'هدف مكتمل' : 'تقدم الهدف',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.76),
+                      ),
                 ),
-              ],
+              ),
+              UxStatusPill(
+                label: FinancialFormat.progress(challenge.progress),
+                icon: challenge.isComplete ? Icons.check_rounded : null,
+                color: const Color(0xFFF1D58E),
+              ),
             ],
-            if (challenge.goalNote != null) ...<Widget>[
-              const SizedBox(height: 10),
-              Text(
+          ),
+          const SizedBox(height: 13),
+          Text(
+            ChallengeFormat.amount(
+              challenge.savedAmount,
+              challenge.currency,
+            ),
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'من ${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.72),
+                ),
+          ),
+          const SizedBox(height: 14),
+          LinearProgressIndicator(
+            value: challenge.progress,
+            minHeight: 9,
+            color: const Color(0xFFF4D98D),
+            backgroundColor: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(99),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              _HeroMetaPill(
+                icon: Icons.grid_view_rounded,
+                label: '$completedCells / ${challenge.cellCount} خانات',
+              ),
+              if (challenge.isComplete)
+                const _HeroMetaPill(
+                  icon: Icons.check_circle_rounded,
+                  label: 'اكتمل الهدف',
+                )
+              else if (challenge.deadline != null)
+                _HeroMetaPill(
+                  icon: overdue
+                      ? Icons.warning_amber_rounded
+                      : Icons.event_outlined,
+                  label: overdue
+                      ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
+                      : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
+                ),
+              if (!challenge.isComplete)
+                if (pace case final GoalPace goalPace)
+                  _HeroMetaPill(
+                    icon: Icons.speed_rounded,
+                    label:
+                        '${ChallengeFormat.amount(goalPace.weeklyAmount, challenge.currency)} أسبوعياً',
+                  ),
+            ],
+          ),
+          if (challenge.goalNote != null) ...<Widget>[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.09),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
                 challenge.goalNote!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
+                      color: Colors.white.withValues(alpha: 0.82),
                     ),
               ),
-            ],
+            ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetaPill extends StatelessWidget {
+  const _HeroMetaPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 15, color: Colors.white.withValues(alpha: 0.86)),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -498,39 +553,74 @@ class _SavingCell extends StatelessWidget {
       checked: cell.isCompleted,
       label:
           '${ChallengeFormat.amount(cell.value, currency)}${cell.isCompleted ? ' محفوظة' : ' غير محفوظة'}',
-      child: Material(
-        color: cell.isCompleted
-            ? colors.primaryContainer
-            : colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(
-                  cell.isCompleted
-                      ? Icons.check_circle_rounded
-                      : Icons.circle_outlined,
-                  size: 20,
-                  color: cell.isCompleted
-                      ? colors.primary
-                      : colors.onSurfaceVariant,
-                ),
-                const SizedBox(height: 5),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    ChallengeFormat.amount(cell.value, currency),
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          gradient: cell.isCompleted
+              ? LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: <Color>[
+                    colors.primary,
+                    AppPalette.emeraldDeep,
+                  ],
+                )
+              : null,
+          color: cell.isCompleted ? null : colors.surface,
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(
+            color: cell.isCompleted
+                ? colors.primary.withValues(alpha: 0.18)
+                : colors.outlineVariant,
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: (cell.isCompleted ? colors.primary : Colors.black)
+                  .withValues(alpha: cell.isCompleted ? 0.13 : 0.035),
+              blurRadius: cell.isCompleted ? 12 : 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(19),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: enabled ? onTap : null,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 160),
+                    child: Icon(
+                      cell.isCompleted
+                          ? Icons.check_circle_rounded
+                          : Icons.add_circle_outline_rounded,
+                      key: ValueKey<bool>(cell.isCompleted),
+                      size: 21,
+                      color: cell.isCompleted
+                          ? Colors.white
+                          : colors.primary,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      ChallengeFormat.amount(cell.value, currency),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: cell.isCompleted
+                                ? Colors.white
+                                : colors.onSurface,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

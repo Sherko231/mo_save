@@ -252,15 +252,58 @@ class _SettingsPageState extends State<SettingsPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 104),
+        padding: const EdgeInsets.fromLTRB(18, 22, 18, 112),
         children: <Widget>[
-          UxPageHeader(
-            title: widget.initialSetup ? 'جهّز خطتك' : 'الإعدادات',
-            subtitle: widget.initialSetup
-                ? 'ابدأ بالأساسيات فقط. باقي الخيارات تستطيع تركها كما هي.'
-                : 'عدّل فقط الشيء الذي تحتاجه؛ باقي التفاصيل مخفية حتى تفتحها.',
-          ),
-          const SizedBox(height: 14),
+          if (widget.initialSetup)
+            UxHeroCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.tune_rounded,
+                      color: Colors.white,
+                      size: 25,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'جهّز خطتك',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(color: Colors.white),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'راجع الأساسيات فقط. كل خيار تستطيع تغييره لاحقاً بدون المساس بتاريخك المالي.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.78),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            const UxPageHeader(
+              title: 'الإعدادات',
+              subtitle: 'خطتك المستقبلية، التنبيهات وأدوات البيانات',
+            ),
+          const SizedBox(height: 16),
           UxInfoBanner(
             icon: Icons.history_rounded,
             title: 'التغييرات للمستقبل فقط',
@@ -547,17 +590,31 @@ class _SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         maintainState: true,
         initiallyExpanded: initiallyExpanded,
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
+        leading: UxIconBadge(
+          icon: icon,
+          size: 42,
+          iconSize: 21,
+        ),
+        title: Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        subtitle: Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+        ),
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: children,
@@ -584,16 +641,11 @@ class _ActionSettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        minTileHeight: 72,
-        onTap: onTap,
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_left_rounded),
-      ),
+    return UxActionTile(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      onTap: onTap,
     );
   }
 }
