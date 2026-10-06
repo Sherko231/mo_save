@@ -49,7 +49,8 @@ class FinancialFormat {
     final int decimals = switch (unit) {
       FinancialUnit.goldGram => 3,
       FinancialUnit.usd => 2,
-      FinancialUnit.syp || FinancialUnit.sypNew => 0,
+      FinancialUnit.syp => 0,
+      FinancialUnit.sypNew => 0,
     };
     if (decimals == 0) return value.round().toString();
     return _trimFraction(value.toStringAsFixed(decimals));
