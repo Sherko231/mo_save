@@ -456,9 +456,9 @@ class _GoalHero extends StatelessWidget {
                       ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
                       : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
                 ),
-              if (!challenge.isComplete &&
-                  pace case final GoalPace goalPace)
-                _HeroMetaPill(
+              if (!challenge.isComplete)
+                if (pace case final GoalPace goalPace)
+                  _HeroMetaPill(
                   icon: Icons.speed_rounded,
                   label:
                       '${ChallengeFormat.amount(goalPace.weeklyAmount, challenge.currency)} أسبوعياً',
