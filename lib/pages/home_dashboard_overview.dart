@@ -48,14 +48,37 @@ class HomeDashboardOverview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        UxPageHeader(
-          title: 'مساحتك المالية',
-          subtitle: 'أهم ما تحتاج معرفته الآن، والباقي عند الطلب',
-          trailing: _MonthControl(
-            label: monthLabel,
-            onPrevious: onPreviousMonth,
-            onNext: onNextMonth,
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final Widget monthControl = _MonthControl(
+              label: monthLabel,
+              onPrevious: onPreviousMonth,
+              onNext: onNextMonth,
+            );
+
+            if (constraints.maxWidth < 520) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const UxPageHeader(
+                    title: 'مساحتك المالية',
+                    subtitle: 'أهم ما تحتاج معرفته الآن، والباقي عند الطلب',
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: monthControl,
+                  ),
+                ],
+              );
+            }
+
+            return UxPageHeader(
+              title: 'مساحتك المالية',
+              subtitle: 'أهم ما تحتاج معرفته الآن، والباقي عند الطلب',
+              trailing: monthControl,
+            );
+          },
         ),
         const SizedBox(height: 18),
         _NetWorthCard(snapshot: snapshot),
