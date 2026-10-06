@@ -12,6 +12,7 @@ import 'home_balance_section.dart';
 import 'home_dashboard_overview.dart';
 import 'home_envelope_section.dart';
 import 'home_expenses_section.dart';
+import 'transaction_history_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -100,6 +101,17 @@ class _HomePageState extends State<HomePage> {
       );
     });
     await _reload();
+  }
+
+  Future<void> _openHistory() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const TransactionHistoryPage(),
+      ),
+    );
+    if (mounted) {
+      await _reload(showLoading: false, showError: false);
+    }
   }
 
   Future<void> _confirmReceived(ExpectedIncome occurrence) async {
@@ -235,6 +247,12 @@ class _HomePageState extends State<HomePage> {
               month: _selectedMonth,
               onPreviousMonth: () => _changeMonth(-1),
               onNextMonth: () => _changeMonth(1),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _openHistory,
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('سجل الحركات والتصحيحات'),
             ),
             const SizedBox(height: 24),
             const Divider(),
