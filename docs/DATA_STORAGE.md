@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `8`
+- Current schema version: `9`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -109,9 +109,9 @@ Examples of the posting model:
 - weekly envelope allocation: non-balance-affecting SYP entries earmark already-owned cash into weekly buckets;
 - manual adjustment: explicit signed correction entry.
 
-`FinancialLedgerStorage` owns event CRUD and balance queries. Balance reads sum only entries where `affects_balance = 1`; therefore future screens must derive owned balances from the ledger instead of maintaining separate cached totals.
+`FinancialLedgerStorage` owns ordinary event persistence and balance queries. Balance reads sum only entries where `affects_balance = 1`; therefore screens derive owned balances from the ledger instead of maintaining separate cached totals.
 
-Historical events are append-only by normal workflows. Corrections require the explicit `updateEvent` or `deleteEvent` paths; updates keep the original event id and creation timestamp and replace the event entries atomically.
+Normal workflows append financial events. Issue #21 adds explicit user-authorized correction/delete flows through `TransactionHistoryService`; every pre-edit/pre-delete snapshot is first copied to schema-v9 revision storage before the current ledger event is changed.
 
 ## Schema v4 — Recurring occurrence identity
 
@@ -193,6 +193,26 @@ The field stores the historical rate actually used by a real SYP↔USD conversio
 The source and destination amounts remain fixed-point signed rows in `financial_event_entries`. One conversion therefore contains exactly one negative source entry and one positive destination entry. Both are inserted in the same SQLite transaction, and the source balance is checked inside that transaction before the event is committed.
 
 The Settings `reference_syp_per_usd` value remains estimate-only and is never copied into a real conversion automatically. See `docs/CURRENCY_CONVERSIONS.md` for the complete conversion and audit rules.
+
+## Schema v9 — Financial event revision audit
+
+Schema v9 adds `financial_event_revisions` so explicit corrections and deletions do not erase the previous user-visible transaction state.
+
+Each revision stores:
+
+- `id` — local autoincrement revision id;
+- `event_id` — stable id of the financial event being changed;
+- `action` — `update` or `delete`;
+- `snapshot_json` — complete pre-mutation event snapshot, including all ledger entries and workflow metadata;
+- `changed_at_ms` — when the correction/delete was confirmed.
+
+The revision table deliberately has no foreign key to the current event row because a deleted event must keep its audit snapshot after the active ledger row is removed. Revision rows are audit-only and never participate in balance, expense, goal or valuation calculations.
+
+The transaction-history UI merges active ledger events with final delete snapshots so deleted transactions remain visible in their original transaction month. Active corrected events show their revision count and detail view can show earlier snapshots.
+
+Before replacing amounts, the correction flow checks resulting balances from the same SQLite transaction and rejects a mutation that would worsen an owned unit into a negative value. Deletion performs the equivalent check. Events with dependent `source_event_id` rows cannot be amount-corrected or deleted until the dependent event is handled, and challenge-owned saving contributions stay read-only in History so challenge progress cannot diverge from its canonical ledger contribution.
+
+See `docs/TRANSACTION_HISTORY.md` for the user-facing correction rules.
 
 ## Legacy SharedPreferences migration
 
