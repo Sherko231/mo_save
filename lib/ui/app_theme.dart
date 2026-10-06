@@ -8,7 +8,6 @@ class AppTheme {
     final ColorScheme scheme = ColorScheme.fromSeed(
       seedColor: seed,
       brightness: Brightness.light,
-      surface: const Color(0xFFF9FAFB),
     );
 
     final ThemeData base = ThemeData(
