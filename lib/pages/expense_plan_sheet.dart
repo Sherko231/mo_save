@@ -143,6 +143,8 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
                 children: <Widget>[
                   TextField(
                     controller: nameController,
+                    maxLength: 80,
+                    onChanged: (_) => setDialogState(() => errorText = null),
                     decoration: const InputDecoration(
                       labelText: 'اسم المصروف',
                       border: OutlineInputBorder(),
@@ -165,18 +167,27 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
                         .toList(growable: false),
                     onChanged: (value) {
                       if (value != null) {
-                        setDialogState(() => unit = value);
+                        setDialogState(() {
+                          unit = value;
+                          errorText = null;
+                          amountController.clear();
+                        });
                       }
                     },
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: unit == FinancialUnit.usd,
+                    ),
                     inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      if (unit == FinancialUnit.usd)
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                      else
+                        FilteringTextInputFormatter.digitsOnly,
                     ],
+                    onChanged: (_) => setDialogState(() => errorText = null),
                     decoration: InputDecoration(
                       labelText: 'المبلغ الشهري',
                       suffixText: FinancialFormat.unitShort(unit),
@@ -195,11 +206,19 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
               FilledButton(
                 onPressed: () {
                   final String name = nameController.text.trim();
-                  final double? amount =
-                      double.tryParse(amountController.text.trim());
-                  if (name.isEmpty || amount == null || amount <= 0) {
+                  final String rawAmount = amountController.text.trim();
+                  final num? amount = unit == FinancialUnit.usd
+                      ? double.tryParse(rawAmount)
+                      : int.tryParse(rawAmount);
+                  if (name.isEmpty) {
                     setDialogState(() {
-                      errorText = 'أدخل اسماً ومبلغاً أكبر من صفر.';
+                      errorText = 'أدخل اسم المصروف.';
+                    });
+                    return;
+                  }
+                  if (amount == null || amount <= 0) {
+                    setDialogState(() {
+                      errorText = 'أدخل مبلغاً صالحاً أكبر من صفر.';
                     });
                     return;
                   }
@@ -266,7 +285,22 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _items.isEmpty
-                        ? const Center(child: Text('لا توجد مصاريف مخططة.'))
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(Icons.receipt_long_outlined, size: 40),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'لا توجد مصاريف مخططة. أضف أول بند شهري أو اترك الخطة فارغة.',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
                         : ListView.separated(
                             itemCount: _items.length,
                             separatorBuilder: (_, __) =>
@@ -319,7 +353,7 @@ class _ExpenseDraft {
 
   final String name;
   final FinancialUnit unit;
-  final double amount;
+  final num amount;
 }
 
 const List<FinancialUnit> _cashUnits = <FinancialUnit>[
