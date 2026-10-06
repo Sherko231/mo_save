@@ -75,6 +75,17 @@ class RecurringIncomeService {
       );
     }
 
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime scheduledDay = DateTime(
+      occurrence.scheduledDate.year,
+      occurrence.scheduledDate.month,
+      occurrence.scheduledDate.day,
+    );
+    if (scheduledDay.isAfter(today)) {
+      throw StateError('Future recurring income cannot be confirmed yet.');
+    }
+
     final FinancialEvent? existing =
         await _ledgerStorage.loadEventByRecurrenceKey(occurrence.recurrenceKey);
     if (existing != null) {
