@@ -93,7 +93,6 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffold,
       visualDensity: VisualDensity.standard,
-      splashFactory: InkSparkle.splashFactory,
     );
 
     final TextTheme text = base.textTheme.copyWith(
