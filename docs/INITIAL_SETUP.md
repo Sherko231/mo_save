@@ -16,13 +16,15 @@ The setup screen is prefilled with the approved client plan, but every supported
 
 The recurring expense plan can be opened directly from setup/Settings. Every item can be added, edited or deleted, including deleting all items and rebuilding the plan from an empty list.
 
-The one-time setup is considered complete only after the user saves the financial values and notification preferences. Completion is stored in `app_metadata` under `initial_setup_complete_v1`.
+The one-time setup is considered complete only after the user saves the financial values and notification preferences. `app_metadata` stores `initial_setup_started_v1` as soon as a truly fresh install enters the flow and `initial_setup_complete_v1` only after successful completion.
+
+The separate started marker is intentional: loading the setup screen seeds editable client defaults into normal storage. If the app is closed before the user finishes, those seeded rows must not make the next launch look like an older completed installation. A started-but-not-complete setup therefore reopens until it is explicitly finished.
 
 ## Existing installations
 
 Issue #23 introduces the setup gate after earlier versions already stored user data. Existing installations must not be forced through onboarding after an update.
 
-If the setup-complete metadata key is absent but the database already contains financial settings, financial events, challenges or recurring-expense rows, `AppSetupStorage` treats it as an existing installation and writes the completion marker automatically.
+If neither setup marker exists but the database already contains financial settings, financial events, challenges or recurring-expense rows, `AppSetupStorage` treats it as an existing installation and writes the completion marker automatically.
 
 A brand-new database is checked before notification startup can seed the financial-settings row, so it still enters the first-run setup flow correctly.
 
