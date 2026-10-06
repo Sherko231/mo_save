@@ -8,6 +8,8 @@
 
 Versioning uses Flutter's `version: MAJOR.MINOR.PATCH+BUILD` value from `pubspec.yaml`. Increase the semantic version when product behavior changes and always increment the build number for every distributed Android artifact.
 
+The previous development application ID was `com.example.mo_save`. Android treats `com.samo.mosave` as a different application, so an old development install will not upgrade in place. If that old install contains data worth keeping, export a `.mosave` backup before removing it, then restore that backup inside the production app.
+
 ## Release permissions
 
 The production manifest requests only:
