@@ -4,6 +4,7 @@ import '../models/expected_income.dart';
 import '../models/financial_event.dart';
 import '../models/saving_challenge.dart';
 import '../services/home_dashboard_service.dart';
+import '../ui/ux_components.dart';
 import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 
@@ -39,355 +40,234 @@ class HomeDashboardOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String monthLabel = '${_monthNames[month.month]} ${month.year}';
+    final SavingChallenge? focusGoal =
+        snapshot.goals.where((goal) => !goal.isComplete).firstOrNull;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _DashboardHeader(
-          title: '${_monthNames[month.month]} ${month.year}',
-          onPreviousMonth: onPreviousMonth,
-          onNextMonth: onNextMonth,
+        UxPageHeader(
+          title: 'نظرة عامة',
+          subtitle: 'أهم أرقامك بدون تفاصيل زائدة',
+          trailing: _MonthControl(
+            label: monthLabel,
+            onPrevious: onPreviousMonth,
+            onNext: onNextMonth,
+          ),
         ),
+        const SizedBox(height: 16),
+        _NetWorthCard(snapshot: snapshot),
         const SizedBox(height: 12),
-        _NetWorthHero(snapshot: snapshot),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final bool twoColumns = constraints.maxWidth >= 560;
-            final double cardWidth = twoColumns
-                ? (constraints.maxWidth - 10) / 2
-                : constraints.maxWidth;
-            return Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: <Widget>[
-                _MetricCard(
-                  width: cardWidth,
-                  icon: Icons.calendar_month_outlined,
-                  title: 'الدخل المتوقع',
-                  lines: _incomeLines(snapshot, received: false),
-                ),
-                _MetricCard(
-                  width: cardWidth,
-                  icon: Icons.task_alt,
-                  title: 'الدخل المستلم',
-                  lines: _incomeLines(snapshot, received: true),
-                ),
-                _MetricCard(
-                  width: cardWidth,
-                  icon: Icons.receipt_long_outlined,
-                  title: 'مصاريف الشهر',
-                  lines: _expenseLines(snapshot),
-                ),
-                _MetricCard(
-                  width: cardWidth,
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'المتاح الآن',
-                  lines: <_MetricLine>[
-                    _MetricLine(
-                      'نقد سوري',
-                      FinancialFormat.assetBalance(
-                        snapshot.balances.balanceMicros(FinancialUnit.syp),
-                        FinancialUnit.syp,
-                      ),
-                    ),
-                    _MetricLine(
-                      'ادخار بالدولار',
-                      FinancialFormat.assetBalance(
-                        snapshot.balances.balanceMicros(FinancialUnit.usd),
-                        FinancialUnit.usd,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _GoldSummary(snapshot: snapshot),
-        if (snapshot.nextIncome != null) ...<Widget>[
-          const SizedBox(height: 12),
-          _UpcomingIncomeCard(income: snapshot.nextIncome!),
+        _MonthPulse(snapshot: snapshot),
+        if (snapshot.nextIncome != null || focusGoal != null) ...<Widget>[
+          const SizedBox(height: 16),
+          const UxSectionHeader(
+            title: 'التالي',
+            subtitle: 'ما يستحق انتباهك قريباً',
+          ),
+          const SizedBox(height: 8),
+          if (snapshot.nextIncome != null)
+            _UpcomingIncomeCard(income: snapshot.nextIncome!),
+          if (snapshot.nextIncome != null && focusGoal != null)
+            const SizedBox(height: 8),
+          if (focusGoal != null) _FocusGoalCard(goal: focusGoal),
         ],
-        const SizedBox(height: 18),
-        _GoalSection(goals: snapshot.goals),
       ],
     );
   }
-
-  static List<_MetricLine> _incomeLines(
-    HomeDashboardSnapshot snapshot, {
-    required bool received,
-  }) {
-    int amount(FinancialUnit unit) => received
-        ? snapshot.receivedIncomeMicros(unit)
-        : snapshot.expectedIncomeMicros(unit);
-
-    return <_MetricLine>[
-      _MetricLine(
-        'الليرة السورية',
-        FinancialFormat.assetBalance(
-          amount(FinancialUnit.syp),
-          FinancialUnit.syp,
-        ),
-      ),
-      _MetricLine(
-        'الدولار',
-        FinancialFormat.assetBalance(
-          amount(FinancialUnit.usd),
-          FinancialUnit.usd,
-        ),
-      ),
-    ];
-  }
-
-  static List<_MetricLine> _expenseLines(HomeDashboardSnapshot snapshot) {
-    final List<_MetricLine> lines = <_MetricLine>[
-      _MetricLine(
-        'المخطط',
-        FinancialFormat.assetBalance(
-          snapshot.plannedExpenseMicros(FinancialUnit.syp),
-          FinancialUnit.syp,
-        ),
-      ),
-      _MetricLine(
-        'المصروف فعلياً',
-        FinancialFormat.assetBalance(
-          snapshot.actualExpenseMicros(FinancialUnit.syp),
-          FinancialUnit.syp,
-        ),
-      ),
-    ];
-
-    final int plannedUsd = snapshot.plannedExpenseMicros(FinancialUnit.usd);
-    final int actualUsd = snapshot.actualExpenseMicros(FinancialUnit.usd);
-    if (plannedUsd != 0 || actualUsd != 0) {
-      lines.add(
-        _MetricLine(
-          'الدولار: مخطط / فعلي',
-          '${FinancialFormat.assetBalance(plannedUsd, FinancialUnit.usd)} / '
-          '${FinancialFormat.assetBalance(actualUsd, FinancialUnit.usd)}',
-        ),
-      );
-    }
-    return lines;
-  }
 }
 
-class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({
-    required this.title,
-    required this.onPreviousMonth,
-    required this.onNextMonth,
+class _MonthControl extends StatelessWidget {
+  const _MonthControl({
+    required this.label,
+    required this.onPrevious,
+    required this.onNext,
   });
 
-  final String title;
-  final VoidCallback onPreviousMonth;
-  final VoidCallback onNextMonth;
+  final String label;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
 
   @override
   Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          IconButton(
+            tooltip: 'الشهر السابق',
+            onPressed: onPrevious,
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          IconButton(
+            tooltip: 'الشهر التالي',
+            onPressed: onNext,
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetWorthCard extends StatelessWidget {
+  const _NetWorthCard({required this.snapshot});
+
+  final HomeDashboardSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final double? estimatedTotal = snapshot.balances.estimatedTotalUsd;
+    final int syp = snapshot.balances.balanceMicros(FinancialUnit.syp);
+    final int usd = snapshot.balances.balanceMicros(FinancialUnit.usd);
+    final int gold = snapshot.balances.balanceMicros(FinancialUnit.goldGram);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            'قيمة أموالك التقريبية',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: colors.onPrimaryContainer,
+                ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            estimatedTotal == null
+                ? 'التقدير غير مكتمل'
+                : FinancialFormat.estimatedUsd(estimatedTotal),
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: colors.onPrimaryContainer,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 18),
+          _HeroBalanceRow(
+            label: 'الليرة',
+            value: FinancialFormat.assetBalance(syp, FinancialUnit.syp),
+          ),
+          const SizedBox(height: 8),
+          _HeroBalanceRow(
+            label: 'الدولار',
+            value: FinancialFormat.assetBalance(usd, FinancialUnit.usd),
+          ),
+          if (gold != 0) ...<Widget>[
+            const SizedBox(height: 8),
+            _HeroBalanceRow(
+              label: 'الذهب',
+              value: FinancialFormat.assetBalance(
+                gold,
+                FinancialUnit.goldGram,
+              ),
+            ),
+          ],
+          if (snapshot.balances.valuationWarnings.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 14),
+            Text(
+              snapshot.balances.valuationWarnings.first,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onPrimaryContainer.withValues(alpha: 0.8),
+                  ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroBalanceRow extends StatelessWidget {
+  const _HeroBalanceRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = Theme.of(context).colorScheme.onPrimaryContainer;
     return Row(
       children: <Widget>[
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'لوحة التحكم',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 2),
-              Text(title, style: Theme.of(context).textTheme.bodyMedium),
-            ],
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color),
           ),
         ),
-        IconButton(
-          tooltip: 'الشهر السابق',
-          onPressed: onPreviousMonth,
-          icon: const Icon(Icons.chevron_right),
-        ),
-        IconButton(
-          tooltip: 'الشهر التالي',
-          onPressed: onNextMonth,
-          icon: const Icon(Icons.chevron_left),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(color: color),
         ),
       ],
     );
   }
 }
 
-class _NetWorthHero extends StatelessWidget {
-  const _NetWorthHero({required this.snapshot});
+class _MonthPulse extends StatelessWidget {
+  const _MonthPulse({required this.snapshot});
 
   final HomeDashboardSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
-    final double? total = snapshot.balances.estimatedTotalUsd;
-    final int sypNewMicros =
-        snapshot.balances.balanceMicros(FinancialUnit.sypNew);
+    final int expectedSyp = snapshot.expectedIncomeMicros(FinancialUnit.syp);
+    final int receivedSyp = snapshot.receivedIncomeMicros(FinancialUnit.syp);
+    final int expectedUsd = snapshot.expectedIncomeMicros(FinancialUnit.usd);
+    final int receivedUsd = snapshot.receivedIncomeMicros(FinancialUnit.usd);
+    final int plannedSyp = snapshot.plannedExpenseMicros(FinancialUnit.syp);
+    final int actualSyp = snapshot.actualExpenseMicros(FinancialUnit.syp);
 
     return Card(
-      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(
-              'القيمة الإجمالية التقريبية',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              total == null
-                  ? 'التقدير غير مكتمل'
-                  : FinancialFormat.estimatedUsd(total),
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            Text('هذا الشهر', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                _SummaryChip(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: FinancialFormat.assetBalance(
-                    snapshot.balances.balanceMicros(FinancialUnit.syp),
-                    FinancialUnit.syp,
-                  ),
-                ),
-                _SummaryChip(
-                  icon: Icons.attach_money,
-                  label: FinancialFormat.assetBalance(
-                    snapshot.balances.balanceMicros(FinancialUnit.usd),
-                    FinancialUnit.usd,
-                  ),
-                ),
-                _SummaryChip(
-                  icon: Icons.diamond_outlined,
-                  label: FinancialFormat.assetBalance(
-                    snapshot.balances.balanceMicros(FinancialUnit.goldGram),
-                    FinancialUnit.goldGram,
-                  ),
-                ),
-                if (sypNewMicros != 0)
-                  _SummaryChip(
-                    icon: Icons.currency_exchange,
-                    label: FinancialFormat.assetBalance(
-                      sypNewMicros,
-                      FinancialUnit.sypNew,
-                    ),
-                  ),
-              ],
+            UxStat(
+              icon: Icons.south_west_rounded,
+              label: 'دخل ليرة مستلم / متوقع',
+              value:
+                  '${FinancialFormat.assetBalance(receivedSyp, FinancialUnit.syp)} / ${FinancialFormat.assetBalance(expectedSyp, FinancialUnit.syp)}',
             ),
-            if (snapshot.balances.valuationWarnings.isNotEmpty) ...<Widget>[
+            if (expectedUsd != 0 || receivedUsd != 0) ...<Widget>[
+              const SizedBox(height: 10),
+              UxStat(
+                icon: Icons.attach_money_rounded,
+                label: 'دخل دولار مستلم / متوقع',
+                value:
+                    '${FinancialFormat.assetBalance(receivedUsd, FinancialUnit.usd)} / ${FinancialFormat.assetBalance(expectedUsd, FinancialUnit.usd)}',
+              ),
+            ],
+            const SizedBox(height: 10),
+            UxStat(
+              icon: Icons.north_east_rounded,
+              label: 'مصروف فعلي / مخطط',
+              value:
+                  '${FinancialFormat.assetBalance(actualSyp, FinancialUnit.syp)} / ${FinancialFormat.assetBalance(plannedSyp, FinancialUnit.syp)}',
+            ),
+            if (plannedSyp > 0) ...<Widget>[
               const SizedBox(height: 12),
-              Text(
-                snapshot.balances.valuationWarnings.join(' '),
-                style: Theme.of(context).textTheme.bodySmall,
+              LinearProgressIndicator(
+                value: (actualSyp / plannedSyp).clamp(0.0, 1.0).toDouble(),
+                minHeight: 7,
+                borderRadius: BorderRadius.circular(99),
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.width,
-    required this.icon,
-    required this.title,
-    required this.lines,
-  });
-
-  final double width;
-  final IconData icon;
-  final String title;
-  final List<_MetricLine> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Icon(icon, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ...lines.map(
-                (line) => Padding(
-                  padding: const EdgeInsets.only(bottom: 7),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          line.label,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          line.value,
-                          textAlign: TextAlign.end,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoldSummary extends StatelessWidget {
-  const _GoldSummary({required this.snapshot});
-
-  final HomeDashboardSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final int grams = snapshot.balances.balanceMicros(FinancialUnit.goldGram);
-    final double? estimate = snapshot.balances.estimatedGoldUsd;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.diamond_outlined)),
-        title: const Text('الذهب'),
-        subtitle: Text(
-          estimate == null
-              ? 'أدخل سعر غرام الذهب في الإعدادات لعرض القيمة التقديرية.'
-              : 'القيمة التقديرية ${FinancialFormat.estimatedUsd(estimate)}',
-        ),
-        trailing: Text(
-          FinancialFormat.assetBalance(grams, FinancialUnit.goldGram),
-          style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
     );
@@ -402,126 +282,50 @@ class _UpcomingIncomeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String title = income.kind == RecurringIncomeKind.weeklySyp
-        ? 'راتب الخميس'
+        ? 'راتب الأسبوع'
         : 'راتب الشهر';
 
     return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: <Widget>[
-            const CircleAvatar(child: Icon(Icons.event_available_outlined)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'الدخل القادم',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '$title • ${FinancialFormat.date(income.scheduledDate)}',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              FinancialFormat.assetBalance(
-                income.expectedAmountMicros,
-                income.unit,
-              ),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
+      child: ListTile(
+        minTileHeight: 68,
+        leading: const Icon(Icons.event_available_outlined),
+        title: Text(title),
+        subtitle: Text(FinancialFormat.date(income.scheduledDate)),
+        trailing: Text(
+          FinancialFormat.assetBalance(
+            income.expectedAmountMicros,
+            income.unit,
+          ),
+          style: Theme.of(context).textTheme.titleSmall,
         ),
       ),
     );
   }
 }
 
-class _GoalSection extends StatelessWidget {
-  const _GoalSection({required this.goals});
-
-  final List<SavingChallenge> goals;
-
-  @override
-  Widget build(BuildContext context) {
-    final List<SavingChallenge> visibleGoals =
-        goals.take(3).toList(growable: false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            const Icon(Icons.flag_outlined, size: 21),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'أهداف الادخار',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            if (goals.isNotEmpty)
-              Text(
-                '${goals.where((goal) => goal.isComplete).length}/${goals.length} مكتملة',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (visibleGoals.isEmpty)
-          const Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'لا توجد أهداف ادخار بعد. أنشئ هدفاً من تبويب التحديات.',
-              ),
-            ),
-          )
-        else
-          ...visibleGoals.map(
-            (goal) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _GoalCard(goal: goal),
-            ),
-          ),
-        if (goals.length > visibleGoals.length)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              'يوجد ${goals.length - visibleGoals.length} أهداف أخرى في تبويب التحديات.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _GoalCard extends StatelessWidget {
-  const _GoalCard({required this.goal});
+class _FocusGoalCard extends StatelessWidget {
+  const _FocusGoalCard({required this.goal});
 
   final SavingChallenge goal;
 
   @override
   Widget build(BuildContext context) {
-    final DateTime? deadline = goal.deadline;
+    final String deadline = goal.deadline == null
+        ? 'بدون موعد نهائي'
+        : goal.isDeadlineOverdue()
+            ? 'متأخر منذ ${FinancialFormat.date(goal.deadline!)}'
+            : 'الموعد ${FinancialFormat.date(goal.deadline!)}';
 
     return Card(
-      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Row(
               children: <Widget>[
+                const Icon(Icons.flag_outlined),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     goal.name,
@@ -530,29 +334,26 @@ class _GoalCard extends StatelessWidget {
                 ),
                 Text(
                   FinancialFormat.progress(goal.progress),
-                  style: Theme.of(context).textTheme.titleSmall,
+                  style: Theme.of(context).textTheme.labelLarge,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: goal.progress),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(
+              value: goal.progress,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(99),
+            ),
             const SizedBox(height: 8),
             Row(
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    '${ChallengeFormat.amount(goal.savedAmount, goal.currency)} من '
-                    '${ChallengeFormat.amount(goal.targetAmount, goal.currency)}',
+                    '${ChallengeFormat.amount(goal.savedAmount, goal.currency)} من ${ChallengeFormat.amount(goal.targetAmount, goal.currency)}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-                if (deadline != null)
-                  Text(
-                    goal.isDeadlineOverdue()
-                        ? 'متأخر • ${FinancialFormat.date(deadline)}'
-                        : 'حتى ${FinancialFormat.date(deadline)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                Text(deadline, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ],
@@ -562,24 +363,6 @@ class _GoalCard extends StatelessWidget {
   }
 }
 
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(icon, size: 18),
-      label: Text(label),
-    );
-  }
-}
-
-class _MetricLine {
-  const _MetricLine(this.label, this.value);
-
-  final String label;
-  final String value;
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }
