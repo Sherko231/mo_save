@@ -116,8 +116,8 @@ Settings and first-run setup now expose portable `.mosave` backup export and res
 ### #25 — P7-T02 — Finalize localization, RTL and financial number formatting — COMPLETED
 The production app is now pinned to the Arabic locale with global RTL and Arabic framework-owned UI. Saving-goal screens and remaining client-facing labels are Arabic, while `FinancialFormat` and `ChallengeFormat` provide one shared policy for grouped SYP values, USD, SYP (N), gold grams, dates and Arabic-percent progress without changing persisted enum/database values.
 
-### #26 — P7-T03 — Harden validation, empty states and destructive actions
-Handle invalid amounts, impossible operations, errors and destructive actions safely.
+### #26 — P7-T03 — Harden validation, empty states and destructive actions — COMPLETED
+Common financial inputs now reject invalid or future-dated actual transactions, recurring income cannot be confirmed before its scheduled day, and expense logging refuses to spend more than the currently owned balance. Conversion and gold flows retain source-balance protection with clearer invalid-input feedback, SYP/SYP (N) expense values use whole-unit entry, challenge and expense-plan forms enforce bounded values, and important empty states/destructive operations provide explicit guidance or confirmation.
 
 **Phase exit:** the app is understandable, recoverable and resilient enough for real client data.
 
