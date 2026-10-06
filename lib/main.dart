@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'pages/challenges_page.dart';
 import 'pages/home_page.dart';
-import 'pages/settings_page.dart';
+import 'pages/settings_shell_page.dart';
 import 'services/app_setup_storage.dart';
 import 'services/notification_service.dart';
 
@@ -72,7 +72,7 @@ class _MoSaveAppState extends State<MoSaveApp> {
           ? const AppShell()
           : Scaffold(
               body: SafeArea(
-                child: SettingsPage(
+                child: SettingsShellPage(
                   initialSetup: true,
                   onInitialSetupComplete: _completeInitialSetup,
                 ),
@@ -91,6 +91,12 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
+  int _dataRevision = 0;
+
+  Future<void> _handleDataRestored() async {
+    if (!mounted) return;
+    setState(() => _dataRevision++);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,9 +106,18 @@ class _AppShellState extends State<AppShell> {
         child: IndexedStack(
           index: _selectedIndex,
           children: <Widget>[
-            HomePage(isActive: _selectedIndex == 0),
-            ChallengesPage(isActive: _selectedIndex == 1),
-            const SettingsPage(),
+            HomePage(
+              key: ValueKey<String>('home-$_dataRevision'),
+              isActive: _selectedIndex == 0,
+            ),
+            ChallengesPage(
+              key: ValueKey<String>('challenges-$_dataRevision'),
+              isActive: _selectedIndex == 1,
+            ),
+            SettingsShellPage(
+              key: ValueKey<String>('settings-$_dataRevision'),
+              onDataRestored: _handleDataRestored,
+            ),
           ],
         ),
       ),

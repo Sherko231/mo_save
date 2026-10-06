@@ -10,6 +10,7 @@ Single-user, offline-first Flutter app for personal finance tracking and gamifie
 - [Balance and valuation rules](docs/VALUATION.md)
 - [Challenge/ledger reconciliation](docs/CHALLENGE_LEDGER.md)
 - [Currency conversion rules](docs/CURRENCY_CONVERSIONS.md)
+- [Backup and restore](docs/BACKUP_RESTORE.md)
 
 ## Current foundation
 
