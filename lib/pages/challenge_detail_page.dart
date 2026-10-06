@@ -459,10 +459,10 @@ class _GoalHero extends StatelessWidget {
               if (!challenge.isComplete)
                 if (pace case final GoalPace goalPace)
                   _HeroMetaPill(
-                  icon: Icons.speed_rounded,
-                  label:
-                      '${ChallengeFormat.amount(goalPace.weeklyAmount, challenge.currency)} أسبوعياً',
-                ),
+                    icon: Icons.speed_rounded,
+                    label:
+                        '${ChallengeFormat.amount(goalPace.weeklyAmount, challenge.currency)} أسبوعياً',
+                  ),
             ],
           ),
           if (challenge.goalNote != null) ...<Widget>[
