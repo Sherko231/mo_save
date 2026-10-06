@@ -67,6 +67,7 @@ class _BackupSettingsSectionState extends State<BackupSettingsSection> {
     }
 
     if (!mounted || picked == null) return;
+    final BackupPickResult selected = picked;
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -79,12 +80,16 @@ class _BackupSettingsSectionState extends State<BackupSettingsSection> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('الملف: ${picked!.fileName}'),
+                Text('الملف: ${selected.fileName}'),
                 const SizedBox(height: 8),
-                Text('تاريخ النسخة: ${_formatDateTime(picked!.summary.createdAt)}'),
-                Text('الحركات المالية: ${picked!.summary.transactionCount}'),
-                Text('أهداف الادخار: ${picked!.summary.challengeCount}'),
-                Text('بنود خطة المصاريف: ${picked!.summary.expensePlanCount}'),
+                Text(
+                  'تاريخ النسخة: ${_formatDateTime(selected.summary.createdAt)}',
+                ),
+                Text('الحركات المالية: ${selected.summary.transactionCount}'),
+                Text('أهداف الادخار: ${selected.summary.challengeCount}'),
+                Text(
+                  'بنود خطة المصاريف: ${selected.summary.expensePlanCount}',
+                ),
                 const SizedBox(height: 14),
                 const Text(
                   'سيتم استبدال كل البيانات المحلية الحالية بمحتوى هذه النسخة. لا يمكن التراجع عن ذلك إلا إذا كنت تملك نسخة احتياطية أخرى.',
@@ -111,7 +116,7 @@ class _BackupSettingsSectionState extends State<BackupSettingsSection> {
 
     setState(() => _isBusy = true);
     try {
-      await _backupService.restoreBackupBytes(picked.bytes);
+      await _backupService.restoreBackupBytes(selected.bytes);
       try {
         await NotificationService.instance.rescheduleAll();
       } catch (_) {
