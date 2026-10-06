@@ -3,8 +3,18 @@ import 'package:flutter/material.dart';
 import 'pages/challenges_page.dart';
 import 'pages/home_page.dart';
 import 'pages/settings_page.dart';
+import 'services/notification_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await NotificationService.instance.initialize();
+    await NotificationService.instance.rescheduleAll();
+  } catch (_) {
+    // Notifications are optional and must never prevent the finance app from
+    // starting. Settings can retry scheduling later after user interaction.
+  }
+  NotificationService.instance.startAutomaticRefresh();
   runApp(const MoSaveApp());
 }
 
