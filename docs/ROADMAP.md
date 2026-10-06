@@ -110,8 +110,8 @@ A truly fresh database now opens a one-time Arabic setup screen prefilled with t
 
 ## Phase 7 — Data safety and production UX
 
-### #24 — P7-T01 — Add local backup, export and restore
-Protect local financial history against reinstall/device loss.
+### #24 — P7-T01 — Add local backup, export and restore — COMPLETED
+Settings and first-run setup now expose portable `.mosave` backup export and restore. A backup contains financial settings, setup metadata, expense-plan items, challenges/cells, the full ledger including gold-producing entries, revision/audit history and notification preferences. Files carry a format/schema marker plus SHA-256 integrity check; restore validates first, warns before replacement, replaces SQLite data in one transaction, restores self-references safely, and rebuilds the app state afterward so a clean install can recover the same financial state without partial database corruption.
 
 ### #25 — P7-T02 — Finalize localization, RTL and financial number formatting
 Apply the approved language strategy and consistent financial formatting.
