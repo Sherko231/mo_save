@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../models/saving_challenge.dart';
 import '../services/challenge_storage.dart';
+import '../utils/challenge_format.dart';
+import '../utils/financial_format.dart';
 import 'challenge_detail_page.dart';
 
 class ChallengesPage extends StatefulWidget {
@@ -26,14 +28,10 @@ class _ChallengesPageState extends State<ChallengesPage> {
 
   SavingChallenge? get _openedChallenge {
     final String? id = _openedChallengeId;
-    if (id == null) {
-      return null;
-    }
+    if (id == null) return null;
 
     for (final SavingChallenge challenge in _challenges) {
-      if (challenge.id == id) {
-        return challenge;
-      }
+      if (challenge.id == id) return challenge;
     }
     return null;
   }
@@ -45,15 +43,20 @@ class _ChallengesPageState extends State<ChallengesPage> {
   }
 
   Future<void> _loadChallenges() async {
-    final List<SavingChallenge> challenges = await _storage.loadChallenges();
-    if (!mounted) {
-      return;
+    try {
+      final List<SavingChallenge> challenges = await _storage.loadChallenges();
+      if (!mounted) return;
+      setState(() {
+        _challenges = challenges;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تحميل أهداف الادخار.')),
+      );
     }
-
-    setState(() {
-      _challenges = challenges;
-      _isLoading = false;
-    });
   }
 
   Future<void> _createChallenge() async {
@@ -66,45 +69,33 @@ class _ChallengesPageState extends State<ChallengesPage> {
       builder: (context) => const _CreateChallengeSheet(),
     );
 
-    if (challenge == null || !mounted) {
-      return;
-    }
+    if (challenge == null || !mounted) return;
 
     try {
       await _storage.addChallenge(challenge);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _challenges = <SavingChallenge>[..._challenges, challenge];
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not save the challenge locally.')),
+        const SnackBar(content: Text('تعذر حفظ هدف الادخار محلياً.')),
       );
     }
   }
 
   Future<bool> _updateChallenge(SavingChallenge challenge) async {
     final int index = _challenges.indexWhere((item) => item.id == challenge.id);
-    if (index == -1) {
-      return false;
-    }
+    if (index == -1) return false;
 
     try {
       await _storage.updateChallenge(challenge);
-      if (!mounted) {
-        return false;
-      }
+      if (!mounted) return false;
       final List<SavingChallenge> updated =
           List<SavingChallenge>.from(_challenges);
       updated[index] = challenge;
-      setState(() {
-        _challenges = updated;
-      });
+      setState(() => _challenges = updated);
       return true;
     } catch (_) {
       return false;
@@ -115,32 +106,28 @@ class _ChallengesPageState extends State<ChallengesPage> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete challenge?'),
+        title: const Text('حذف هدف الادخار؟'),
         content: Text(
-          'Delete "${challenge.name}"? This cannot be undone.',
+          'سيتم حذف «${challenge.name}» وكل تقدمه. لا يمكن التراجع عن هذه العملية.',
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('إلغاء'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: const Text('حذف'),
           ),
         ],
       ),
     );
 
-    if (confirmed != true || !mounted) {
-      return;
-    }
+    if (confirmed != true || !mounted) return;
 
     try {
       await _storage.deleteChallenge(challenge.id);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _challenges = _challenges
             .where((item) => item.id != challenge.id)
@@ -150,25 +137,19 @@ class _ChallengesPageState extends State<ChallengesPage> {
         }
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not delete the challenge locally.')),
+        const SnackBar(content: Text('تعذر حذف هدف الادخار.')),
       );
     }
   }
 
   void _openChallenge(SavingChallenge challenge) {
-    setState(() {
-      _openedChallengeId = challenge.id;
-    });
+    setState(() => _openedChallengeId = challenge.id);
   }
 
   void _closeChallenge() {
-    setState(() {
-      _openedChallengeId = null;
-    });
+    setState(() => _openedChallengeId = null);
   }
 
   @override
@@ -193,7 +174,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
         floatingActionButton: openedChallenge == null
             ? FloatingActionButton(
                 onPressed: _createChallenge,
-                tooltip: 'Add challenge',
+                tooltip: 'إضافة هدف ادخار',
                 child: const Icon(Icons.add),
               )
             : null,
@@ -207,7 +188,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
 
     if (_challenges.isEmpty) {
-      return const Center(child: Text('No challenges yet.'));
+      return const Center(child: Text('لا توجد أهداف ادخار بعد.'));
     }
 
     return ListView.separated(
@@ -216,7 +197,6 @@ class _ChallengesPageState extends State<ChallengesPage> {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final SavingChallenge challenge = _challenges[index];
-        final int percent = (challenge.progress * 100).round();
 
         return Card(
           clipBehavior: Clip.antiAlias,
@@ -240,16 +220,16 @@ class _ChallengesPageState extends State<ChallengesPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${challenge.currency.code}  •  '
-                              '${challenge.cellCount} cells',
+                              '${ChallengeFormat.currencyLabel(challenge.currency)} • '
+                              '${challenge.cellCount} خانة',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             if (challenge.deadline != null) ...<Widget>[
                               const SizedBox(height: 4),
                               Text(
                                 challenge.isDeadlineOverdue()
-                                    ? 'Deadline ${_formatDate(challenge.deadline!)} • overdue'
-                                    : 'Deadline ${_formatDate(challenge.deadline!)}',
+                                    ? 'الموعد ${FinancialFormat.date(challenge.deadline!)} • متأخر'
+                                    : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -258,7 +238,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
                       ),
                       IconButton(
                         onPressed: () => _deleteChallenge(challenge),
-                        tooltip: 'Delete challenge',
+                        tooltip: 'حذف الهدف',
                         icon: const Icon(Icons.delete_outline),
                       ),
                     ],
@@ -268,12 +248,12 @@ class _ChallengesPageState extends State<ChallengesPage> {
                     children: <Widget>[
                       Expanded(
                         child: Text(
-                          '${challenge.currency.formatAmount(challenge.savedAmount)} / '
-                          '${challenge.currency.formatAmount(challenge.targetAmount)} saved',
+                          '${ChallengeFormat.amount(challenge.savedAmount, challenge.currency)} من '
+                          '${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text('$percent%'),
+                      Text(FinancialFormat.progress(challenge.progress)),
                     ],
                   ),
                   const SizedBox(height: 7),
@@ -289,10 +269,6 @@ class _ChallengesPageState extends State<ChallengesPage> {
         );
       },
     );
-  }
-
-  static String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
@@ -334,16 +310,12 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
       lastDate: DateTime(2100),
     );
     if (picked != null && mounted) {
-      setState(() {
-        _deadline = picked;
-      });
+      setState(() => _deadline = picked);
     }
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final int target = int.parse(_targetController.text.trim());
     final int cellCount = int.parse(_cellCountController.text.trim());
@@ -380,7 +352,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Text(
-                'New challenge',
+                'هدف ادخار جديد',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 20),
@@ -388,19 +360,19 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 controller: _nameController,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  labelText: 'Challenge name',
+                  labelText: 'اسم الهدف',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Enter a challenge name.';
+                    return 'أدخل اسم الهدف.';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
               Text(
-                'Currency',
+                'العملة',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 10),
@@ -410,15 +382,13 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     .map(
                       (currency) => ButtonSegment<ChallengeCurrency>(
                         value: currency,
-                        label: Text(currency.code),
+                        label: Text(ChallengeFormat.currencyShort(currency)),
                       ),
                     )
                     .toList(growable: false),
                 selected: <ChallengeCurrency>{_currency},
                 onSelectionChanged: (selection) {
-                  setState(() {
-                    _currency = selection.first;
-                  });
+                  setState(() => _currency = selection.first);
                 },
               ),
               const SizedBox(height: 16),
@@ -430,23 +400,20 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration: InputDecoration(
-                  labelText: 'Target (${_currency.code})',
-                  prefixText:
-                      _currency == ChallengeCurrency.usd ? '\$ ' : null,
-                  suffixText:
-                      _currency == ChallengeCurrency.usd ? null : ' ${_currency.code}',
+                  labelText: 'المبلغ المستهدف',
+                  suffixText: ChallengeFormat.currencyShort(_currency),
                   helperText: step == 1
-                      ? 'Whole units only'
-                      : 'Target must be a multiple of ${_currency.cellStepLabel}',
+                      ? 'أدخل وحدات صحيحة فقط.'
+                      : 'يجب أن يكون المبلغ من مضاعفات ${ChallengeFormat.cellStep(_currency)}.',
                   border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   final int? amount = int.tryParse((value ?? '').trim());
                   if (amount == null || amount <= 0) {
-                    return 'Enter a whole-unit target greater than 0.';
+                    return 'أدخل مبلغاً صحيحاً أكبر من صفر.';
                   }
                   if (amount % step != 0) {
-                    return 'Target must be a multiple of ${_currency.cellStepLabel}.';
+                    return 'يجب أن يكون المبلغ من مضاعفات ${ChallengeFormat.cellStep(_currency)}.';
                   }
                   return null;
                 },
@@ -460,17 +427,17 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration: const InputDecoration(
-                  labelText: 'Number of cells',
-                  helperText: 'How many saving boxes to create',
+                  labelText: 'عدد الخانات',
+                  helperText: 'عدد خانات الادخار التي ستظهر في الشبكة.',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   final int? count = int.tryParse((value ?? '').trim());
                   if (count == null || count <= 0) {
-                    return 'Enter at least 1 cell.';
+                    return 'أدخل خانة واحدة على الأقل.';
                   }
                   if (count > 500) {
-                    return 'Use 500 cells or fewer.';
+                    return 'الحد الأقصى 500 خانة.';
                   }
 
                   final int? target =
@@ -478,7 +445,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   if (target != null && target > 0 && target % step == 0) {
                     final int maxCells = target ~/ step;
                     if (count > maxCells) {
-                      return 'This target supports at most $maxCells cells.';
+                      return 'هذا المبلغ يسمح بحد أقصى $maxCells خانة.';
                     }
                   }
                   return null;
@@ -487,7 +454,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               const SizedBox(height: 16),
               InputDecorator(
                 decoration: const InputDecoration(
-                  labelText: 'Goal deadline (optional)',
+                  labelText: 'موعد الهدف (اختياري)',
                   border: OutlineInputBorder(),
                 ),
                 child: Row(
@@ -495,19 +462,19 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     Expanded(
                       child: Text(
                         _deadline == null
-                            ? 'No deadline'
-                            : _ChallengesPageState._formatDate(_deadline!),
+                            ? 'بدون موعد'
+                            : FinancialFormat.date(_deadline!),
                       ),
                     ),
                     if (_deadline != null)
                       IconButton(
                         onPressed: () => setState(() => _deadline = null),
-                        tooltip: 'Remove deadline',
+                        tooltip: 'إزالة الموعد',
                         icon: const Icon(Icons.close),
                       ),
                     IconButton(
                       onPressed: _pickDeadline,
-                      tooltip: 'Choose deadline',
+                      tooltip: 'اختيار موعد',
                       icon: const Icon(Icons.calendar_today_outlined),
                     ),
                   ],
@@ -519,14 +486,14 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 maxLines: 2,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
-                  labelText: 'Goal note (optional)',
-                  hintText: 'Example: university tuition, marriage, business capital',
+                  labelText: 'ملاحظة الهدف (اختياري)',
+                  hintText: 'مثال: قسط الجامعة، الزواج، رأس مال مشروع',
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 20),
               Text(
-                'Sequence',
+                'ترتيب الخانات',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 10),
@@ -536,21 +503,19 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     .map(
                       (sequence) => ButtonSegment<ChallengeSequence>(
                         value: sequence,
-                        label: Text(sequence.label),
+                        label: Text(ChallengeFormat.sequenceLabel(sequence)),
                       ),
                     )
                     .toList(growable: false),
                 selected: <ChallengeSequence>{_sequence},
                 onSelectionChanged: (selection) {
-                  setState(() {
-                    _sequence = selection.first;
-                  });
+                  setState(() => _sequence = selection.first);
                 },
               ),
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _submit,
-                child: const Text('Create challenge'),
+                child: const Text('إنشاء الهدف'),
               ),
             ],
           ),
