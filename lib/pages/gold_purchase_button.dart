@@ -84,7 +84,7 @@ class _GoldPurchaseButtonState extends State<GoldPurchaseButton> {
       tone: AppPalette.gold,
       title: 'شراء ذهب',
       subtitle: 'حوّل جزءاً من رصيدك إلى غرامات ذهب',
-      onTap: _isSaving ? () {} : _openPurchase,
+      onTap: _isSaving ? null : _openPurchase,
       trailing: _isSaving
           ? const SizedBox.square(
               dimension: 20,
