@@ -188,7 +188,42 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
 
     if (_challenges.isEmpty) {
-      return const Center(child: Text('لا توجد أهداف ادخار بعد.'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Icon(Icons.savings_outlined, size: 44),
+                    const SizedBox(height: 12),
+                    Text(
+                      'لا توجد أهداف ادخار بعد',
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'أنشئ هدفاً وحدد المبلغ والعملة وعدد الخانات، ويمكنك إضافة موعد نهائي اختياري.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _createChallenge,
+                      icon: const Icon(Icons.add),
+                      label: const Text('إنشاء أول هدف'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
     }
 
     return ListView.separated(
@@ -321,8 +356,8 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
     final int cellCount = int.parse(_cellCountController.text.trim());
     final String id = DateTime.now().microsecondsSinceEpoch.toString();
 
-    Navigator.of(context).pop(
-      SavingChallenge.create(
+    try {
+      final SavingChallenge challenge = SavingChallenge.create(
         id: id,
         name: _nameController.text.trim(),
         targetAmount: target.toDouble(),
@@ -331,8 +366,15 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
         cellCount: cellCount,
         deadline: _deadline,
         goalNote: _noteController.text,
-      ),
-    );
+      );
+      Navigator.of(context).pop(challenge);
+    } on ArgumentError catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر إنشاء الهدف بهذه القيم. راجع المبلغ وعدد الخانات.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -358,6 +400,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,
+                maxLength: 80,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'اسم الهدف',
@@ -389,6 +432,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 selected: <ChallengeCurrency>{_currency},
                 onSelectionChanged: (selection) {
                   setState(() => _currency = selection.first);
+                  _formKey.currentState?.validate();
                 },
               ),
               const SizedBox(height: 16),
@@ -484,6 +528,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               TextFormField(
                 controller: _noteController,
                 maxLines: 2,
+                maxLength: 300,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
                   labelText: 'ملاحظة الهدف (اختياري)',
