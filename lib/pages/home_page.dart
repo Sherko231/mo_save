@@ -282,7 +282,7 @@ class _HomePageState extends State<HomePage> {
       onRefresh: () => _reload(showLoading: false),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 104),
+        padding: const EdgeInsets.fromLTRB(18, 22, 18, 112),
         children: <Widget>[
           HomeDashboardOverview(
             snapshot: dashboard,
@@ -370,16 +370,11 @@ class _HistoryShortcut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        minTileHeight: 68,
-        onTap: onTap,
-        leading: const Icon(Icons.history_rounded),
-        title: const Text('سجل الحركات'),
-        subtitle: const Text('راجع كل الدخل والمصاريف والتحويلات والتصحيحات'),
-        trailing: const Icon(Icons.chevron_left_rounded),
-      ),
+    return UxActionTile(
+      icon: Icons.history_rounded,
+      title: 'سجل الحركات',
+      subtitle: 'كل الدخل والمصاريف والتحويلات والتصحيحات في مكان واحد',
+      onTap: onTap,
     );
   }
 }
@@ -397,6 +392,7 @@ class _AttentionIncomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
     final DateTime scheduled = DateTime(
@@ -404,51 +400,65 @@ class _AttentionIncomeCard extends StatelessWidget {
       occurrence.scheduledDate.month,
       occurrence.scheduledDate.day,
     );
-    final String timing = scheduled.isBefore(today) ? 'متأخر' : 'اليوم';
+    final bool late = scheduled.isBefore(today);
+    final String timing = late ? 'متأخر' : 'موعده اليوم';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        _HomePageState._incomeTitle(occurrence),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 3),
-                      Text('$timing • ${FinancialFormat.date(occurrence.scheduledDate)}'),
-                    ],
-                  ),
+    return UxSoftCard(
+      tone: late ? colors.error : colors.tertiary,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              UxIconBadge(
+                icon: late
+                    ? Icons.notification_important_rounded
+                    : Icons.today_rounded,
+                tone: late ? colors.error : colors.tertiary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      _HomePageState._incomeTitle(occurrence),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$timing • ${FinancialFormat.date(occurrence.scheduledDate)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: late
+                                ? colors.error
+                                : colors.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ),
-                Text(
-                  FinancialFormat.assetBalance(
-                    occurrence.expectedAmountMicros,
-                    occurrence.unit,
-                  ),
-                  style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Text(
+                FinancialFormat.assetBalance(
+                  occurrence.expectedAmountMicros,
+                  occurrence.unit,
                 ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: isConfirming ? null : onConfirm,
-              icon: isConfirming
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_rounded),
-              label: Text(isConfirming ? 'جاري التسجيل...' : 'تأكيد الاستلام'),
-            ),
-          ],
-        ),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: isConfirming ? null : onConfirm,
+            icon: isConfirming
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
+            label: Text(isConfirming ? 'جاري التسجيل...' : 'تأكيد الاستلام'),
+          ),
+        ],
       ),
     );
   }
@@ -504,6 +514,7 @@ class _IncomeOccurrenceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
     final DateTime scheduled = DateTime(
@@ -512,61 +523,75 @@ class _IncomeOccurrenceRow extends StatelessWidget {
       occurrence.scheduledDate.day,
     );
     final bool isFuture = scheduled.isAfter(today);
+    final bool isLate = !occurrence.isReceived && scheduled.isBefore(today);
 
     final String status = occurrence.isReceived
         ? 'مستلم'
         : isFuture
             ? 'قادم'
-            : scheduled.isBefore(today)
+            : isLate
                 ? 'غير مستلم'
                 : 'اليوم';
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    _HomePageState._incomeTitle(occurrence),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${FinancialFormat.date(occurrence.scheduledDate)} • $status',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+    final Color tone = occurrence.isReceived
+        ? colors.primary
+        : isLate
+            ? colors.error
+            : colors.onSurfaceVariant;
+
+    return UxSoftCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: <Widget>[
+          UxIconBadge(
+            icon: occurrence.isReceived
+                ? Icons.check_rounded
+                : isFuture
+                    ? Icons.schedule_rounded
+                    : Icons.payments_outlined,
+            tone: tone,
+            size: 38,
+            iconSize: 19,
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  FinancialFormat.assetBalance(
-                    occurrence.receivedAmountMicros ??
-                        occurrence.expectedAmountMicros,
-                    occurrence.unit,
-                  ),
+                  _HomePageState._incomeTitle(occurrence),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-                if (!occurrence.isReceived && !isFuture)
-                  TextButton(
-                    onPressed: isConfirming ? null : onConfirm,
-                    child: Text(isConfirming ? '...' : 'تأكيد'),
-                  ),
+                const SizedBox(height: 2),
+                Text(
+                  '${FinancialFormat.date(occurrence.scheduledDate)} • $status',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: tone,
+                      ),
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                FinancialFormat.assetBalance(
+                  occurrence.receivedAmountMicros ??
+                      occurrence.expectedAmountMicros,
+                  occurrence.unit,
+                ),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (!occurrence.isReceived && !isFuture)
+                TextButton(
+                  onPressed: isConfirming ? null : onConfirm,
+                  child: Text(isConfirming ? '...' : 'تأكيد'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
