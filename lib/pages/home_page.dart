@@ -278,10 +278,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 18),
             const Divider(),
             const SizedBox(height: 12),
-            HomeExpensesSection(
-              month: _selectedMonth,
-              onChanged: () => _reload(showLoading: false, showError: false),
-            ),
+            HomeExpensesSection(month: _selectedMonth),
           ],
         ),
       ),
