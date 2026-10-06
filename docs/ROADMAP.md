@@ -128,13 +128,13 @@ Common financial inputs now reject invalid or future-dated actual transactions, 
 ### #27 — P8-T01 — Add automated tests and migration QA — COMPLETED
 A local `flutter test` suite now covers challenge denominations/sequences/goal pace, multi-asset valuation, four/five-Thursday recurrence, monthly payday clamping, envelope allocation, expense balance protection, conversion and gold reconciliation, canonical challenge-ledger contributions, schema-v1→v9 migration, legacy SharedPreferences challenge migration/backfill, and a persisted create/edit/delete expense-plan widget flow. Isolated FFI databases keep tests away from production data, and `docs/TESTING.md` records covered rules and remaining OS-level release checks.
 
-### #28 — P8-T02 — Prepare branding and Android release build
-Finalize app identity, signing and a production Android build.
+### #28 — P8-T02 — Prepare branding and direct Android build
+Finalize app identity and a directly installable Android APK.
 
 ### #29 — P8-T03 — Client acceptance test and final handoff
-Run the client's real workflow, fix release blockers and deliver the final signed build plus usage notes.
+Run the client's real workflow, fix release blockers and deliver the final installable APK plus usage notes.
 
-**Phase exit:** client-approved production release.
+**Phase exit:** client-approved direct Android build.
 
 ---
 
@@ -151,7 +151,7 @@ The application is considered ready for delivery only when all of the following 
 - existing data survives supported migrations;
 - backup and restore are verified on a clean install;
 - Android system navigation does not overlap app controls;
-- the final signed release build installs and runs on the client's target device;
+- the final release APK installs and runs on the client's target device;
 - the client completes acceptance testing and approves the agreed scope.
 
 ## Execution order
