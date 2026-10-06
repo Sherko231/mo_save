@@ -209,16 +209,51 @@ class _ChallengesPageState extends State<ChallengesPage> {
     final int completed = _challenges.where((item) => item.isComplete).length;
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 112),
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 116),
       itemCount: _challenges.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         if (index == 0) {
+          final int active = _challenges.length - completed;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: UxPageHeader(
-              title: 'أهداف الادخار',
-              subtitle: '$completed من ${_challenges.length} مكتملة',
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                UxPageHeader(
+                  title: 'أهداف الادخار',
+                  subtitle: 'حوّل الادخار إلى خطوات صغيرة وواضحة',
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: UxSoftCard(
+                        tone: Theme.of(context).colorScheme.primary,
+                        padding: const EdgeInsets.all(14),
+                        child: UxStat(
+                          icon: Icons.flag_rounded,
+                          label: 'قيد التقدم',
+                          value: '$active',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: UxSoftCard(
+                        tone: Theme.of(context).colorScheme.tertiary,
+                        padding: const EdgeInsets.all(14),
+                        child: UxStat(
+                          icon: Icons.check_circle_rounded,
+                          label: 'مكتملة',
+                          value: '$completed',
+                          tone: Theme.of(context).colorScheme.tertiary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           );
         }
@@ -249,113 +284,158 @@ class _GoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final bool overdue = challenge.isDeadlineOverdue();
+    final bool complete = challenge.isComplete;
+    final Color tone = complete
+        ? colors.tertiary
+        : overdue
+            ? colors.error
+            : colors.primary;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return UxSoftCard(
+      tone: tone,
+      onTap: onOpen,
+      padding: const EdgeInsets.all(17),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              UxIconBadge(
+                icon: complete
+                    ? Icons.check_rounded
+                    : overdue
+                        ? Icons.warning_amber_rounded
+                        : Icons.flag_rounded,
+                tone: tone,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      challenge.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      ChallengeFormat.currencyLabel(challenge.currency),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'خيارات الهدف',
+                onSelected: (value) {
+                  if (value == 'delete') onDelete();
+                },
+                itemBuilder: (_) => const <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(
                       children: <Widget>[
-                        Text(
-                          challenge.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          ChallengeFormat.currencyLabel(challenge.currency),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colors.onSurfaceVariant,
-                              ),
-                        ),
+                        Icon(Icons.delete_outline),
+                        SizedBox(width: 10),
+                        Text('حذف الهدف'),
                       ],
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    tooltip: 'خيارات الهدف',
-                    onSelected: (value) {
-                      if (value == 'delete') onDelete();
-                    },
-                    itemBuilder: (_) => const <PopupMenuEntry<String>>[
-                      PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: <Widget>[
-                            Icon(Icons.delete_outline),
-                            SizedBox(width: 10),
-                            Text('حذف الهدف'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
-              const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
                       ChallengeFormat.amount(
                         challenge.savedAmount,
                         challenge.currency,
                       ),
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                  ),
-                  Text(
-                    FinancialFormat.progress(challenge.progress),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'من ${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 10),
-              LinearProgressIndicator(
-                value: challenge.progress,
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(99),
-              ),
-              if (challenge.deadline != null) ...<Widget>[
-                const SizedBox(height: 10),
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      overdue ? Icons.warning_amber_rounded : Icons.event_outlined,
-                      size: 18,
-                      color: overdue ? colors.error : colors.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 6),
+                    const SizedBox(height: 2),
                     Text(
-                      overdue
-                          ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
-                          : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
+                      'من ${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: overdue ? colors.error : colors.onSurfaceVariant,
+                            color: colors.onSurfaceVariant,
                           ),
                     ),
                   ],
                 ),
-              ],
+              ),
+              UxStatusPill(
+                label: FinancialFormat.progress(challenge.progress),
+                icon: complete ? Icons.check_rounded : null,
+                color: tone,
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: challenge.progress,
+            minHeight: 9,
+            color: tone,
+            backgroundColor: tone.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(99),
+          ),
+          if (challenge.deadline != null) ...<Widget>[
+            const SizedBox(height: 11),
+            Row(
+              children: <Widget>[
+                Icon(
+                  overdue ? Icons.warning_amber_rounded : Icons.event_outlined,
+                  size: 17,
+                  color: overdue ? colors.error : colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    overdue
+                        ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
+                        : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              overdue ? colors.error : colors.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                const Icon(Icons.chevron_left_rounded, size: 19),
+              ],
+            ),
+          ] else ...<Widget>[
+            const SizedBox(height: 11),
+            Row(
+              children: <Widget>[
+                Icon(
+                  Icons.touch_app_outlined,
+                  size: 17,
+                  color: colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'اضغط لفتح شبكة الادخار',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                ),
+                const Spacer(),
+                const Icon(Icons.chevron_left_rounded, size: 19),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
