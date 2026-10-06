@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'pages/challenges_page.dart';
 import 'pages/home_page.dart';
@@ -63,7 +64,19 @@ class _MoSaveAppState extends State<MoSaveApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'مو سيف',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('ar'),
+      supportedLocales: const <Locale>[Locale('ar')],
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      builder: (context, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: child ?? const SizedBox.shrink(),
+      ),
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
@@ -126,9 +139,7 @@ class _AppShellState extends State<AppShell> {
         child: NavigationBar(
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
+            setState(() => _selectedIndex = index);
           },
           destinations: const <NavigationDestination>[
             NavigationDestination(
