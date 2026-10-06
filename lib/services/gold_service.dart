@@ -20,6 +20,7 @@ class GoldService {
     if (cashPaidMicros <= 0 || goldReceivedMicros <= 0) {
       throw ArgumentError('Cash paid and gold received must be greater than zero.');
     }
+    _validateNotFutureDate(occurredAt);
 
     final FinancialEvent event = FinancialEvent.create(
       type: FinancialEventType.goldPurchase,
@@ -57,6 +58,7 @@ class GoldService {
     if (goldSoldMicros <= 0 || cashReceivedMicros <= 0) {
       throw ArgumentError('Gold sold and cash received must be greater than zero.');
     }
+    _validateNotFutureDate(occurredAt);
 
     final FinancialEvent event = FinancialEvent.create(
       type: FinancialEventType.goldSale,
@@ -90,6 +92,7 @@ class GoldService {
     if (goldDeltaMicros == 0) {
       throw ArgumentError('Gold correction must be non-zero.');
     }
+    _validateNotFutureDate(occurredAt);
 
     final FinancialEvent event = FinancialEvent.create(
       type: FinancialEventType.manualAdjustment,
@@ -110,5 +113,14 @@ class GoldService {
 
   static bool _isSupportedCashUnit(FinancialUnit unit) {
     return unit == FinancialUnit.usd || unit == FinancialUnit.syp;
+  }
+
+  static void _validateNotFutureDate(DateTime value) {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime day = DateTime(value.year, value.month, value.day);
+    if (day.isAfter(today)) {
+      throw ArgumentError('Gold transaction date cannot be in the future.');
+    }
   }
 }

@@ -116,6 +116,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _confirmReceived(ExpectedIncome occurrence) async {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime scheduled = DateTime(
+      occurrence.scheduledDate.year,
+      occurrence.scheduledDate.month,
+      occurrence.scheduledDate.day,
+    );
+    if (scheduled.isAfter(today)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكن تأكيد الدخل قبل موعده.')),
+      );
+      return;
+    }
+
     final bool isSyp = occurrence.unit == FinancialUnit.syp;
     final TextEditingController controller = TextEditingController(
       text: FinancialFormat.editableAmount(
@@ -143,16 +157,16 @@ class _HomePageState extends State<HomePage> {
                   TextField(
                     controller: controller,
                     autofocus: true,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: !isSyp,
                     ),
                     inputFormatters: <TextInputFormatter>[
-                      isSyp
-                          ? FilteringTextInputFormatter.digitsOnly
-                          : FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9.]'),
-                            ),
+                      if (isSyp)
+                        FilteringTextInputFormatter.digitsOnly
+                      else
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
+                    onChanged: (_) => setDialogState(() => errorText = null),
                     decoration: InputDecoration(
                       labelText: 'المبلغ المستلم فعلياً',
                       suffixText: FinancialFormat.unitShort(occurrence.unit),
@@ -205,10 +219,27 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تسجيل الدخل المستلم.')),
       );
+    } on StateError catch (error) {
+      if (!mounted) return;
+      final bool future = error.message.toString().contains('Future');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            future
+                ? 'لا يمكن تأكيد الدخل قبل موعده.'
+                : 'تم تسجيل هذه الدفعة مسبقاً.',
+          ),
+        ),
+      );
+    } on ArgumentError catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('المبلغ المستلم غير صالح.')),
+      );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تسجيل الدخل أو تم تسجيله مسبقاً.')),
+        const SnackBar(content: Text('تعذر تسجيل الدخل.')),
       );
     } finally {
       if (mounted) setState(() => _confirmingKey = null);
@@ -344,7 +375,13 @@ class _IncomeOccurrenceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
-    final bool isPast = occurrence.scheduledDate.isBefore(today);
+    final DateTime scheduled = DateTime(
+      occurrence.scheduledDate.year,
+      occurrence.scheduledDate.month,
+      occurrence.scheduledDate.day,
+    );
+    final bool isPast = scheduled.isBefore(today);
+    final bool isFuture = scheduled.isAfter(today);
 
     return Card(
       child: Padding(
@@ -372,7 +409,9 @@ class _IncomeOccurrenceCard extends StatelessWidget {
                       ? 'تم الاستلام'
                       : isPast
                           ? 'غير مستلم'
-                          : 'متوقع',
+                          : isFuture
+                              ? 'قادم'
+                              : 'موعده اليوم',
                   received: occurrence.isReceived,
                 ),
               ],
@@ -404,14 +443,20 @@ class _IncomeOccurrenceCard extends StatelessWidget {
             if (!occurrence.isReceived) ...<Widget>[
               const SizedBox(height: 14),
               FilledButton.icon(
-                onPressed: isConfirming ? null : onConfirm,
+                onPressed: isConfirming || isFuture ? null : onConfirm,
                 icon: isConfirming
                     ? const SizedBox.square(
                         dimension: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.check_circle_outline),
-                label: const Text('تأكيد الاستلام'),
+                    : Icon(
+                        isFuture
+                            ? Icons.schedule
+                            : Icons.check_circle_outline,
+                      ),
+                label: Text(
+                  isFuture ? 'يمكن التأكيد في موعده' : 'تأكيد الاستلام',
+                ),
               ),
             ],
           ],

@@ -65,6 +65,13 @@ class _CurrencyConversionButtonState extends State<CurrencyConversionButton> {
           ),
         ),
       );
+    } on ArgumentError catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('بيانات التحويل غير صالحة. راجع المبالغ والتاريخ.'),
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -125,11 +132,14 @@ class _CurrencyConversionSheetState extends State<_CurrencyConversionSheet> {
   }
 
   Future<void> _pickDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime initial = _occurredAt.isAfter(today) ? today : _occurredAt;
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _occurredAt,
+      initialDate: initial,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: today,
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -177,7 +187,8 @@ class _CurrencyConversionSheetState extends State<_CurrencyConversionSheet> {
     final int usdMicros = _sourceUnit == FinancialUnit.usd
         ? sourceMicros
         : destinationMicros;
-    return sypMicros / usdMicros;
+    final double rate = sypMicros / usdMicros;
+    return rate.isFinite && rate > 0 ? rate : null;
   }
 
   void _submit() {
@@ -305,6 +316,7 @@ class _CurrencyConversionSheetState extends State<_CurrencyConversionSheet> {
               TextFormField(
                 controller: _noteController,
                 maxLines: 2,
+                maxLength: 300,
                 decoration: const InputDecoration(
                   labelText: 'ملاحظة (اختياري)',
                   border: OutlineInputBorder(),

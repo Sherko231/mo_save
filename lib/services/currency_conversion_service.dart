@@ -23,6 +23,7 @@ class CurrencyConversionService {
     if (sourceAmountMicros <= 0 || destinationAmountMicros <= 0) {
       throw ArgumentError('Conversion amounts must be greater than zero.');
     }
+    _validateNotFutureDate(occurredAt);
 
     final int sypMicros = sourceUnit == FinancialUnit.syp
         ? sourceAmountMicros
@@ -31,6 +32,9 @@ class CurrencyConversionService {
         ? sourceAmountMicros
         : destinationAmountMicros;
     final double executedSypPerUsd = sypMicros / usdMicros;
+    if (!executedSypPerUsd.isFinite || executedSypPerUsd <= 0) {
+      throw ArgumentError('Executed exchange rate must be positive and finite.');
+    }
 
     final FinancialEvent event = FinancialEvent.create(
       type: FinancialEventType.currencyConversion,
@@ -56,5 +60,14 @@ class CurrencyConversionService {
 
   static bool _isSupportedCashUnit(FinancialUnit unit) {
     return unit == FinancialUnit.syp || unit == FinancialUnit.usd;
+  }
+
+  static void _validateNotFutureDate(DateTime value) {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime day = DateTime(value.year, value.month, value.day);
+    if (day.isAfter(today)) {
+      throw ArgumentError('Conversion date cannot be in the future.');
+    }
   }
 }

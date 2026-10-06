@@ -58,6 +58,13 @@ class _GoldPurchaseButtonState extends State<GoldPurchaseButton> {
           ),
         ),
       );
+    } on ArgumentError catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('بيانات شراء الذهب غير صالحة. راجع المبلغ والوزن والتاريخ.'),
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,11 +120,14 @@ class _GoldPurchaseSheetState extends State<_GoldPurchaseSheet> {
   }
 
   Future<void> _pickDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime initial = _occurredAt.isAfter(today) ? today : _occurredAt;
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _occurredAt,
+      initialDate: initial,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: today,
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -159,7 +169,8 @@ class _GoldPurchaseSheetState extends State<_GoldPurchaseSheet> {
     final int? cash = _cashMicros;
     final int? gold = _goldMicros;
     if (cash == null || gold == null) return null;
-    return cash / gold;
+    final double price = cash / gold;
+    return price.isFinite && price > 0 ? price : null;
   }
 
   void _submit() {
@@ -287,8 +298,8 @@ class _GoldPurchaseSheetState extends State<_GoldPurchaseSheet> {
                 ),
                 validator: (value) {
                   final double? grams = double.tryParse((value ?? '').trim());
-                  if (grams == null || grams <= 0) {
-                    return 'أدخل كمية ذهب أكبر من صفر.';
+                  if (grams == null || grams <= 0 || !grams.isFinite) {
+                    return 'أدخل كمية ذهب صالحة أكبر من صفر.';
                   }
                   return null;
                 },
@@ -329,6 +340,7 @@ class _GoldPurchaseSheetState extends State<_GoldPurchaseSheet> {
               TextFormField(
                 controller: _noteController,
                 maxLines: 2,
+                maxLength: 300,
                 decoration: const InputDecoration(
                   labelText: 'ملاحظة (اختياري)',
                   border: OutlineInputBorder(),
