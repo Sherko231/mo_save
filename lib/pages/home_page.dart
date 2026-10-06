@@ -8,6 +8,7 @@ import '../models/financial_event.dart';
 import '../services/financial_ledger_storage.dart';
 import '../services/home_dashboard_service.dart';
 import '../services/recurring_income_service.dart';
+import '../utils/financial_format.dart';
 import 'home_balance_section.dart';
 import 'home_dashboard_overview.dart';
 import 'home_envelope_section.dart';
@@ -117,7 +118,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _confirmReceived(ExpectedIncome occurrence) async {
     final bool isSyp = occurrence.unit == FinancialUnit.syp;
     final TextEditingController controller = TextEditingController(
-      text: _editableAmount(occurrence.expectedAmountMicros, occurrence.unit),
+      text: FinancialFormat.editableAmount(
+        occurrence.expectedAmountMicros,
+        occurrence.unit,
+      ),
     );
 
     final num? amount = await showDialog<num>(
@@ -126,63 +130,60 @@ class _HomePageState extends State<HomePage> {
         String? errorText;
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: AlertDialog(
-                title: const Text('تأكيد استلام الدخل'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Text(_incomeTitle(occurrence)),
-                    const SizedBox(height: 6),
-                    Text('موعده: ${_formatDate(occurrence.scheduledDate)}'),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: controller,
-                      autofocus: true,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: <TextInputFormatter>[
-                        isSyp
-                            ? FilteringTextInputFormatter.digitsOnly
-                            : FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9.]'),
-                              ),
-                      ],
-                      decoration: InputDecoration(
-                        labelText: 'المبلغ المستلم فعلياً',
-                        suffixText: isSyp ? 'ل.س' : 'USD',
-                        errorText: errorText,
-                        border: const OutlineInputBorder(),
-                      ),
+            return AlertDialog(
+              title: const Text('تأكيد استلام الدخل'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(_incomeTitle(occurrence)),
+                  const SizedBox(height: 6),
+                  Text('موعده: ${FinancialFormat.date(occurrence.scheduledDate)}'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                  ],
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('إلغاء'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      final String raw = controller.text.trim();
-                      final num? parsed = isSyp
-                          ? int.tryParse(raw)
-                          : double.tryParse(raw);
-                      if (parsed == null || parsed <= 0) {
-                        setDialogState(() {
-                          errorText = 'أدخل مبلغاً أكبر من صفر.';
-                        });
-                        return;
-                      }
-                      Navigator.of(dialogContext).pop(parsed);
-                    },
-                    child: const Text('تأكيد'),
+                    inputFormatters: <TextInputFormatter>[
+                      isSyp
+                          ? FilteringTextInputFormatter.digitsOnly
+                          : FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9.]'),
+                            ),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المستلم فعلياً',
+                      suffixText: FinancialFormat.unitShort(occurrence.unit),
+                      errorText: errorText,
+                      border: const OutlineInputBorder(),
+                    ),
                   ),
                 ],
               ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('إلغاء'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final String raw = controller.text.trim();
+                    final num? parsed = isSyp
+                        ? int.tryParse(raw)
+                        : double.tryParse(raw);
+                    if (parsed == null || parsed <= 0) {
+                      setDialogState(() {
+                        errorText = 'أدخل مبلغاً أكبر من صفر.';
+                      });
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(parsed);
+                  },
+                  child: const Text('تأكيد'),
+                ),
+              ],
             );
           },
         );
@@ -222,83 +223,77 @@ class _HomePageState extends State<HomePage> {
 
     final HomeDashboardSnapshot? dashboard = _dashboard;
     if (dashboard == null) {
-      return Directionality(
-        textDirection: TextDirection.rtl,
-        child: Center(
-          child: FilledButton.icon(
-            onPressed: _reload,
-            icon: const Icon(Icons.refresh),
-            label: const Text('إعادة تحميل لوحة التحكم'),
-          ),
+      return Center(
+        child: FilledButton.icon(
+          onPressed: _reload,
+          icon: const Icon(Icons.refresh),
+          label: const Text('إعادة تحميل لوحة التحكم'),
         ),
       );
     }
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: RefreshIndicator(
-        onRefresh: () => _reload(showLoading: false),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
-          children: <Widget>[
-            HomeDashboardOverview(
-              snapshot: dashboard,
-              month: _selectedMonth,
-              onPreviousMonth: () => _changeMonth(-1),
-              onNextMonth: () => _changeMonth(1),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _openHistory,
-              icon: const Icon(Icons.receipt_long_outlined),
-              label: const Text('سجل الحركات والتصحيحات'),
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 12),
-            HomeBalanceSection(refreshToken: _incomeRefreshToken),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 12),
-            Text(
-              'تفاصيل الدخل',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            _MonthSummary(occurrences: _occurrences),
-            const SizedBox(height: 12),
-            if (_occurrences.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Text('لا يوجد دخل متكرر متوقع في هذا الشهر.'),
-                ),
-              )
-            else
-              ..._occurrences.map(
-                (occurrence) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _IncomeOccurrenceCard(
-                    occurrence: occurrence,
-                    isConfirming: _confirmingKey == occurrence.recurrenceKey,
-                    onConfirm: () => _confirmReceived(occurrence),
-                  ),
+    return RefreshIndicator(
+      onRefresh: () => _reload(showLoading: false),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
+        children: <Widget>[
+          HomeDashboardOverview(
+            snapshot: dashboard,
+            month: _selectedMonth,
+            onPreviousMonth: () => _changeMonth(-1),
+            onNextMonth: () => _changeMonth(1),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _openHistory,
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: const Text('سجل الحركات والتصحيحات'),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 12),
+          HomeBalanceSection(refreshToken: _incomeRefreshToken),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 12),
+          Text(
+            'تفاصيل الدخل',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          _MonthSummary(occurrences: _occurrences),
+          const SizedBox(height: 12),
+          if (_occurrences.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('لا يوجد دخل متكرر متوقع في هذا الشهر.'),
+              ),
+            )
+          else
+            ..._occurrences.map(
+              (occurrence) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _IncomeOccurrenceCard(
+                  occurrence: occurrence,
+                  isConfirming: _confirmingKey == occurrence.recurrenceKey,
+                  onConfirm: () => _confirmReceived(occurrence),
                 ),
               ),
-            const SizedBox(height: 18),
-            const Divider(),
-            const SizedBox(height: 12),
-            HomeEnvelopeSection(
-              month: _selectedMonth,
-              refreshToken: _incomeRefreshToken,
             ),
-            const SizedBox(height: 18),
-            const Divider(),
-            const SizedBox(height: 12),
-            HomeExpensesSection(month: _selectedMonth),
-          ],
-        ),
+          const SizedBox(height: 18),
+          const Divider(),
+          const SizedBox(height: 12),
+          HomeEnvelopeSection(
+            month: _selectedMonth,
+            refreshToken: _incomeRefreshToken,
+          ),
+          const SizedBox(height: 18),
+          const Divider(),
+          const SizedBox(height: 12),
+          HomeExpensesSection(month: _selectedMonth),
+        ],
       ),
     );
   }
@@ -307,20 +302,6 @@ class _HomePageState extends State<HomePage> {
     return occurrence.kind == RecurringIncomeKind.weeklySyp
         ? 'راتب الخميس'
         : 'راتب الشهر';
-  }
-
-  static String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  static String _editableAmount(int micros, FinancialUnit unit) {
-    final double value = micros / LedgerEntry.microsPerUnit;
-    if (unit == FinancialUnit.syp || unit == FinancialUnit.sypNew) {
-      return value.round().toString();
-    }
-    return value == value.roundToDouble()
-        ? value.toInt().toString()
-        : value.toStringAsFixed(2);
   }
 }
 
@@ -382,7 +363,7 @@ class _IncomeOccurrenceCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 3),
-                      Text(_HomePageState._formatDate(occurrence.scheduledDate)),
+                      Text(FinancialFormat.date(occurrence.scheduledDate)),
                     ],
                   ),
                 ),
@@ -402,7 +383,7 @@ class _IncomeOccurrenceCard extends StatelessWidget {
                 Expanded(
                   child: _AmountColumn(
                     label: 'المتوقع',
-                    value: _formatMoney(
+                    value: FinancialFormat.assetBalance(
                       occurrence.expectedAmountMicros,
                       occurrence.unit,
                     ),
@@ -412,7 +393,7 @@ class _IncomeOccurrenceCard extends StatelessWidget {
                   Expanded(
                     child: _AmountColumn(
                       label: 'المستلم فعلياً',
-                      value: _formatMoney(
+                      value: FinancialFormat.assetBalance(
                         occurrence.receivedAmountMicros ?? 0,
                         occurrence.unit,
                       ),
@@ -481,40 +462,4 @@ class _AmountColumn extends StatelessWidget {
       ],
     );
   }
-}
-
-String _formatMoney(int micros, FinancialUnit unit) {
-  final double value = micros / LedgerEntry.microsPerUnit;
-  final bool whole = value == value.roundToDouble();
-  final String number = _withThousandsSeparators(
-    whole ? value.toInt().toString() : value.toStringAsFixed(2),
-  );
-
-  switch (unit) {
-    case FinancialUnit.usd:
-      return '\$$number';
-    case FinancialUnit.syp:
-      return '$number ل.س';
-    case FinancialUnit.sypNew:
-      return '$number ل.س جديدة';
-    case FinancialUnit.goldGram:
-      return '$number غ';
-  }
-}
-
-String _withThousandsSeparators(String input) {
-  final List<String> parts = input.split('.');
-  final String digits = parts.first;
-  final StringBuffer buffer = StringBuffer();
-  for (int i = 0; i < digits.length; i++) {
-    final int remaining = digits.length - i;
-    buffer.write(digits[i]);
-    if (remaining > 1 && remaining % 3 == 1) {
-      buffer.write(',');
-    }
-  }
-  if (parts.length > 1) {
-    buffer.write('.${parts[1]}');
-  }
-  return buffer.toString();
 }

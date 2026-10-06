@@ -197,163 +197,155 @@ class _GoldPurchaseSheetState extends State<_GoldPurchaseSheet> {
     final int available = widget.snapshot.balanceMicros(_sourceUnit);
     final double? actualPrice = _actualCashPerGram;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          0,
-          20,
-          MediaQuery.viewInsetsOf(context).bottom + 20,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  'شراء ذهب',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'سجّل الكاش المدفوع والغرامات المستلمة فعلياً. سعر الذهب في الإعدادات يبقى للتقييم فقط.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 18),
-                SegmentedButton<FinancialUnit>(
-                  showSelectedIcon: false,
-                  segments: const <ButtonSegment<FinancialUnit>>[
-                    ButtonSegment<FinancialUnit>(
-                      value: FinancialUnit.syp,
-                      label: Text('ل.س'),
-                    ),
-                    ButtonSegment<FinancialUnit>(
-                      value: FinancialUnit.usd,
-                      label: Text('USD'),
-                    ),
-                  ],
-                  selected: <FinancialUnit>{_sourceUnit},
-                  onSelectionChanged: (selection) =>
-                      _changeSource(selection.first),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'الرصيد المتاح: ${FinancialFormat.assetBalance(available, _sourceUnit)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _cashController,
-                  keyboardType: TextInputType.numberWithOptions(
-                    decimal: _sourceUnit == FinancialUnit.usd,
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        MediaQuery.viewInsetsOf(context).bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                'شراء ذهب',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'سجّل المبلغ المدفوع والغرامات المستلمة فعلياً. سعر الذهب في الإعدادات يبقى للتقييم فقط.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 18),
+              SegmentedButton<FinancialUnit>(
+                showSelectedIcon: false,
+                segments: const <ButtonSegment<FinancialUnit>>[
+                  ButtonSegment<FinancialUnit>(
+                    value: FinancialUnit.syp,
+                    label: Text('ل.س'),
                   ),
-                  inputFormatters: <TextInputFormatter>[
-                    if (_sourceUnit == FinancialUnit.syp)
-                      FilteringTextInputFormatter.digitsOnly
-                    else
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'الكاش المدفوع',
-                    suffixText:
-                        _sourceUnit == FinancialUnit.syp ? 'ل.س' : 'USD',
-                    border: const OutlineInputBorder(),
+                  ButtonSegment<FinancialUnit>(
+                    value: FinancialUnit.usd,
+                    label: Text('دولار'),
                   ),
-                  validator: (value) {
-                    final String raw = (value ?? '').trim();
-                    final num? parsed = _sourceUnit == FinancialUnit.syp
-                        ? int.tryParse(raw)
-                        : double.tryParse(raw);
-                    if (parsed == null || parsed <= 0) {
-                      return 'أدخل مبلغاً أكبر من صفر.';
-                    }
-                    return null;
-                  },
+                ],
+                selected: <FinancialUnit>{_sourceUnit},
+                onSelectionChanged: (selection) =>
+                    _changeSource(selection.first),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'الرصيد المتاح: ${FinancialFormat.assetBalance(available, _sourceUnit)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _cashController,
+                keyboardType: TextInputType.numberWithOptions(
+                  decimal: _sourceUnit == FinancialUnit.usd,
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _gramsController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: <TextInputFormatter>[
+                inputFormatters: <TextInputFormatter>[
+                  if (_sourceUnit == FinancialUnit.syp)
+                    FilteringTextInputFormatter.digitsOnly
+                  else
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'الغرامات المستلمة',
-                    suffixText: 'غ',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    final double? grams =
-                        double.tryParse((value ?? '').trim());
-                    if (grams == null || grams <= 0) {
-                      return 'أدخل كمية ذهب أكبر من صفر.';
-                    }
-                    return null;
-                  },
+                ],
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'المبلغ المدفوع',
+                  suffixText: FinancialFormat.unitShort(_sourceUnit),
+                  border: const OutlineInputBorder(),
                 ),
-                const SizedBox(height: 12),
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
+                validator: (value) {
+                  final String raw = (value ?? '').trim();
+                  final num? parsed = _sourceUnit == FinancialUnit.syp
+                      ? int.tryParse(raw)
+                      : double.tryParse(raw);
+                  if (parsed == null || parsed <= 0) {
+                    return 'أدخل مبلغاً أكبر من صفر.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _gramsController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'الغرامات المستلمة',
+                  suffixText: 'غ',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  final double? grams = double.tryParse((value ?? '').trim());
+                  if (grams == null || grams <= 0) {
+                    return 'أدخل كمية ذهب أكبر من صفر.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Text(
+                        actualPrice == null
+                            ? 'أدخل المبلغ والغرامات لحساب سعر الشراء الفعلي.'
+                            : _sourceUnit == FinancialUnit.usd
+                                ? 'سعر الشراء الفعلي: ${FinancialFormat.amount(actualPrice, FinancialUnit.usd)} لكل غرام'
+                                : 'سعر الشراء الفعلي: ${FinancialFormat.amount(actualPrice, FinancialUnit.syp)} لكل غرام',
+                      ),
+                      if (widget.snapshot.goldUsdPerGram > 0) ...<Widget>[
+                        const SizedBox(height: 5),
                         Text(
-                          actualPrice == null
-                              ? 'أدخل المبلغ والغرامات لحساب سعر الشراء الفعلي.'
-                              : _sourceUnit == FinancialUnit.usd
-                                  ? 'سعر الشراء الفعلي: \$${actualPrice.toStringAsFixed(2)} / غ'
-                                  : 'سعر الشراء الفعلي: ${actualPrice.toStringAsFixed(0)} ل.س / غ',
+                          'السعر المرجعي الحالي: ${FinancialFormat.goldReference(widget.snapshot.goldUsdPerGram)}',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                        if (widget.snapshot.goldUsdPerGram > 0) ...<Widget>[
-                          const SizedBox(height: 5),
-                          Text(
-                            'السعر المرجعي الحالي: ${FinancialFormat.goldReference(widget.snapshot.goldUsdPerGram)}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
                       ],
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today_outlined),
-                  label: Text('تاريخ العملية: ${_formatDate(_occurredAt)}'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_today_outlined),
+                label: Text('تاريخ العملية: ${FinancialFormat.date(_occurredAt)}'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _noteController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظة (اختياري)',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _noteController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظة (اختياري)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(Icons.check),
-                  label: const Text('تسجيل الشراء'),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _submit,
+                icon: const Icon(Icons.check),
+                label: const Text('تسجيل الشراء'),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  static String _formatDate(DateTime date) =>
-      '${date.day}/${date.month}/${date.year}';
 }
 
 class _GoldPurchaseDraft {

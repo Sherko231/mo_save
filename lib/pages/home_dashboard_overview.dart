@@ -4,6 +4,7 @@ import '../models/expected_income.dart';
 import '../models/financial_event.dart';
 import '../models/saving_challenge.dart';
 import '../services/home_dashboard_service.dart';
+import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 
 class HomeDashboardOverview extends StatelessWidget {
@@ -125,11 +126,17 @@ class HomeDashboardOverview extends StatelessWidget {
     return <_MetricLine>[
       _MetricLine(
         'الليرة السورية',
-        FinancialFormat.assetBalance(amount(FinancialUnit.syp), FinancialUnit.syp),
+        FinancialFormat.assetBalance(
+          amount(FinancialUnit.syp),
+          FinancialUnit.syp,
+        ),
       ),
       _MetricLine(
         'الدولار',
-        FinancialFormat.assetBalance(amount(FinancialUnit.usd), FinancialUnit.usd),
+        FinancialFormat.assetBalance(
+          amount(FinancialUnit.usd),
+          FinancialUnit.usd,
+        ),
       ),
     ];
   }
@@ -157,7 +164,7 @@ class HomeDashboardOverview extends StatelessWidget {
     if (plannedUsd != 0 || actualUsd != 0) {
       lines.add(
         _MetricLine(
-          'USD مخطط / فعلي',
+          'الدولار: مخطط / فعلي',
           '${FinancialFormat.assetBalance(plannedUsd, FinancialUnit.usd)} / '
           '${FinancialFormat.assetBalance(actualUsd, FinancialUnit.usd)}',
         ),
@@ -186,7 +193,10 @@ class _DashboardHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('لوحة التحكم', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                'لوحة التحكم',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const SizedBox(height: 2),
               Text(title, style: Theme.of(context).textTheme.bodyMedium),
             ],
@@ -215,7 +225,8 @@ class _NetWorthHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double? total = snapshot.balances.estimatedTotalUsd;
-    final int sypNewMicros = snapshot.balances.balanceMicros(FinancialUnit.sypNew);
+    final int sypNewMicros =
+        snapshot.balances.balanceMicros(FinancialUnit.sypNew);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -314,7 +325,10 @@ class _MetricCard extends StatelessWidget {
                   Icon(icon, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                   ),
                 ],
               ),
@@ -403,10 +417,13 @@ class _UpcomingIncomeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text('الدخل القادم', style: Theme.of(context).textTheme.labelLarge),
+                  Text(
+                    'الدخل القادم',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                   const SizedBox(height: 3),
                   Text(
-                    '$title • ${_formatDate(income.scheduledDate)}',
+                    '$title • ${FinancialFormat.date(income.scheduledDate)}',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ],
@@ -433,7 +450,8 @@ class _GoalSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<SavingChallenge> visibleGoals = goals.take(3).toList(growable: false);
+    final List<SavingChallenge> visibleGoals =
+        goals.take(3).toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -461,7 +479,9 @@ class _GoalSection extends StatelessWidget {
             margin: EdgeInsets.zero,
             child: Padding(
               padding: EdgeInsets.all(16),
-              child: Text('لا توجد أهداف ادخار بعد. أنشئ هدفاً من تبويب التحديات.'),
+              child: Text(
+                'لا توجد أهداف ادخار بعد. أنشئ هدفاً من تبويب التحديات.',
+              ),
             ),
           )
         else
@@ -491,7 +511,6 @@ class _GoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int percent = (goal.progress * 100).round();
     final DateTime? deadline = goal.deadline;
 
     return Card(
@@ -504,9 +523,15 @@ class _GoalCard extends StatelessWidget {
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Text(goal.name, style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    goal.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-                Text('$percent%', style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  FinancialFormat.progress(goal.progress),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -516,16 +541,16 @@ class _GoalCard extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    '${goal.currency.formatAmount(goal.savedAmount)} من '
-                    '${goal.currency.formatAmount(goal.targetAmount)}',
+                    '${ChallengeFormat.amount(goal.savedAmount, goal.currency)} من '
+                    '${ChallengeFormat.amount(goal.targetAmount, goal.currency)}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
                 if (deadline != null)
                   Text(
                     goal.isDeadlineOverdue()
-                        ? 'متأخر • ${_formatDate(deadline)}'
-                        : 'حتى ${_formatDate(deadline)}',
+                        ? 'متأخر • ${FinancialFormat.date(deadline)}'
+                        : 'حتى ${FinancialFormat.date(deadline)}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
               ],
@@ -558,5 +583,3 @@ class _MetricLine {
   final String label;
   final String value;
 }
-
-String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';

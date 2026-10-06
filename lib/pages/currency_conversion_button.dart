@@ -52,7 +52,7 @@ class _CurrencyConversionButtonState extends State<CurrencyConversionButton> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'تم تسجيل التحويل بسعر فعلي ${FinancialFormat.referenceRate(event.executedSypPerUsd!)}.',
+            'تم تسجيل التحويل بسعر فعلي: ${FinancialFormat.referenceRate(event.executedSypPerUsd!)}.',
           ),
         ),
       );
@@ -87,7 +87,7 @@ class _CurrencyConversionButtonState extends State<CurrencyConversionButton> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.currency_exchange),
-        label: const Text('تسجيل تحويل ليرة ↔ دولار'),
+        label: const Text('تسجيل تحويل بين الليرة والدولار'),
       ),
     );
   }
@@ -217,117 +217,111 @@ class _CurrencyConversionSheetState extends State<_CurrencyConversionSheet> {
     final int available = widget.snapshot.balanceMicros(_sourceUnit);
     final double? rate = _executedRate;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          0,
-          20,
-          MediaQuery.viewInsetsOf(context).bottom + 20,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  'تحويل عملة فعلي',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'سجّل المبلغ الذي دفعته والمبلغ الذي استلمته فعلياً. سعر الإعدادات لا يُستخدم لإنشاء التحويل.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 18),
-                SegmentedButton<FinancialUnit>(
-                  showSelectedIcon: false,
-                  segments: const <ButtonSegment<FinancialUnit>>[
-                    ButtonSegment<FinancialUnit>(
-                      value: FinancialUnit.syp,
-                      label: Text('SYP → USD', textDirection: TextDirection.ltr),
-                    ),
-                    ButtonSegment<FinancialUnit>(
-                      value: FinancialUnit.usd,
-                      label: Text('USD → SYP', textDirection: TextDirection.ltr),
-                    ),
-                  ],
-                  selected: <FinancialUnit>{_sourceUnit},
-                  onSelectionChanged: (selection) =>
-                      _changeDirection(selection.first),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'الرصيد المتاح: ${FinancialFormat.assetBalance(available, _sourceUnit)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                _AmountField(
-                  controller: _sourceController,
-                  unit: _sourceUnit,
-                  label: 'المبلغ المدفوع',
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 12),
-                _AmountField(
-                  controller: _destinationController,
-                  unit: _destinationUnit,
-                  label: 'المبلغ المستلم',
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      children: <Widget>[
-                        const Icon(Icons.calculate_outlined),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            rate == null
-                                ? 'أدخل المبلغين لحساب سعر الصرف الفعلي.'
-                                : 'سعر الصرف الفعلي: ${FinancialFormat.referenceRate(rate)}',
-                          ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        MediaQuery.viewInsetsOf(context).bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                'تحويل عملة فعلي',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'سجّل المبلغ الذي دفعته والمبلغ الذي استلمته فعلياً. سعر الإعدادات لا يُستخدم لإنشاء التحويل.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 18),
+              SegmentedButton<FinancialUnit>(
+                showSelectedIcon: false,
+                segments: const <ButtonSegment<FinancialUnit>>[
+                  ButtonSegment<FinancialUnit>(
+                    value: FinancialUnit.syp,
+                    label: Text('ليرة ← دولار'),
+                  ),
+                  ButtonSegment<FinancialUnit>(
+                    value: FinancialUnit.usd,
+                    label: Text('دولار ← ليرة'),
+                  ),
+                ],
+                selected: <FinancialUnit>{_sourceUnit},
+                onSelectionChanged: (selection) =>
+                    _changeDirection(selection.first),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'الرصيد المتاح: ${FinancialFormat.assetBalance(available, _sourceUnit)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              _AmountField(
+                controller: _sourceController,
+                unit: _sourceUnit,
+                label: 'المبلغ المدفوع',
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              _AmountField(
+                controller: _destinationController,
+                unit: _destinationUnit,
+                label: 'المبلغ المستلم',
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(Icons.calculate_outlined),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          rate == null
+                              ? 'أدخل المبلغين لحساب سعر الصرف الفعلي.'
+                              : 'سعر الصرف الفعلي: ${FinancialFormat.referenceRate(rate)}',
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today_outlined),
-                  label: Text('تاريخ العملية: ${_formatDate(_occurredAt)}'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_today_outlined),
+                label: Text('تاريخ العملية: ${FinancialFormat.date(_occurredAt)}'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _noteController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظة (اختياري)',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _noteController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظة (اختياري)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(Icons.check),
-                  label: const Text('تسجيل التحويل'),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _submit,
+                icon: const Icon(Icons.check),
+                label: const Text('تسجيل التحويل'),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  static String _formatDate(DateTime date) =>
-      '${date.day}/${date.month}/${date.year}';
 }
 
 class _AmountField extends StatelessWidget {
@@ -358,7 +352,7 @@ class _AmountField extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
-        suffixText: isSyp ? 'ل.س' : 'USD',
+        suffixText: FinancialFormat.unitShort(unit),
         border: const OutlineInputBorder(),
       ),
       validator: (value) {

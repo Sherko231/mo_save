@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/saving_challenge.dart';
+import '../utils/challenge_format.dart';
+import '../utils/financial_format.dart';
 
 typedef ChallengeChanged = Future<bool> Function(SavingChallenge challenge);
 
@@ -39,9 +41,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
   }
 
   Future<void> _toggleCell(int index) async {
-    if (_isSaving) {
-      return;
-    }
+    if (_isSaving) return;
 
     final SavingChallenge previous = _challenge;
     final List<ChallengeCell> updatedCells =
@@ -50,13 +50,11 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     updatedCells[index] = cell.copyWith(isCompleted: !cell.isCompleted);
     final SavingChallenge updated = _challenge.copyWith(cells: updatedCells);
 
-    await _saveChange(previous, updated, 'Could not save progress locally.');
+    await _saveChange(previous, updated, 'تعذر حفظ تقدم الهدف محلياً.');
   }
 
   Future<void> _changeSequence(ChallengeSequence sequence) async {
-    if (_isSaving || sequence == _challenge.sequence) {
-      return;
-    }
+    if (_isSaving || sequence == _challenge.sequence) return;
 
     final SavingChallenge previous = _challenge;
     final SavingChallenge updated = _challenge.resequence(sequence);
@@ -64,14 +62,12 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     await _saveChange(
       previous,
       updated,
-      'Could not save the sequence change locally.',
+      'تعذر حفظ ترتيب الخانات.',
     );
   }
 
   Future<void> _editGoalDetails() async {
-    if (_isSaving) {
-      return;
-    }
+    if (_isSaving) return;
 
     final TextEditingController noteController = TextEditingController(
       text: _challenge.goalNote ?? '',
@@ -84,7 +80,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Goal details'),
+              title: const Text('تفاصيل هدف الادخار'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -94,14 +90,14 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                       controller: noteController,
                       maxLines: 3,
                       decoration: const InputDecoration(
-                        labelText: 'Goal note (optional)',
+                        labelText: 'ملاحظة الهدف (اختياري)',
                         border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 14),
                     InputDecorator(
                       decoration: const InputDecoration(
-                        labelText: 'Deadline (optional)',
+                        labelText: 'الموعد النهائي (اختياري)',
                         border: OutlineInputBorder(),
                       ),
                       child: Row(
@@ -109,18 +105,16 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                           Expanded(
                             child: Text(
                               deadline == null
-                                  ? 'No deadline'
-                                  : _formatDate(deadline!),
+                                  ? 'بدون موعد'
+                                  : FinancialFormat.date(deadline!),
                             ),
                           ),
                           if (deadline != null)
                             IconButton(
                               onPressed: () {
-                                setDialogState(() {
-                                  deadline = null;
-                                });
+                                setDialogState(() => deadline = null);
                               },
-                              tooltip: 'Remove deadline',
+                              tooltip: 'إزالة الموعد',
                               icon: const Icon(Icons.close),
                             ),
                           IconButton(
@@ -139,12 +133,10 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                                 lastDate: DateTime(2100),
                               );
                               if (picked != null) {
-                                setDialogState(() {
-                                  deadline = picked;
-                                });
+                                setDialogState(() => deadline = picked);
                               }
                             },
-                            tooltip: 'Choose deadline',
+                            tooltip: 'اختيار موعد',
                             icon: const Icon(Icons.calendar_today_outlined),
                           ),
                         ],
@@ -156,7 +148,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('إلغاء'),
                 ),
                 FilledButton(
                   onPressed: () {
@@ -167,7 +159,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                       ),
                     );
                   },
-                  child: const Text('Save'),
+                  child: const Text('حفظ'),
                 ),
               ],
             );
@@ -177,9 +169,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     );
     noteController.dispose();
 
-    if (draft == null || !mounted) {
-      return;
-    }
+    if (draft == null || !mounted) return;
 
     final SavingChallenge previous = _challenge;
     final SavingChallenge updated = _challenge.copyWith(
@@ -192,7 +182,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     await _saveChange(
       previous,
       updated,
-      'Could not save the goal details locally.',
+      'تعذر حفظ تفاصيل الهدف.',
     );
   }
 
@@ -207,9 +197,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     });
 
     final bool saved = await widget.onChanged(updated);
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (!saved) {
       setState(() {
@@ -222,15 +210,15 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
       return;
     }
 
-    setState(() {
-      _isSaving = false;
-    });
+    setState(() => _isSaving = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final GoalPace? pace = _challenge.goalPace();
     final bool overdue = _challenge.isDeadlineOverdue();
+    final int completedCells =
+        _challenge.cells.where((cell) => cell.isCompleted).length;
 
     return SafeArea(
       child: Padding(
@@ -242,8 +230,8 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               children: <Widget>[
                 IconButton(
                   onPressed: widget.onBack,
-                  icon: const Icon(Icons.arrow_back),
-                  tooltip: 'Back',
+                  icon: const BackButtonIcon(),
+                  tooltip: 'رجوع',
                 ),
                 const SizedBox(width: 4),
                 Expanded(
@@ -258,8 +246,8 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
             ),
             const SizedBox(height: 14),
             Text(
-              '${_challenge.currency.formatAmount(_challenge.savedAmount)} of '
-              '${_challenge.currency.formatAmount(_challenge.targetAmount)} saved',
+              '${ChallengeFormat.amount(_challenge.savedAmount, _challenge.currency)} من '
+              '${ChallengeFormat.amount(_challenge.targetAmount, _challenge.currency)} محفوظ',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -268,11 +256,8 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
-                Text('${(_challenge.progress * 100).round()}% complete'),
-                Text(
-                  '${_challenge.cells.where((cell) => cell.isCompleted).length}'
-                  '/${_challenge.cellCount} cells',
-                ),
+                Text('${FinancialFormat.progress(_challenge.progress)} مكتمل'),
+                Text('$completedCells/${_challenge.cellCount} خانات'),
               ],
             ),
             const SizedBox(height: 14),
@@ -287,13 +272,13 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                       children: <Widget>[
                         Expanded(
                           child: Text(
-                            'Saving goal',
+                            'هدف الادخار',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
                         IconButton(
                           onPressed: _isSaving ? null : _editGoalDetails,
-                          tooltip: 'Edit goal details',
+                          tooltip: 'تعديل تفاصيل الهدف',
                           icon: const Icon(Icons.edit_outlined),
                         ),
                       ],
@@ -303,18 +288,18 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                       const SizedBox(height: 8),
                     ],
                     if (_challenge.deadline == null)
-                      const Text('No deadline')
+                      const Text('بدون موعد نهائي')
                     else ...<Widget>[
                       Text(
-                        'Deadline: ${_formatDate(_challenge.deadline!)}'
-                        '${overdue ? ' • overdue' : ''}',
+                        'الموعد: ${FinancialFormat.date(_challenge.deadline!)}'
+                        '${overdue ? ' • متأخر' : ''}',
                       ),
                       if (pace != null && !_challenge.isComplete) ...<Widget>[
                         const SizedBox(height: 8),
                         Text(
-                          '${pace.daysRemaining} days remaining • '
-                          '${_challenge.currency.formatAmount(pace.weeklyAmount)} / week • '
-                          '${_challenge.currency.formatAmount(pace.monthlyAmount)} / month',
+                          'باقي ${pace.daysRemaining} يوم • '
+                          '${ChallengeFormat.amount(pace.weeklyAmount, _challenge.currency)} أسبوعياً • '
+                          '${ChallengeFormat.amount(pace.monthlyAmount, _challenge.currency)} شهرياً',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -322,7 +307,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                     if (_challenge.isComplete) ...<Widget>[
                       const SizedBox(height: 8),
                       Text(
-                        'Goal completed',
+                        'تم إكمال الهدف',
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
                     ],
@@ -332,7 +317,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Sequence',
+              'ترتيب الخانات',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -342,7 +327,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                   .map(
                     (sequence) => ButtonSegment<ChallengeSequence>(
                       value: sequence,
-                      label: Text(sequence.label),
+                      label: Text(ChallengeFormat.sequenceLabel(sequence)),
                     ),
                   )
                   .toList(growable: false),
@@ -356,7 +341,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               const Expanded(
                 child: Center(
                   child: Text(
-                    'This older challenge cannot use the current grid rules.',
+                    'هذا الهدف قديم ولا يمكن تطبيق قواعد الشبكة الحالية عليه.',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -396,10 +381,6 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
         ),
       ),
     );
-  }
-
-  static String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
@@ -455,7 +436,7 @@ class _SavingCell extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  currency.formatAmount(cell.value),
+                  ChallengeFormat.amount(cell.value, currency),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         decoration: cell.isCompleted
