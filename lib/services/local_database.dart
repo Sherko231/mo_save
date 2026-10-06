@@ -4,7 +4,10 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class LocalDatabase {
-  LocalDatabase._();
+  LocalDatabase._() : _databasePathOverride = null;
+
+  LocalDatabase.forTesting(String databasePath)
+      : _databasePathOverride = databasePath;
 
   static final LocalDatabase instance = LocalDatabase._();
 
@@ -13,6 +16,7 @@ class LocalDatabase {
 
   static bool _databaseFactoryConfigured = false;
 
+  final String? _databasePathOverride;
   Database? _database;
 
   Future<Database> get database async {
@@ -26,11 +30,31 @@ class LocalDatabase {
     return opened;
   }
 
-  Future<Database> _openDatabase() async {
-    _configureDatabaseFactory();
+  Future<void> close() async {
+    final Database? existing = _database;
+    _database = null;
+    if (existing != null) {
+      await existing.close();
+    }
+  }
 
-    final String root = await getDatabasesPath();
-    final String path = '$root${Platform.pathSeparator}$databaseName';
+  Future<Database> _openDatabase() async {
+    final String? overridePath = _databasePathOverride;
+    if (overridePath != null) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      _databaseFactoryConfigured = true;
+    } else {
+      _configureDatabaseFactory();
+    }
+
+    final String path;
+    if (overridePath != null) {
+      path = overridePath;
+    } else {
+      final String root = await getDatabasesPath();
+      path = '$root${Platform.pathSeparator}$databaseName';
+    }
 
     return openDatabase(
       path,

@@ -125,8 +125,8 @@ Common financial inputs now reject invalid or future-dated actual transactions, 
 
 ## Phase 8 — Verification and delivery
 
-### #27 — P8-T01 — Add automated tests and migration QA
-Cover critical financial calculations, reconciliation and persistence migrations.
+### #27 — P8-T01 — Add automated tests and migration QA — COMPLETED
+A local `flutter test` suite now covers challenge denominations/sequences/goal pace, multi-asset valuation, four/five-Thursday recurrence, monthly payday clamping, envelope allocation, expense balance protection, conversion and gold reconciliation, canonical challenge-ledger contributions, schema-v1→v9 migration, legacy SharedPreferences challenge migration/backfill, and a persisted create/edit/delete expense-plan widget flow. Isolated FFI databases keep tests away from production data, and `docs/TESTING.md` records covered rules and remaining OS-level release checks.
 
 ### #28 — P8-T02 — Prepare branding and Android release build
 Finalize app identity, signing and a production Android build.
