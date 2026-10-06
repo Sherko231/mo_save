@@ -10,11 +10,11 @@ Future<void> main() async {
   try {
     await NotificationService.instance.initialize();
     await NotificationService.instance.rescheduleAll();
-    NotificationService.instance.startAutomaticRefresh();
   } catch (_) {
     // Notifications are optional and must never prevent the finance app from
     // starting. Settings can retry scheduling later after user interaction.
   }
+  NotificationService.instance.startAutomaticRefresh();
   runApp(const MoSaveApp());
 }
 
