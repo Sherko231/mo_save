@@ -46,7 +46,13 @@ class MoSaveApp extends StatefulWidget {
 }
 
 class _MoSaveAppState extends State<MoSaveApp> {
-  late bool _setupComplete = widget.initialSetupComplete;
+  late bool _setupComplete;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupComplete = widget.initialSetupComplete;
+  }
 
   Future<void> _completeInitialSetup() async {
     await widget.setupStorage.markComplete();
