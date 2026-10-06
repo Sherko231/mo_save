@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../ui/ux_components.dart';
 import 'backup_settings_section.dart';
 import 'settings_page.dart';
 
@@ -29,23 +30,10 @@ class SettingsShellPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: <Widget>[
-        SettingsPage(
-          initialSetup: initialSetup,
-          onInitialSetupComplete: onInitialSetupComplete,
-        ),
-        PositionedDirectional(
-          end: 16,
-          bottom: 16,
-          child: FloatingActionButton.extended(
-            heroTag: initialSetup ? 'initial-backup-fab' : 'settings-backup-fab',
-            onPressed: () => _openBackup(context),
-            icon: const Icon(Icons.backup_outlined),
-            label: const Text('نسخ احتياطي'),
-          ),
-        ),
-      ],
+    return SettingsPage(
+      initialSetup: initialSetup,
+      onInitialSetupComplete: onInitialSetupComplete,
+      onOpenBackup: () => _openBackup(context),
     );
   }
 }
@@ -57,26 +45,21 @@ class _BackupPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('النسخ الاحتياطي')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            children: <Widget>[
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'احفظ النسخة في مكان خارج الهاتف مثل Google Drive أو الكمبيوتر. الاستعادة من ملف تستبدل البيانات المحلية الحالية بالكامل.',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              BackupSettingsSection(onRestored: onRestored),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('النسخ الاحتياطي')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          children: <Widget>[
+            const UxInfoBanner(
+              icon: Icons.shield_outlined,
+              title: 'احتفظ بنسخة خارج الهاتف',
+              body:
+                  'الاستعادة تستبدل البيانات المحلية الحالية بالكامل. احفظ الملف في مكان آمن مثل الكمبيوتر أو مساحة تخزين سحابية.',
+            ),
+            const SizedBox(height: 12),
+            BackupSettingsSection(onRestored: onRestored),
+          ],
         ),
       ),
     );
