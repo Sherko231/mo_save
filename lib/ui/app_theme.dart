@@ -117,7 +117,7 @@ class AppTheme {
         height: 1.22,
       ),
       titleLarge: base.textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w750,
+        fontWeight: FontWeight.w700,
         height: 1.25,
       ),
       titleMedium: base.textTheme.titleMedium?.copyWith(
