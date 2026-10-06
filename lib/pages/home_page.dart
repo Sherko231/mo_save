@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/expected_income.dart';
 import '../models/financial_event.dart';
+import '../services/financial_ledger_storage.dart';
+import '../services/home_dashboard_service.dart';
 import '../services/recurring_income_service.dart';
 import 'home_balance_section.dart';
+import 'home_dashboard_overview.dart';
 import 'home_envelope_section.dart';
 import 'home_expenses_section.dart';
 
@@ -22,33 +27,24 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final RecurringIncomeService _incomeService = RecurringIncomeService();
+  final HomeDashboardService _dashboardService = HomeDashboardService();
 
+  StreamSubscription<void>? _ledgerSubscription;
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  HomeDashboardSnapshot? _dashboard;
   List<ExpectedIncome> _occurrences = const <ExpectedIncome>[];
-  ExpectedIncome? _nextExpected;
   bool _isLoading = true;
   String? _confirmingKey;
   int _incomeRefreshToken = 0;
 
-  static const List<String> _monthNames = <String>[
-    '',
-    'كانون الثاني',
-    'شباط',
-    'آذار',
-    'نيسان',
-    'أيار',
-    'حزيران',
-    'تموز',
-    'آب',
-    'أيلول',
-    'تشرين الأول',
-    'تشرين الثاني',
-    'كانون الأول',
-  ];
-
   @override
   void initState() {
     super.initState();
+    _ledgerSubscription = FinancialLedgerStorage.changes.listen((_) {
+      if (mounted && widget.isActive && _confirmingKey == null) {
+        _reload(showLoading: false, showError: false);
+      }
+    });
     _reload();
   }
 
@@ -60,37 +56,39 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _reload({bool showLoading = true}) async {
+  @override
+  void dispose() {
+    _ledgerSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _reload({
+    bool showLoading = true,
+    bool showError = true,
+  }) async {
     if (showLoading && mounted) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
     }
 
     try {
-      final List<ExpectedIncome> occurrences =
-          await _incomeService.loadMonth(_selectedMonth);
-      final ExpectedIncome? nextExpected =
-          await _incomeService.loadNextExpected();
-      if (!mounted) {
-        return;
-      }
+      final HomeDashboardSnapshot dashboard =
+          await _dashboardService.loadMonth(_selectedMonth);
+      if (!mounted) return;
+
       setState(() {
-        _occurrences = occurrences;
-        _nextExpected = nextExpected;
+        _dashboard = dashboard;
+        _occurrences = dashboard.incomeOccurrences;
         _isLoading = false;
         _incomeRefreshToken++;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      if (showError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تحميل لوحة التحكم المالية.')),
+        );
       }
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تحميل بيانات الدخل.')),
-      );
     }
   }
 
@@ -180,13 +178,9 @@ class _HomePageState extends State<HomePage> {
     );
     controller.dispose();
 
-    if (amount == null || !mounted) {
-      return;
-    }
+    if (amount == null || !mounted) return;
 
-    setState(() {
-      _confirmingKey = occurrence.recurrenceKey;
-    });
+    setState(() => _confirmingKey = occurrence.recurrenceKey);
 
     try {
       await _incomeService.confirmReceived(
@@ -194,32 +188,38 @@ class _HomePageState extends State<HomePage> {
         amountMicros: LedgerEntry.amountToMicros(amount),
       );
       await _reload(showLoading: false);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تسجيل الدخل المستلم.')),
       );
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر تسجيل الدخل أو تم تسجيله مسبقاً.')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _confirmingKey = null;
-        });
-      }
+      if (mounted) setState(() => _confirmingKey = null);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_isLoading && _dashboard == null) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    final HomeDashboardSnapshot? dashboard = _dashboard;
+    if (dashboard == null) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: FilledButton.icon(
+            onPressed: _reload,
+            icon: const Icon(Icons.refresh),
+            label: const Text('إعادة تحميل لوحة التحكم'),
+          ),
+        ),
+      );
     }
 
     return Directionality(
@@ -230,40 +230,26 @@ class _HomePageState extends State<HomePage> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
           children: <Widget>[
-            Text(
-              'الرئيسية',
-              style: Theme.of(context).textTheme.headlineSmall,
+            HomeDashboardOverview(
+              snapshot: dashboard,
+              month: _selectedMonth,
+              onPreviousMonth: () => _changeMonth(-1),
+              onNextMonth: () => _changeMonth(1),
             ),
-            const SizedBox(height: 18),
-            HomeBalanceSection(refreshToken: _incomeRefreshToken),
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
             const Divider(),
             const SizedBox(height: 12),
-            if (_nextExpected != null) _UpcomingIncomeCard(income: _nextExpected!),
-            if (_nextExpected != null) const SizedBox(height: 18),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    'دخل ${_monthNames[_selectedMonth.month]} ${_selectedMonth.year}',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'الشهر السابق',
-                  onPressed: () => _changeMonth(-1),
-                  icon: const Icon(Icons.chevron_right),
-                ),
-                IconButton(
-                  tooltip: 'الشهر التالي',
-                  onPressed: () => _changeMonth(1),
-                  icon: const Icon(Icons.chevron_left),
-                ),
-              ],
+            HomeBalanceSection(refreshToken: _incomeRefreshToken),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text(
+              'تفاصيل الدخل',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             _MonthSummary(occurrences: _occurrences),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             if (_occurrences.isEmpty)
               const Card(
                 child: Padding(
@@ -292,7 +278,10 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 18),
             const Divider(),
             const SizedBox(height: 12),
-            HomeExpensesSection(month: _selectedMonth),
+            HomeExpensesSection(
+              month: _selectedMonth,
+              onChanged: () => _reload(showLoading: false, showError: false),
+            ),
           ],
         ),
       ),
@@ -317,48 +306,6 @@ class _HomePageState extends State<HomePage> {
     return value == value.roundToDouble()
         ? value.toInt().toString()
         : value.toStringAsFixed(2);
-  }
-}
-
-class _UpcomingIncomeCard extends StatelessWidget {
-  const _UpcomingIncomeCard({required this.income});
-
-  final ExpectedIncome income;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: <Widget>[
-            const CircleAvatar(child: Icon(Icons.event_available_outlined)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'الدخل القادم',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_HomePageState._incomeTitle(income)} • '
-                    '${_HomePageState._formatDate(income.scheduledDate)}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              _formatMoney(income.expectedAmountMicros, income.unit),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
