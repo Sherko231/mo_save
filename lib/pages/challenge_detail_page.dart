@@ -442,10 +442,10 @@ class _GoalHero extends StatelessWidget {
                   ),
                 ],
               ),
-              if (pace != null) ...<Widget>[
+              if (pace case final GoalPace goalPace) ...<Widget>[
                 const SizedBox(height: 6),
                 Text(
-                  'للوصول بالموعد: ${ChallengeFormat.amount(pace.weeklyAmount, challenge.currency)} أسبوعياً',
+                  'للوصول بالموعد: ${ChallengeFormat.amount(goalPace.weeklyAmount, challenge.currency)} أسبوعياً',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
