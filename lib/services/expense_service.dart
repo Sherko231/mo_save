@@ -82,12 +82,31 @@ class ExpenseService {
       throw ArgumentError('Expense category must not be empty.');
     }
 
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime expenseDay =
+        DateTime(occurredAt.year, occurredAt.month, occurredAt.day);
+    if (expenseDay.isAfter(today)) {
+      throw ArgumentError('Expense date cannot be in the future.');
+    }
+
+    final Map<FinancialUnit, int> balances =
+        await _ledgerStorage.loadBalanceMicros();
+    final int availableMicros = balances[unit] ?? 0;
+    if (availableMicros < amountMicros) {
+      throw InsufficientBalanceException(
+        unit: unit,
+        availableMicros: availableMicros,
+        requiredMicros: amountMicros,
+      );
+    }
+
     final FinancialEvent event = FinancialEvent.create(
       type: FinancialEventType.expense,
       occurredAt: DateTime(
-        occurredAt.year,
-        occurredAt.month,
-        occurredAt.day,
+        expenseDay.year,
+        expenseDay.month,
+        expenseDay.day,
         12,
       ),
       entries: <LedgerEntry>[
