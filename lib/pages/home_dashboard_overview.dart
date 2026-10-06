@@ -447,7 +447,7 @@ class _UpcomingIncomeCard extends StatelessWidget {
       icon: Icons.event_available_rounded,
       title: title,
       subtitle: 'موعده ${FinancialFormat.date(income.scheduledDate)}',
-      onTap: () {},
+      onTap: null,
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
