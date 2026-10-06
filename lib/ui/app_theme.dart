@@ -98,17 +98,14 @@ class AppTheme {
     final TextTheme text = base.textTheme.copyWith(
       displaySmall: base.textTheme.displaySmall?.copyWith(
         fontWeight: FontWeight.w800,
-        letterSpacing: -0.5,
         height: 1.15,
       ),
       headlineLarge: base.textTheme.headlineLarge?.copyWith(
         fontWeight: FontWeight.w800,
-        letterSpacing: -0.4,
         height: 1.18,
       ),
       headlineMedium: base.textTheme.headlineMedium?.copyWith(
         fontWeight: FontWeight.w800,
-        letterSpacing: -0.3,
         height: 1.2,
       ),
       headlineSmall: base.textTheme.headlineSmall?.copyWith(
