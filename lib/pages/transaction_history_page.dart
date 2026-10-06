@@ -225,7 +225,10 @@ class _MonthSelector extends StatelessWidget {
           IconButton(
             tooltip: 'الشهر السابق',
             onPressed: onPrevious,
-            icon: const Icon(Icons.chevron_right_rounded),
+            icon: const Icon(
+              Icons.chevron_right_rounded,
+              textDirection: TextDirection.ltr,
+            ),
           ),
           Expanded(
             child: Column(
@@ -248,7 +251,10 @@ class _MonthSelector extends StatelessWidget {
           IconButton(
             tooltip: 'الشهر التالي',
             onPressed: onNext,
-            icon: const Icon(Icons.chevron_left_rounded),
+            icon: const Icon(
+              Icons.chevron_left_rounded,
+              textDirection: TextDirection.ltr,
+            ),
           ),
         ],
       ),
