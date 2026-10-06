@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/financial_event.dart';
 import '../models/recurring_expense_item.dart';
 import '../services/expense_plan_storage.dart';
+import '../utils/financial_format.dart';
 
 class ExpensePlanSheet extends StatefulWidget {
   const ExpensePlanSheet({super.key});
@@ -89,22 +90,19 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
   Future<void> _deleteItem(RecurringExpenseItem item) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          title: const Text('حذف المصروف'),
-          content: Text('حذف "${item.name}" من الخطة الشهرية؟'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('حذف'),
-            ),
-          ],
-        ),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف المصروف'),
+        content: Text('حذف «${item.name}» من الخطة الشهرية؟'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف'),
+          ),
+        ],
       ),
     );
     if (confirmed != true) return;
@@ -126,7 +124,9 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
       text: item?.name ?? '',
     );
     final TextEditingController amountController = TextEditingController(
-      text: item == null ? '' : _editableAmount(item.amountMicros, item.unit),
+      text: item == null
+          ? ''
+          : FinancialFormat.editableAmount(item.amountMicros, item.unit),
     );
     FinancialUnit unit = item?.unit ?? FinancialUnit.syp;
 
@@ -135,85 +135,82 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
       builder: (dialogContext) {
         String? errorText;
         return StatefulBuilder(
-          builder: (context, setDialogState) => Directionality(
-            textDirection: TextDirection.rtl,
-            child: AlertDialog(
-              title: Text(item == null ? 'إضافة مصروف شهري' : 'تعديل المصروف'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم المصروف',
-                        border: OutlineInputBorder(),
-                      ),
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(item == null ? 'إضافة مصروف شهري' : 'تعديل المصروف'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المصروف',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<FinancialUnit>(
-                      value: unit,
-                      decoration: const InputDecoration(
-                        labelText: 'العملة',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _cashUnits
-                          .map(
-                            (value) => DropdownMenuItem<FinancialUnit>(
-                              value: value,
-                              child: Text(_unitLabel(value)),
-                            ),
-                          )
-                          .toList(growable: false),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() => unit = value);
-                        }
-                      },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<FinancialUnit>(
+                    value: unit,
+                    decoration: const InputDecoration(
+                      labelText: 'العملة',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: amountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      decoration: InputDecoration(
-                        labelText: 'المبلغ الشهري',
-                        suffixText: _unitLabel(unit),
-                        errorText: errorText,
-                        border: const OutlineInputBorder(),
-                      ),
+                    items: _cashUnits
+                        .map(
+                          (value) => DropdownMenuItem<FinancialUnit>(
+                            value: value,
+                            child: Text(FinancialFormat.unitLabel(value)),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => unit = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ الشهري',
+                      suffixText: FinancialFormat.unitShort(unit),
+                      errorText: errorText,
+                      border: const OutlineInputBorder(),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('إلغاء'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final String name = nameController.text.trim();
-                    final double? amount = double.tryParse(amountController.text.trim());
-                    if (name.isEmpty || amount == null || amount <= 0) {
-                      setDialogState(() {
-                        errorText = 'أدخل اسماً ومبلغاً أكبر من صفر.';
-                      });
-                      return;
-                    }
-                    Navigator.pop(
-                      dialogContext,
-                      _ExpenseDraft(name: name, unit: unit, amount: amount),
-                    );
-                  },
-                  child: const Text('حفظ'),
-                ),
-              ],
             ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final String name = nameController.text.trim();
+                  final double? amount =
+                      double.tryParse(amountController.text.trim());
+                  if (name.isEmpty || amount == null || amount <= 0) {
+                    setDialogState(() {
+                      errorText = 'أدخل اسماً ومبلغاً أكبر من صفر.';
+                    });
+                    return;
+                  }
+                  Navigator.pop(
+                    dialogContext,
+                    _ExpenseDraft(name: name, unit: unit, amount: amount),
+                  );
+                },
+                child: const Text('حفظ'),
+              ),
+            ],
           ),
         );
       },
@@ -230,76 +227,82 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
         .where((item) => item.unit == FinancialUnit.syp)
         .fold<int>(0, (sum, item) => sum + item.amountMicros);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) {
-          if (!didPop) Navigator.of(context).pop(_changed);
-        },
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-            child: Column(
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) Navigator.of(context).pop(_changed);
+      },
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'خطة المصاريف الشهرية',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (!_isLoading)
                           Text(
-                            'خطة المصاريف الشهرية',
-                            style: Theme.of(context).textTheme.titleLarge,
+                            'إجمالي الليرة السورية: ${FinancialFormat.assetBalance(sypTotal, FinancialUnit.syp)}',
                           ),
-                          if (!_isLoading)
-                            Text('إجمالي SYP: ${_formatAmount(sypTotal, FinancialUnit.syp)}'),
-                        ],
-                      ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(_changed),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _items.isEmpty
-                          ? const Center(child: Text('لا توجد مصاريف مخططة.'))
-                          : ListView.separated(
-                              itemCount: _items.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 6),
-                              itemBuilder: (context, index) {
-                                final RecurringExpenseItem item = _items[index];
-                                return Card(
-                                  child: ListTile(
-                                    title: Text(item.name),
-                                    subtitle: Text(_formatAmount(item.amountMicros, item.unit)),
-                                    onTap: () => _editItem(item),
-                                    trailing: IconButton(
-                                      tooltip: 'حذف',
-                                      onPressed: () => _deleteItem(item),
-                                      icon: const Icon(Icons.delete_outline),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(_changed),
+                    tooltip: 'إغلاق',
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _items.isEmpty
+                        ? const Center(child: Text('لا توجد مصاريف مخططة.'))
+                        : ListView.separated(
+                            itemCount: _items.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 6),
+                            itemBuilder: (context, index) {
+                              final RecurringExpenseItem item = _items[index];
+                              return Card(
+                                child: ListTile(
+                                  title: Text(item.name),
+                                  subtitle: Text(
+                                    FinancialFormat.assetBalance(
+                                      item.amountMicros,
+                                      item.unit,
                                     ),
                                   ),
-                                );
-                              },
-                            ),
+                                  onTap: () => _editItem(item),
+                                  trailing: IconButton(
+                                    tooltip: 'حذف',
+                                    onPressed: () => _deleteItem(item),
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _addItem,
+                  icon: const Icon(Icons.add),
+                  label: const Text('إضافة مصروف شهري'),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _addItem,
-                    icon: const Icon(Icons.add),
-                    label: const Text('إضافة مصروف شهري'),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -324,43 +327,3 @@ const List<FinancialUnit> _cashUnits = <FinancialUnit>[
   FinancialUnit.usd,
   FinancialUnit.sypNew,
 ];
-
-String _unitLabel(FinancialUnit unit) {
-  switch (unit) {
-    case FinancialUnit.usd:
-      return 'USD';
-    case FinancialUnit.syp:
-      return 'ل.س';
-    case FinancialUnit.sypNew:
-      return 'SYP (N)';
-    case FinancialUnit.goldGram:
-      return 'غ ذهب';
-  }
-}
-
-String _editableAmount(int micros, FinancialUnit unit) {
-  final double value = micros / LedgerEntry.microsPerUnit;
-  if (unit == FinancialUnit.syp || unit == FinancialUnit.sypNew) {
-    return value.round().toString();
-  }
-  return value == value.roundToDouble()
-      ? value.toInt().toString()
-      : value.toStringAsFixed(2);
-}
-
-String _formatAmount(int micros, FinancialUnit unit) {
-  final double value = micros / LedgerEntry.microsPerUnit;
-  final String raw = value == value.roundToDouble()
-      ? value.toInt().toString()
-      : value.toStringAsFixed(2);
-  final List<String> parts = raw.split('.');
-  final String digits = parts.first;
-  final StringBuffer out = StringBuffer();
-  for (int index = 0; index < digits.length; index++) {
-    final int remaining = digits.length - index;
-    out.write(digits[index]);
-    if (remaining > 1 && remaining % 3 == 1) out.write(',');
-  }
-  if (parts.length > 1) out.write('.${parts[1]}');
-  return '${out.toString()} ${_unitLabel(unit)}';
-}
