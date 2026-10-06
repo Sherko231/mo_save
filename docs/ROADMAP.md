@@ -86,8 +86,8 @@ Home now records gold purchases from SYP or USD as one atomic ledger event that 
 
 ## Phase 5 — Main user experience
 
-### #20 — P5-T01 — Build the Home financial dashboard
-Show current-month income, expenses, balances, gold, estimated total, upcoming income and goal progress.
+### #20 — P5-T01 — Build the Home financial dashboard — COMPLETED
+Home now opens with one at-a-glance dashboard for the selected month: expected and received income by currency, planned versus actual expenses, current SYP/USD balances, gold grams and estimated value, combined estimated USD value, the next expected income, and compact saving-goal progress. The dashboard aggregates the existing ledger/settings/challenge sources without introducing cached financial totals, while the existing detailed income, allocation, expense and asset workflows remain available below it.
 
 ### #21 — P5-T02 — Add transaction history and correction flows
 Provide an auditable timeline with filters and safe corrections.
