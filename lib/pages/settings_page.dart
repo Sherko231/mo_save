@@ -5,6 +5,7 @@ import '../models/financial_settings.dart';
 import '../services/financial_settings_storage.dart';
 import '../services/notification_preferences_storage.dart';
 import '../services/notification_service.dart';
+import '../ui/ux_components.dart';
 import 'expense_plan_sheet.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -12,10 +13,12 @@ class SettingsPage extends StatefulWidget {
     super.key,
     this.initialSetup = false,
     this.onInitialSetupComplete,
+    this.onOpenBackup,
   });
 
   final bool initialSetup;
   final Future<void> Function()? onInitialSetupComplete;
+  final Future<void> Function()? onOpenBackup;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -141,7 +144,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (expensesAllocation + savingsAllocation > weeklyIncome) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('مجموع الظرفين لا يمكن أن يكون أكبر من راتب الأسبوع.'),
+          content: Text('مجموع التقسيم لا يمكن أن يتجاوز راتب الأسبوع.'),
         ),
       );
       return;
@@ -246,316 +249,245 @@ class _SettingsPageState extends State<SettingsPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
-          children: <Widget>[
-            if (widget.initialSetup) ...<Widget>[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Icon(Icons.tune_outlined),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'الإعداد الأول',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'جهزنا القيم الحالية كبداية. راجعها وعدّل أي شيء لا يناسبك، ويمكنك حذف عناصر خطة المصاريف وإعادة بنائها من الصفر.',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 104),
+        children: <Widget>[
+          UxPageHeader(
+            title: widget.initialSetup ? 'جهّز خطتك' : 'الإعدادات',
+            subtitle: widget.initialSetup
+                ? 'ابدأ بالأساسيات فقط. باقي الخيارات تستطيع تركها كما هي.'
+                : 'عدّل فقط الشيء الذي تحتاجه؛ باقي التفاصيل مخفية حتى تفتحها.',
+          ),
+          const SizedBox(height: 14),
+          UxInfoBanner(
+            icon: Icons.history_rounded,
+            title: 'التغييرات للمستقبل فقط',
+            body:
+                'تعديل الراتب أو المواعيد أو أسعار التقييم هنا لا يغيّر الحركات المالية المسجلة سابقاً.',
+          ),
+          const SizedBox(height: 14),
+          _SettingsGroup(
+            icon: Icons.payments_outlined,
+            title: 'الدخل ومواعيد القبض',
+            subtitle: 'راتب الأسبوع، راتب الشهر ومواعيد الاستلام',
+            initiallyExpanded: true,
+            children: <Widget>[
+              TextFormField(
+                controller: _weeklyIncomeController,
+                keyboardType: TextInputType.number,
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'راتب الأسبوع',
+                  helperText: 'ضع 0 إذا لم يكن لديك دخل أسبوعي.',
+                  suffixText: 'ل.س',
                 ),
+                validator: _validateNonNegativeInteger,
               ),
               const SizedBox(height: 14),
-            ],
-            Text(
-              widget.initialSetup ? 'إعداد خطتك المالية' : 'الإعدادات المالية',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              widget.initialSetup
-                  ? 'بعد الحفظ ستدخل إلى التطبيق، ويمكنك تعديل كل هذه القيم لاحقاً من تبويب الإعدادات.'
-                  : 'هذه القيم هي افتراضات للعمليات القادمة ويمكن تعديلها بأي وقت.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 14),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Icon(Icons.history_outlined),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'الإعدادات للمستقبل، والسجل للتاريخ',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'تغيير الراتب أو يوم القبض أو سعر الصرف أو التقسيم هنا يغيّر الافتراضات القادمة فقط. الحركات المالية المسجلة سابقاً لا تتبدل؛ تعديلها يتم من سجل الحركات.',
-                          ),
-                        ],
+              DropdownButtonFormField<int>(
+                value: _weeklyPayday,
+                decoration: const InputDecoration(
+                  labelText: 'يوم استلام راتب الأسبوع',
+                ),
+                items: _weekdayLabels.entries
+                    .map(
+                      (entry) => DropdownMenuItem<int>(
+                        value: entry.key,
+                        child: Text(entry.value),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            _SectionCard(
-              title: 'الدخل',
-              children: <Widget>[
-                TextFormField(
-                  controller: _weeklyIncomeController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'راتب الأسبوع',
-                    helperText: 'ضع 0 إذا لم يكن لديك دخل أسبوعي.',
-                    suffixText: 'ل.س',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateNonNegativeInteger,
-                ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<int>(
-                  value: _weeklyPayday,
-                  decoration: const InputDecoration(
-                    labelText: 'يوم استلام راتب الأسبوع',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _weekdayLabels.entries
-                      .map(
-                        (entry) => DropdownMenuItem<int>(
-                          value: entry.key,
-                          child: Text(entry.value),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _weeklyPayday = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _monthlyIncomeController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'راتب الشهر',
-                    helperText: 'ضع 0 إذا لم يكن لديك دخل شهري بالدولار.',
-                    prefixText: '\$ ',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateNonNegativeDouble,
-                ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<int>(
-                  value: _monthlyPayday,
-                  decoration: const InputDecoration(
-                    labelText: 'يوم استلام الراتب الشهري',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: List<DropdownMenuItem<int>>.generate(
-                    31,
-                    (index) => DropdownMenuItem<int>(
-                      value: index + 1,
-                      child: Text('اليوم ${index + 1} من الشهر'),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _monthlyPayday = value);
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _SectionCard(
-              title: 'خطة المصاريف الشهرية',
-              children: <Widget>[
-                const Text(
-                  'أضف أو عدّل أو احذف المصاريف المتكررة. يمكنك حذف جميع البنود والبدء بخطة فارغة إذا أردت.',
-                ),
-                const SizedBox(height: 12),
-                FilledButton.tonalIcon(
-                  onPressed: _manageExpensePlan,
-                  icon: const Icon(Icons.receipt_long_outlined),
-                  label: const Text('إدارة خطة المصاريف'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _SectionCard(
-              title: 'التقييم التقريبي',
-              children: <Widget>[
-                TextFormField(
-                  controller: _exchangeRateController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'سعر الصرف المرجعي',
-                    helperText:
-                        'عدد الليرات السورية مقابل 1 دولار. اتركه فارغاً إذا لا تريد تقييماً إجمالياً الآن.',
-                    suffixText: 'ل.س / USD',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateOptionalPositiveDouble,
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _goldPriceController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'سعر غرام الذهب',
-                    helperText:
-                        'السعر المرجعي بالدولار لكل غرام. اتركه فارغاً إذا لم تحدده بعد.',
-                    suffixText: 'USD / g',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateOptionalPositiveDouble,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _SectionCard(
-              title: 'تقسيم راتب الأسبوع',
-              children: <Widget>[
-                TextFormField(
-                  controller: _expensesAllocationController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'ظرف المصاريف والالتزامات',
-                    suffixText: 'ل.س',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateNonNegativeInteger,
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _savingsAllocationController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'ظرف الفائض والادخار',
-                    suffixText: 'ل.س',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: _validateNonNegativeInteger,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'هذا التقسيم اقتراح افتراضي لكل راتب أسبوعي جديد، ويمكن تعديله أيضاً قبل تأكيد تقسيم أسبوع محدد.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _SectionCard(
-              title: 'التنبيهات المحلية',
-              children: <Widget>[
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: _weeklyIncomeNotificationEnabled,
-                  onChanged: (value) => setState(
-                    () => _weeklyIncomeNotificationEnabled = value,
-                  ),
-                  title: const Text('تذكير راتب الأسبوع'),
-                  subtitle: const Text('في يوم القبض الأسبوعي المحدد أعلاه.'),
-                ),
-                const Divider(),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: _monthlyIncomeNotificationEnabled,
-                  onChanged: (value) => setState(
-                    () => _monthlyIncomeNotificationEnabled = value,
-                  ),
-                  title: const Text('تذكير الراتب الشهري'),
-                  subtitle: const Text('في يوم القبض الشهري المحدد أعلاه.'),
-                ),
-                const Divider(),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: _goalDeadlineNotificationEnabled,
-                  onChanged: (value) => setState(
-                    () => _goalDeadlineNotificationEnabled = value,
-                  ),
-                  title: const Text('تذكيرات مواعيد أهداف الادخار'),
-                  subtitle: const Text(
-                    'تذكير قبل أسبوع وتذكير في يوم الموعد للأهداف غير المكتملة.',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'التنبيهات تعمل محلياً بدون إنترنت وتظهر قرابة الساعة 9 صباحاً حسب توقيت الجهاز.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _saveSettings,
-              icon: _isSaving
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(
-                      widget.initialSetup
-                          ? Icons.check_circle_outline
-                          : Icons.save_outlined,
-                    ),
-              label: Text(
-                _isSaving
-                    ? 'جاري الحفظ...'
-                    : widget.initialSetup
-                        ? 'حفظ وإنهاء الإعداد الأول'
-                        : 'حفظ الإعدادات',
+                    .toList(growable: false),
+                onChanged: (value) {
+                  if (value != null) setState(() => _weeklyPayday = value);
+                },
               ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _monthlyIncomeController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'الدخل الشهري بالدولار',
+                  helperText: 'ضع 0 إذا لم يكن لديك دخل شهري بالدولار.',
+                  prefixText: '\$ ',
+                ),
+                validator: _validateNonNegativeDouble,
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<int>(
+                value: _monthlyPayday,
+                decoration: const InputDecoration(
+                  labelText: 'يوم استلام الدخل الشهري',
+                ),
+                items: List<DropdownMenuItem<int>>.generate(
+                  31,
+                  (index) => DropdownMenuItem<int>(
+                    value: index + 1,
+                    child: Text('اليوم ${index + 1} من الشهر'),
+                  ),
+                ),
+                onChanged: (value) {
+                  if (value != null) setState(() => _monthlyPayday = value);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _ActionSettingsCard(
+            icon: Icons.receipt_long_outlined,
+            title: 'خطة المصاريف الشهرية',
+            subtitle: 'أضف أو عدّل أو احذف البنود المتكررة',
+            onTap: _manageExpensePlan,
+          ),
+          const SizedBox(height: 10),
+          _SettingsGroup(
+            icon: Icons.call_split_outlined,
+            title: 'تقسيم راتب الأسبوع',
+            subtitle: 'اقتراح افتراضي للمصاريف والادخار',
+            children: <Widget>[
+              TextFormField(
+                controller: _expensesAllocationController,
+                keyboardType: TextInputType.number,
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'للمصاريف والالتزامات',
+                  suffixText: 'ل.س',
+                ),
+                validator: _validateNonNegativeInteger,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _savingsAllocationController,
+                keyboardType: TextInputType.number,
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'للفائض والادخار',
+                  suffixText: 'ل.س',
+                ),
+                validator: _validateNonNegativeInteger,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'هذا اقتراح لكل راتب أسبوعي جديد، ويمكن تعديله لكل دفعة قبل التأكيد.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _SettingsGroup(
+            icon: Icons.auto_graph_outlined,
+            title: 'التقييم التقريبي',
+            subtitle: 'سعر الصرف وسعر الذهب للعرض فقط',
+            children: <Widget>[
+              TextFormField(
+                controller: _exchangeRateController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'سعر الصرف المرجعي',
+                  helperText:
+                      'عدد الليرات السورية مقابل 1 دولار. اتركه فارغاً إذا لا تريد تقييماً إجمالياً.',
+                  suffixText: 'ل.س / USD',
+                ),
+                validator: _validateOptionalPositiveDouble,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _goldPriceController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'سعر غرام الذهب',
+                  helperText: 'السعر المرجعي بالدولار لكل غرام.',
+                  suffixText: 'USD / g',
+                ),
+                validator: _validateOptionalPositiveDouble,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _SettingsGroup(
+            icon: Icons.notifications_none_rounded,
+            title: 'التنبيهات',
+            subtitle: 'كلها محلية ويمكن إيقافها',
+            children: <Widget>[
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _weeklyIncomeNotificationEnabled,
+                onChanged: (value) => setState(
+                  () => _weeklyIncomeNotificationEnabled = value,
+                ),
+                title: const Text('تذكير دخل الأسبوع'),
+                subtitle: const Text('في يوم القبض الأسبوعي المحدد.'),
+              ),
+              const Divider(),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _monthlyIncomeNotificationEnabled,
+                onChanged: (value) => setState(
+                  () => _monthlyIncomeNotificationEnabled = value,
+                ),
+                title: const Text('تذكير الدخل الشهري'),
+                subtitle: const Text('في يوم القبض الشهري المحدد.'),
+              ),
+              const Divider(),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _goalDeadlineNotificationEnabled,
+                onChanged: (value) => setState(
+                  () => _goalDeadlineNotificationEnabled = value,
+                ),
+                title: const Text('مواعيد أهداف الادخار'),
+                subtitle: const Text('قبل أسبوع وفي يوم الموعد.'),
+              ),
+            ],
+          ),
+          if (widget.onOpenBackup != null) ...<Widget>[
+            const SizedBox(height: 10),
+            _ActionSettingsCard(
+              icon: Icons.backup_outlined,
+              title: 'النسخ الاحتياطي',
+              subtitle: 'تصدير نسخة أو استعادتها من ملف',
+              onTap: () {
+                widget.onOpenBackup?.call();
+              },
             ),
           ],
-        ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: _isSaving ? null : _saveSettings,
+            icon: _isSaving
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
+            label: Text(
+              _isSaving
+                  ? 'جاري الحفظ...'
+                  : widget.initialSetup
+                      ? 'حفظ وبدء الاستخدام'
+                      : 'حفظ التغييرات',
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -571,7 +503,7 @@ class _SettingsPageState extends State<SettingsPage> {
   static String? _validateNonNegativeDouble(String? value) {
     final double? parsed = double.tryParse((value ?? '').trim());
     if (parsed == null || parsed < 0) {
-      return 'أدخل رقماً صحيحاً يساوي صفر أو أكبر.';
+      return 'أدخل رقماً يساوي صفر أو أكبر.';
     }
     return null;
   }
@@ -598,28 +530,69 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({
+    required this.icon,
     required this.title,
+    required this.subtitle,
     required this.children,
+    this.initiallyExpanded = false,
   });
 
+  final IconData icon;
   final String title;
+  final String subtitle;
   final List<Widget> children;
+  final bool initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 14),
-            ...children,
-          ],
-        ),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        maintainState: true,
+        initiallyExpanded: initiallyExpanded,
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionSettingsCard extends StatelessWidget {
+  const _ActionSettingsCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        minTileHeight: 72,
+        onTap: onTap,
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_left_rounded),
       ),
     );
   }

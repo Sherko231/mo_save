@@ -1,8 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/saving_challenge.dart';
 import '../services/challenge_storage.dart';
+import '../ui/ux_components.dart';
 import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 import 'challenge_detail_page.dart';
@@ -29,7 +32,6 @@ class _ChallengesPageState extends State<ChallengesPage> {
   SavingChallenge? get _openedChallenge {
     final String? id = _openedChallengeId;
     if (id == null) return null;
-
     for (final SavingChallenge challenge in _challenges) {
       if (challenge.id == id) return challenge;
     }
@@ -66,7 +68,10 @@ class _ChallengesPageState extends State<ChallengesPage> {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (context) => const _CreateChallengeSheet(),
+      builder: (_) => const FractionallySizedBox(
+        heightFactor: 0.92,
+        child: _CreateChallengeSheet(),
+      ),
     );
 
     if (challenge == null || !mounted) return;
@@ -80,7 +85,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر حفظ هدف الادخار محلياً.')),
+        const SnackBar(content: Text('تعذر حفظ هدف الادخار.')),
       );
     }
   }
@@ -171,11 +176,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
                 onBack: _closeChallenge,
               )
             : _buildChallengeList(),
-        floatingActionButton: openedChallenge == null
-            ? FloatingActionButton(
+        floatingActionButton: openedChallenge == null && !_isLoading
+            ? FloatingActionButton.extended(
                 onPressed: _createChallenge,
-                tooltip: 'إضافة هدف ادخار',
-                child: const Icon(Icons.add),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('هدف جديد'),
               )
             : null,
       ),
@@ -188,121 +193,170 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
 
     if (_challenges.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(Icons.savings_outlined, size: 44),
-                    const SizedBox(height: 12),
-                    Text(
-                      'لا توجد أهداف ادخار بعد',
-                      style: Theme.of(context).textTheme.titleLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'أنشئ هدفاً وحدد المبلغ والعملة وعدد الخانات، ويمكنك إضافة موعد نهائي اختياري.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _createChallenge,
-                      icon: const Icon(Icons.add),
-                      label: const Text('إنشاء أول هدف'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+      return UxEmptyState(
+        icon: Icons.flag_outlined,
+        title: 'ابدأ بهدف واحد',
+        body:
+            'اختر شيئاً تريد الادخار له. سنحوّل المبلغ إلى خانات بسيطة تتابع تقدمك منها.',
+        action: FilledButton.icon(
+          onPressed: _createChallenge,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('إنشاء أول هدف'),
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-      itemCount: _challenges.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final SavingChallenge challenge = _challenges[index];
+    final int completed = _challenges.where((item) => item.isComplete).length;
 
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _openChallenge(challenge),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 112),
+      itemCount: _challenges.length + 1,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: UxPageHeader(
+              title: 'أهداف الادخار',
+              subtitle: '$completed من ${_challenges.length} مكتملة',
+            ),
+          );
+        }
+
+        final SavingChallenge challenge = _challenges[index - 1];
+        return _GoalCard(
+          challenge: challenge,
+          onOpen: () => _openChallenge(challenge),
+          onDelete: () => _deleteChallenge(challenge),
+        );
+      },
+    );
+  }
+}
+
+class _GoalCard extends StatelessWidget {
+  const _GoalCard({
+    required this.challenge,
+    required this.onOpen,
+    required this.onDelete,
+  });
+
+  final SavingChallenge challenge;
+  final VoidCallback onOpen;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final bool overdue = challenge.isDeadlineOverdue();
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              challenge.name,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${ChallengeFormat.currencyLabel(challenge.currency)} • '
-                              '${challenge.cellCount} خانة',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            if (challenge.deadline != null) ...<Widget>[
-                              const SizedBox(height: 4),
-                              Text(
-                                challenge.isDeadlineOverdue()
-                                    ? 'الموعد ${FinancialFormat.date(challenge.deadline!)} • متأخر'
-                                    : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
-                                style: Theme.of(context).textTheme.bodySmall,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          challenge.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          ChallengeFormat.currencyLabel(challenge.currency),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
                               ),
-                            ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'خيارات الهدف',
+                    onSelected: (value) {
+                      if (value == 'delete') onDelete();
+                    },
+                    itemBuilder: (_) => const <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: <Widget>[
+                            Icon(Icons.delete_outline),
+                            SizedBox(width: 10),
+                            Text('حذف الهدف'),
                           ],
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => _deleteChallenge(challenge),
-                        tooltip: 'حذف الهدف',
-                        icon: const Icon(Icons.delete_outline),
-                      ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          '${ChallengeFormat.amount(challenge.savedAmount, challenge.currency)} من '
-                          '${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(FinancialFormat.progress(challenge.progress)),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  LinearProgressIndicator(
-                    value: challenge.progress,
-                    minHeight: 7,
-                    borderRadius: BorderRadius.circular(99),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      ChallengeFormat.amount(
+                        challenge.savedAmount,
+                        challenge.currency,
+                      ),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  Text(
+                    FinancialFormat.progress(challenge.progress),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'من ${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 10),
+              LinearProgressIndicator(
+                value: challenge.progress,
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              if (challenge.deadline != null) ...<Widget>[
+                const SizedBox(height: 10),
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      overdue ? Icons.warning_amber_rounded : Icons.event_outlined,
+                      size: 18,
+                      color: overdue ? colors.error : colors.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      overdue
+                          ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
+                          : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: overdue ? colors.error : colors.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -315,7 +369,8 @@ class _CreateChallengeSheet extends StatefulWidget {
 }
 
 class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _essentialFormKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _detailsFormKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _targetController = TextEditingController();
   final TextEditingController _cellCountController =
@@ -325,6 +380,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   ChallengeCurrency _currency = ChallengeCurrency.usd;
   ChallengeSequence _sequence = ChallengeSequence.ordered;
   DateTime? _deadline;
+  int _step = 0;
 
   @override
   void dispose() {
@@ -349,8 +405,17 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
     }
   }
 
+  void _goNext() {
+    if (!_essentialFormKey.currentState!.validate()) return;
+    final int target = int.parse(_targetController.text.trim());
+    final int maxCells = target ~/ _currency.cellStep;
+    final int current = int.tryParse(_cellCountController.text) ?? 50;
+    _cellCountController.text = min(max(1, current), min(500, maxCells)).toString();
+    setState(() => _step = 1);
+  }
+
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_detailsFormKey.currentState!.validate()) return;
 
     final int target = int.parse(_targetController.text.trim());
     final int cellCount = int.parse(_cellCountController.text.trim());
@@ -370,26 +435,19 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
       Navigator.of(context).pop(challenge);
     } on ArgumentError catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تعذر إنشاء الهدف بهذه القيم. راجع المبلغ وعدد الخانات.'),
-        ),
+        const SnackBar(content: Text('راجع المبلغ وعدد الخانات ثم حاول مجدداً.')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final int step = _currency.cellStep;
+    final int denominationStep = _currency.cellStep;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
-      ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -397,174 +455,244 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 'هدف ادخار جديد',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _nameController,
-                maxLength: 80,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'اسم الهدف',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'أدخل اسم الهدف.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 4),
               Text(
-                'العملة',
-                style: Theme.of(context).textTheme.titleMedium,
+                _step == 0
+                    ? 'أولاً: ما الهدف وكم تريد أن تدخر؟'
+                    : 'ثانياً: خصّص طريقة المتابعة إذا أردت.',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 10),
-              SegmentedButton<ChallengeCurrency>(
-                showSelectedIcon: false,
-                segments: ChallengeCurrency.values
-                    .map(
-                      (currency) => ButtonSegment<ChallengeCurrency>(
-                        value: currency,
-                        label: Text(ChallengeFormat.currencyShort(currency)),
-                      ),
-                    )
-                    .toList(growable: false),
-                selected: <ChallengeCurrency>{_currency},
-                onSelectionChanged: (selection) {
-                  setState(() => _currency = selection.first);
-                  _formKey.currentState?.validate();
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _targetController,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.digitsOnly,
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  Expanded(child: _StepBar(active: _step >= 0)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _StepBar(active: _step >= 1)),
                 ],
-                decoration: InputDecoration(
-                  labelText: 'المبلغ المستهدف',
-                  suffixText: ChallengeFormat.currencyShort(_currency),
-                  helperText: step == 1
-                      ? 'أدخل وحدات صحيحة فقط.'
-                      : 'يجب أن يكون المبلغ من مضاعفات ${ChallengeFormat.cellStep(_currency)}.',
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  final int? amount = int.tryParse((value ?? '').trim());
-                  if (amount == null || amount <= 0) {
-                    return 'أدخل مبلغاً صحيحاً أكبر من صفر.';
-                  }
-                  if (amount % step != 0) {
-                    return 'يجب أن يكون المبلغ من مضاعفات ${ChallengeFormat.cellStep(_currency)}.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _cellCountController,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                decoration: const InputDecoration(
-                  labelText: 'عدد الخانات',
-                  helperText: 'عدد خانات الادخار التي ستظهر في الشبكة.',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  final int? count = int.tryParse((value ?? '').trim());
-                  if (count == null || count <= 0) {
-                    return 'أدخل خانة واحدة على الأقل.';
-                  }
-                  if (count > 500) {
-                    return 'الحد الأقصى 500 خانة.';
-                  }
-
-                  final int? target =
-                      int.tryParse(_targetController.text.trim());
-                  if (target != null && target > 0 && target % step == 0) {
-                    final int maxCells = target ~/ step;
-                    if (count > maxCells) {
-                      return 'هذا المبلغ يسمح بحد أقصى $maxCells خانة.';
-                    }
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'موعد الهدف (اختياري)',
-                  border: OutlineInputBorder(),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        _deadline == null
-                            ? 'بدون موعد'
-                            : FinancialFormat.date(_deadline!),
-                      ),
-                    ),
-                    if (_deadline != null)
-                      IconButton(
-                        onPressed: () => setState(() => _deadline = null),
-                        tooltip: 'إزالة الموعد',
-                        icon: const Icon(Icons.close),
-                      ),
-                    IconButton(
-                      onPressed: _pickDeadline,
-                      tooltip: 'اختيار موعد',
-                      icon: const Icon(Icons.calendar_today_outlined),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _noteController,
-                maxLines: 2,
-                maxLength: 300,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'ملاحظة الهدف (اختياري)',
-                  hintText: 'مثال: قسط الجامعة، الزواج، رأس مال مشروع',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'ترتيب الخانات',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 10),
-              SegmentedButton<ChallengeSequence>(
-                showSelectedIcon: false,
-                segments: ChallengeSequence.values
-                    .map(
-                      (sequence) => ButtonSegment<ChallengeSequence>(
-                        value: sequence,
-                        label: Text(ChallengeFormat.sequenceLabel(sequence)),
-                      ),
-                    )
-                    .toList(growable: false),
-                selected: <ChallengeSequence>{_sequence},
-                onSelectionChanged: (selection) {
-                  setState(() => _sequence = selection.first);
-                },
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _submit,
-                child: const Text('إنشاء الهدف'),
               ),
             ],
           ),
         ),
+        const Divider(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              18,
+              20,
+              MediaQuery.viewInsetsOf(context).bottom + 24,
+            ),
+            child: _step == 0
+                ? Form(
+                    key: _essentialFormKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        TextFormField(
+                          controller: _nameController,
+                          maxLength: 80,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'اسم الهدف',
+                            hintText: 'مثال: الجامعة أو رحلة أو مشروع',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'أدخل اسماً للهدف.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Text('العملة', style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                        SegmentedButton<ChallengeCurrency>(
+                          showSelectedIcon: false,
+                          segments: ChallengeCurrency.values
+                              .map(
+                                (currency) => ButtonSegment<ChallengeCurrency>(
+                                  value: currency,
+                                  label: Text(
+                                    ChallengeFormat.currencyShort(currency),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                          selected: <ChallengeCurrency>{_currency},
+                          onSelectionChanged: (selection) {
+                            setState(() => _currency = selection.first);
+                            _essentialFormKey.currentState?.validate();
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _targetController,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.done,
+                          inputFormatters: <TextInputFormatter>[
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          decoration: InputDecoration(
+                            labelText: 'المبلغ المستهدف',
+                            suffixText: ChallengeFormat.currencyShort(_currency),
+                            helperText: denominationStep == 1
+                                ? 'أدخل المبلغ الكامل الذي تريد الوصول إليه.'
+                                : 'المبلغ يجب أن يكون من مضاعفات ${ChallengeFormat.cellStep(_currency)}.',
+                          ),
+                          validator: (value) {
+                            final int? amount =
+                                int.tryParse((value ?? '').trim());
+                            if (amount == null || amount <= 0) {
+                              return 'أدخل مبلغاً أكبر من صفر.';
+                            }
+                            if (amount % denominationStep != 0) {
+                              return 'استخدم مضاعفات ${ChallengeFormat.cellStep(_currency)}.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                : Form(
+                    key: _detailsFormKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        UxInfoBanner(
+                          icon: Icons.auto_awesome_outlined,
+                          title: 'يمكنك ترك الإعدادات الافتراضية',
+                          body:
+                              'هذه الخيارات تغيّر شكل المتابعة فقط، وليست مطلوبة لإنشاء الهدف.',
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _cellCountController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: <TextInputFormatter>[
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'عدد خانات الادخار',
+                            helperText:
+                                'خانات أقل = مبالغ أكبر لكل ضغطة. خانات أكثر = خطوات أصغر.',
+                          ),
+                          validator: (value) {
+                            final int? count = int.tryParse((value ?? '').trim());
+                            if (count == null || count <= 0) {
+                              return 'أدخل خانة واحدة على الأقل.';
+                            }
+                            if (count > 500) return 'الحد الأقصى 500 خانة.';
+                            final int target =
+                                int.parse(_targetController.text.trim());
+                            final int maxCells = target ~/ denominationStep;
+                            if (count > maxCells) {
+                              return 'هذا المبلغ يسمح بحد أقصى $maxCells خانة.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Text('ترتيب الخانات',
+                            style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                        SegmentedButton<ChallengeSequence>(
+                          showSelectedIcon: false,
+                          segments: ChallengeSequence.values
+                              .map(
+                                (sequence) => ButtonSegment<ChallengeSequence>(
+                                  value: sequence,
+                                  label: Text(
+                                    ChallengeFormat.sequenceLabel(sequence),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                          selected: <ChallengeSequence>{_sequence},
+                          onSelectionChanged: (selection) {
+                            setState(() => _sequence = selection.first);
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: _pickDeadline,
+                          icon: const Icon(Icons.event_outlined),
+                          label: Text(
+                            _deadline == null
+                                ? 'إضافة موعد نهائي'
+                                : 'الموعد ${FinancialFormat.date(_deadline!)}',
+                          ),
+                        ),
+                        if (_deadline != null)
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: TextButton.icon(
+                              onPressed: () => setState(() => _deadline = null),
+                              icon: const Icon(Icons.close_rounded),
+                              label: const Text('إزالة الموعد'),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _noteController,
+                          maxLines: 3,
+                          maxLength: 300,
+                          decoration: const InputDecoration(
+                            labelText: 'ملاحظة (اختياري)',
+                            hintText: 'لماذا هذا الهدف مهم لك؟',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+          child: Row(
+            children: <Widget>[
+              if (_step == 1) ...<Widget>[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => setState(() => _step = 0),
+                    child: const Text('رجوع'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  onPressed: _step == 0 ? _goNext : _submit,
+                  icon: Icon(
+                    _step == 0 ? Icons.arrow_back_rounded : Icons.check_rounded,
+                  ),
+                  label: Text(_step == 0 ? 'التالي' : 'إنشاء الهدف'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StepBar extends StatelessWidget {
+  const _StepBar({required this.active});
+
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      height: 5,
+      decoration: BoxDecoration(
+        color: active
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(99),
       ),
     );
   }
