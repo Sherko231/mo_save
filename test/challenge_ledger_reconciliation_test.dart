@@ -7,6 +7,8 @@ import 'package:mo_save/services/challenge_storage.dart';
 import 'package:mo_save/services/financial_ledger_storage.dart';
 import 'package:mo_save/services/local_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +20,8 @@ void main() {
     late FinancialLedgerStorage ledger;
 
     setUp(() async {
-      SharedPreferences.setMockInitialValues(<String, Object>{});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
       tempDirectory = await Directory.systemTemp.createTemp('mo_save_goal_');
       database = LocalDatabase.forTesting(
         '${tempDirectory.path}${Platform.pathSeparator}goal.db',
