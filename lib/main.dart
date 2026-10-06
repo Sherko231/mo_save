@@ -3,23 +3,62 @@ import 'package:flutter/material.dart';
 import 'pages/challenges_page.dart';
 import 'pages/home_page.dart';
 import 'pages/settings_page.dart';
+import 'services/app_setup_storage.dart';
 import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final AppSetupStorage setupStorage = AppSetupStorage();
+  final bool initialSetupComplete = await setupStorage.loadIsComplete();
+
   try {
     await NotificationService.instance.initialize();
-    await NotificationService.instance.rescheduleAll();
+    if (initialSetupComplete) {
+      await NotificationService.instance.rescheduleAll();
+    }
   } catch (_) {
     // Notifications are optional and must never prevent the finance app from
     // starting. Settings can retry scheduling later after user interaction.
   }
   NotificationService.instance.startAutomaticRefresh();
-  runApp(const MoSaveApp());
+
+  runApp(
+    MoSaveApp(
+      initialSetupComplete: initialSetupComplete,
+      setupStorage: setupStorage,
+    ),
+  );
 }
 
-class MoSaveApp extends StatelessWidget {
-  const MoSaveApp({super.key});
+class MoSaveApp extends StatefulWidget {
+  const MoSaveApp({
+    super.key,
+    required this.initialSetupComplete,
+    required this.setupStorage,
+  });
+
+  final bool initialSetupComplete;
+  final AppSetupStorage setupStorage;
+
+  @override
+  State<MoSaveApp> createState() => _MoSaveAppState();
+}
+
+class _MoSaveAppState extends State<MoSaveApp> {
+  late bool _setupComplete;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupComplete = widget.initialSetupComplete;
+  }
+
+  Future<void> _completeInitialSetup() async {
+    await widget.setupStorage.markComplete();
+    if (!mounted) return;
+    setState(() => _setupComplete = true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +68,16 @@ class MoSaveApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
       ),
-      home: const AppShell(),
+      home: _setupComplete
+          ? const AppShell()
+          : Scaffold(
+              body: SafeArea(
+                child: SettingsPage(
+                  initialSetup: true,
+                  onInitialSetupComplete: _completeInitialSetup,
+                ),
+              ),
+            ),
     );
   }
 }

@@ -5,9 +5,17 @@ import '../models/financial_settings.dart';
 import '../services/financial_settings_storage.dart';
 import '../services/notification_preferences_storage.dart';
 import '../services/notification_service.dart';
+import 'expense_plan_sheet.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({
+    super.key,
+    this.initialSetup = false,
+    this.onInitialSetupComplete,
+  });
+
+  final bool initialSetup;
+  final Future<void> Function()? onInitialSetupComplete;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -102,6 +110,25 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _manageExpensePlan() async {
+    final bool? changed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => const FractionallySizedBox(
+        heightFactor: 0.92,
+        child: ExpensePlanSheet(),
+      ),
+    );
+
+    if (changed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تحديث خطة المصاريف الشهرية.')),
+      );
+    }
+  }
+
   Future<void> _saveSettings() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -114,7 +141,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (expensesAllocation + savingsAllocation > weeklyIncome) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('مجموع الظرفين لا يمكن أن يكون أكبر من راتب الخميس.'),
+          content: Text('مجموع الظرفين لا يمكن أن يكون أكبر من راتب الأسبوع.'),
         ),
       );
       return;
@@ -142,14 +169,17 @@ class _SettingsPageState extends State<SettingsPage> {
       await _storage.saveSettings(settings);
     } catch (_) {
       if (!mounted) return;
+      setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر حفظ الإعدادات المالية.')),
       );
-      setState(() => _isSaving = false);
       return;
     }
 
-    String message = 'تم حفظ الإعدادات.';
+    String message = widget.initialSetup
+        ? 'تم حفظ الإعداد الأول.'
+        : 'تم حفظ الإعدادات.';
+
     try {
       if (notificationPreferences.anyEnabled) {
         final bool granted = await _notificationService.requestPermission();
@@ -162,23 +192,52 @@ class _SettingsPageState extends State<SettingsPage> {
               _goalDeadlineNotificationEnabled = false;
             });
           }
-          message =
-              'تم حفظ الإعدادات، لكن صلاحية الإشعارات غير ممنوحة فتم إيقاف التنبيهات.';
+          message = widget.initialSetup
+              ? 'تم حفظ الإعداد الأول، لكن صلاحية الإشعارات غير ممنوحة فتم إيقاف التنبيهات.'
+              : 'تم حفظ الإعدادات، لكن صلاحية الإشعارات غير ممنوحة فتم إيقاف التنبيهات.';
         }
       }
 
       await _notificationPreferencesStorage.save(notificationPreferences);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر حفظ تفضيلات التنبيهات. أعد المحاولة.'),
+        ),
+      );
+      return;
+    }
+
+    try {
       await _notificationService.rescheduleAll();
     } catch (_) {
-      message = 'تم حفظ الإعدادات المالية، لكن تعذر تحديث التنبيهات المحلية.';
-    } finally {
-      if (mounted) {
+      message = widget.initialSetup
+          ? 'تم حفظ الإعداد الأول، لكن تعذر تحديث مواعيد التنبيهات الآن.'
+          : 'تم حفظ الإعدادات، لكن تعذر تحديث مواعيد التنبيهات الآن.';
+    }
+
+    if (widget.initialSetup && widget.onInitialSetupComplete != null) {
+      try {
+        await widget.onInitialSetupComplete!();
+      } catch (_) {
+        if (!mounted) return;
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
+          const SnackBar(
+            content: Text('تم حفظ القيم، لكن تعذر إنهاء الإعداد الأول. أعد المحاولة.'),
+          ),
         );
+        return;
       }
     }
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -194,16 +253,76 @@ class _SettingsPageState extends State<SettingsPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
           children: <Widget>[
+            if (widget.initialSetup) ...<Widget>[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Icon(Icons.tune_outlined),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'الإعداد الأول',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'جهزنا القيم الحالية كبداية. راجعها وعدّل أي شيء لا يناسبك، ويمكنك حذف عناصر خطة المصاريف وإعادة بنائها من الصفر.',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             Text(
-              'الإعدادات المالية',
+              widget.initialSetup ? 'إعداد خطتك المالية' : 'الإعدادات المالية',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 6),
             Text(
-              'هذه القيم هي افتراضات للعمليات القادمة ويمكن تعديلها بأي وقت.',
+              widget.initialSetup
+                  ? 'بعد الحفظ ستدخل إلى التطبيق، ويمكنك تعديل كل هذه القيم لاحقاً من تبويب الإعدادات.'
+                  : 'هذه القيم هي افتراضات للعمليات القادمة ويمكن تعديلها بأي وقت.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Icon(Icons.history_outlined),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'الإعدادات للمستقبل، والسجل للتاريخ',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'تغيير الراتب أو يوم القبض أو سعر الصرف أو التقسيم هنا يغيّر الافتراضات القادمة فقط. الحركات المالية المسجلة سابقاً لا تتبدل؛ تعديلها يتم من سجل الحركات.',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
             _SectionCard(
               title: 'الدخل',
               children: <Widget>[
@@ -215,6 +334,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                   decoration: const InputDecoration(
                     labelText: 'راتب الأسبوع',
+                    helperText: 'ضع 0 إذا لم يكن لديك دخل أسبوعي.',
                     suffixText: 'ل.س',
                     border: OutlineInputBorder(),
                   ),
@@ -250,7 +370,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
                   decoration: const InputDecoration(
-                    labelText: 'راتب أول الشهر',
+                    labelText: 'راتب الشهر',
+                    helperText: 'ضع 0 إذا لم يكن لديك دخل شهري بالدولار.',
                     prefixText: '\$ ',
                     border: OutlineInputBorder(),
                   ),
@@ -280,6 +401,21 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 14),
             _SectionCard(
+              title: 'خطة المصاريف الشهرية',
+              children: <Widget>[
+                const Text(
+                  'أضف أو عدّل أو احذف المصاريف المتكررة. يمكنك حذف جميع البنود والبدء بخطة فارغة إذا أردت.',
+                ),
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  onPressed: _manageExpensePlan,
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('إدارة خطة المصاريف'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _SectionCard(
               title: 'التقييم التقريبي',
               children: <Widget>[
                 TextFormField(
@@ -291,7 +427,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                   decoration: const InputDecoration(
                     labelText: 'سعر الصرف المرجعي',
-                    helperText: 'عدد الليرات السورية مقابل 1 دولار',
+                    helperText:
+                        'عدد الليرات السورية مقابل 1 دولار. اتركه فارغاً إذا لا تريد تقييماً إجمالياً الآن.',
                     suffixText: 'ل.س / USD',
                     border: OutlineInputBorder(),
                   ),
@@ -307,7 +444,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                   decoration: const InputDecoration(
                     labelText: 'سعر غرام الذهب',
-                    helperText: 'السعر المرجعي بالدولار لكل غرام',
+                    helperText:
+                        'السعر المرجعي بالدولار لكل غرام. اتركه فارغاً إذا لم تحدده بعد.',
                     suffixText: 'USD / g',
                     border: OutlineInputBorder(),
                   ),
@@ -348,7 +486,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'الافتراضي الحالي: 540,000 ل.س للمصاريف و345,000 ل.س للادخار.',
+                  'هذا التقسيم اقتراح افتراضي لكل راتب أسبوعي جديد، ويمكن تعديله أيضاً قبل تأكيد تقسيم أسبوع محدد.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -390,7 +528,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'التنبيهات تعمل محلياً بدون إنترنت وتظهر قرابة الساعة 9 صباحاً حسب توقيت الجهاز. لا يستخدم التطبيق منبهات Android الدقيقة.',
+                  'التنبيهات تعمل محلياً بدون إنترنت وتظهر قرابة الساعة 9 صباحاً حسب توقيت الجهاز.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -403,8 +541,18 @@ class _SettingsPageState extends State<SettingsPage> {
                       dimension: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.save_outlined),
-              label: Text(_isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات'),
+                  : Icon(
+                      widget.initialSetup
+                          ? Icons.check_circle_outline
+                          : Icons.save_outlined,
+                    ),
+              label: Text(
+                _isSaving
+                    ? 'جاري الحفظ...'
+                    : widget.initialSetup
+                        ? 'حفظ وإنهاء الإعداد الأول'
+                        : 'حفظ الإعدادات',
+              ),
             ),
           ],
         ),
