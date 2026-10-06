@@ -58,7 +58,7 @@ class NotificationService {
     tz_data.initializeTimeZones();
     try {
       final timezone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(timezone.name));
+      tz.setLocalLocation(tz.getLocation(timezone.identifier));
     } catch (_) {
       // The timezone package defaults to Etc/UTC. Scheduling still remains
       // functional if a device returns an unrecognized timezone identifier.
