@@ -1,4 +1,4 @@
-package com.example.mo_save
+package com.samo.mosave
 
 import io.flutter.embedding.android.FlutterActivity
 
