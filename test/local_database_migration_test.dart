@@ -6,6 +6,8 @@ import 'package:mo_save/models/saving_challenge.dart';
 import 'package:mo_save/services/challenge_storage.dart';
 import 'package:mo_save/services/local_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -17,7 +19,8 @@ void main() {
 
     setUp(() async {
       tempDirectory = await Directory.systemTemp.createTemp('mo_save_migration_');
-      SharedPreferences.setMockInitialValues(<String, Object>{});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
     });
 
     tearDown(() async {
@@ -146,7 +149,8 @@ void main() {
         ],
       );
       const legacyKey = 'saving_challenges_v1';
-      SharedPreferences.setMockInitialValues(<String, Object>{
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.withData(<String, Object>{
         legacyKey: jsonEncode(<Object?>[legacyChallenge.toJson()]),
       });
 
