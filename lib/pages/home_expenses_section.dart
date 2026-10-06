@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/financial_event.dart';
 import '../models/recurring_expense_item.dart';
 import '../services/expense_service.dart';
+import '../services/financial_ledger_storage.dart';
 import '../utils/financial_format.dart';
 import 'expense_plan_sheet.dart';
 
@@ -115,6 +116,7 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                     onChanged: (value) {
                       if (value == null) return;
                       setDialogState(() {
+                        amountError = null;
                         if (value == '__other__') {
                           category = 'مصروف طارئ';
                           unit = FinancialUnit.syp;
@@ -134,6 +136,7 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                   ),
                   const SizedBox(height: 12),
                   TextField(
+                    maxLength: 80,
                     decoration: InputDecoration(
                       labelText: 'اسم/تصنيف المصروف',
                       hintText: category,
@@ -159,17 +162,27 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                         )
                         .toList(growable: false),
                     onChanged: (value) {
-                      if (value != null) setDialogState(() => unit = value);
+                      if (value == null) return;
+                      setDialogState(() {
+                        unit = value;
+                        amountError = null;
+                        amountController.clear();
+                      });
                     },
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: unit == FinancialUnit.usd,
+                    ),
                     inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      if (unit == FinancialUnit.usd)
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                      else
+                        FilteringTextInputFormatter.digitsOnly,
                     ],
+                    onChanged: (_) => setDialogState(() => amountError = null),
                     decoration: InputDecoration(
                       labelText: 'المبلغ المصروف',
                       suffixText: FinancialFormat.unitShort(unit),
@@ -180,11 +193,13 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () async {
+                      final DateTime now = DateTime.now();
+                      final DateTime today = DateTime(now.year, now.month, now.day);
                       final DateTime? picked = await showDatePicker(
                         context: dialogContext,
-                        initialDate: expenseDate,
+                        initialDate: expenseDate.isAfter(today) ? today : expenseDate,
                         firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
+                        lastDate: today,
                       );
                       if (picked != null) {
                         setDialogState(() => expenseDate = picked);
@@ -197,6 +212,7 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                   TextField(
                     controller: noteController,
                     maxLines: 2,
+                    maxLength: 300,
                     decoration: const InputDecoration(
                       labelText: 'ملاحظة (اختياري)',
                       border: OutlineInputBorder(),
@@ -212,11 +228,19 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
               ),
               FilledButton(
                 onPressed: () {
-                  final double? amount =
-                      double.tryParse(amountController.text.trim());
-                  if (amount == null || amount <= 0 || category.trim().isEmpty) {
+                  final String rawAmount = amountController.text.trim();
+                  final num? amount = unit == FinancialUnit.usd
+                      ? double.tryParse(rawAmount)
+                      : int.tryParse(rawAmount);
+                  if (amount == null || amount <= 0) {
                     setDialogState(() {
-                      amountError = 'أدخل مبلغاً أكبر من صفر.';
+                      amountError = 'أدخل مبلغاً صالحاً أكبر من صفر.';
+                    });
+                    return;
+                  }
+                  if (category.trim().isEmpty) {
+                    setDialogState(() {
+                      amountError = 'أدخل تصنيفاً للمصروف.';
                     });
                     return;
                   }
@@ -256,6 +280,20 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تسجيل المصروف.')),
+      );
+    } on InsufficientBalanceException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'لا يمكن تسجيل المصروف لأن الرصيد غير كافٍ. المتاح ${FinancialFormat.assetBalance(error.availableMicros, error.unit)}.',
+          ),
+        ),
+      );
+    } on ArgumentError catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('بيانات المصروف غير صالحة. راجع المبلغ والتاريخ.')),
       );
     } catch (_) {
       if (!mounted) return;
@@ -428,7 +466,7 @@ class _ActualExpenseDraft {
 
   final String category;
   final FinancialUnit unit;
-  final double amount;
+  final num amount;
   final DateTime date;
   final String note;
 }
