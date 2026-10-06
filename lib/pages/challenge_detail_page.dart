@@ -50,20 +50,48 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     updatedCells[index] = cell.copyWith(isCompleted: !cell.isCompleted);
     final SavingChallenge updated = _challenge.copyWith(cells: updatedCells);
 
-    await _saveChange(previous, updated, 'تعذر حفظ تقدم الهدف محلياً.');
+    await _saveChange(previous, updated, 'تعذر حفظ تقدم الهدف.');
   }
 
   Future<void> _changeSequence(ChallengeSequence sequence) async {
     if (_isSaving || sequence == _challenge.sequence) return;
-
     final SavingChallenge previous = _challenge;
     final SavingChallenge updated = _challenge.resequence(sequence);
+    await _saveChange(previous, updated, 'تعذر حفظ ترتيب الخانات.');
+  }
 
-    await _saveChange(
-      previous,
-      updated,
-      'تعذر حفظ ترتيب الخانات.',
+  Future<void> _showSequenceSheet() async {
+    final ChallengeSequence? selected = await showModalBottomSheet<ChallengeSequence>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text('ترتيب الخانات', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'التغيير يعيد ترتيب الخانات فقط ويحافظ على تقدمك الحالي.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            ...ChallengeSequence.values.map(
+              (sequence) => RadioListTile<ChallengeSequence>(
+                value: sequence,
+                groupValue: _challenge.sequence,
+                title: Text(ChallengeFormat.sequenceLabel(sequence)),
+                onChanged: (value) => Navigator.of(context).pop(value),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+
+    if (selected != null) await _changeSequence(selected);
   }
 
   Future<void> _editGoalDetails() async {
@@ -76,96 +104,78 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
 
     final _GoalDetailsDraft? draft = await showDialog<_GoalDetailsDraft>(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('تفاصيل هدف الادخار'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    TextField(
-                      controller: noteController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'ملاحظة الهدف (اختياري)',
-                        border: OutlineInputBorder(),
-                      ),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('تفاصيل الهدف'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                TextField(
+                  controller: noteController,
+                  maxLines: 3,
+                  maxLength: 300,
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظة (اختياري)',
+                    hintText: 'لماذا هذا الهدف مهم لك؟',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final DateTime now = DateTime.now();
+                    final DateTime today = DateTime(now.year, now.month, now.day);
+                    final DateTime initial =
+                        deadline == null || deadline!.isBefore(today)
+                            ? today
+                            : deadline!;
+                    final DateTime? picked = await showDatePicker(
+                      context: dialogContext,
+                      initialDate: initial,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => deadline = picked);
+                    }
+                  },
+                  icon: const Icon(Icons.event_outlined),
+                  label: Text(
+                    deadline == null
+                        ? 'إضافة موعد نهائي'
+                        : FinancialFormat.date(deadline!),
+                  ),
+                ),
+                if (deadline != null)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () => setDialogState(() => deadline = null),
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('إزالة الموعد'),
                     ),
-                    const SizedBox(height: 14),
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'الموعد النهائي (اختياري)',
-                        border: OutlineInputBorder(),
-                      ),
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: Text(
-                              deadline == null
-                                  ? 'بدون موعد'
-                                  : FinancialFormat.date(deadline!),
-                            ),
-                          ),
-                          if (deadline != null)
-                            IconButton(
-                              onPressed: () {
-                                setDialogState(() => deadline = null);
-                              },
-                              tooltip: 'إزالة الموعد',
-                              icon: const Icon(Icons.close),
-                            ),
-                          IconButton(
-                            onPressed: () async {
-                              final DateTime now = DateTime.now();
-                              final DateTime today =
-                                  DateTime(now.year, now.month, now.day);
-                              final DateTime initial = deadline == null ||
-                                      deadline!.isBefore(today)
-                                  ? today
-                                  : deadline!;
-                              final DateTime? picked = await showDatePicker(
-                                context: dialogContext,
-                                initialDate: initial,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime(2100),
-                              );
-                              if (picked != null) {
-                                setDialogState(() => deadline = picked);
-                              }
-                            },
-                            tooltip: 'اختيار موعد',
-                            icon: const Icon(Icons.calendar_today_outlined),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(
+                _GoalDetailsDraft(
+                  deadline: deadline,
+                  note: noteController.text.trim(),
                 ),
               ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('إلغاء'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop(
-                      _GoalDetailsDraft(
-                        deadline: deadline,
-                        note: noteController.text.trim(),
-                      ),
-                    );
-                  },
-                  child: const Text('حفظ'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
     );
     noteController.dispose();
 
@@ -179,11 +189,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
       clearGoalNote: draft.note.isEmpty,
     );
 
-    await _saveChange(
-      previous,
-      updated,
-      'تعذر حفظ تفاصيل الهدف.',
-    );
+    await _saveChange(previous, updated, 'تعذر حفظ تفاصيل الهدف.');
   }
 
   Future<void> _saveChange(
@@ -224,7 +230,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Row(
               children: <Widget>[
@@ -233,7 +239,6 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                   icon: const BackButtonIcon(),
                   tooltip: 'رجوع',
                 ),
-                const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     _challenge.name,
@@ -242,101 +247,67 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              '${ChallengeFormat.amount(_challenge.savedAmount, _challenge.currency)} من '
-              '${ChallengeFormat.amount(_challenge.targetAmount, _challenge.currency)} محفوظ',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: _challenge.progress),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text('${FinancialFormat.progress(_challenge.progress)} مكتمل'),
-                Text('$completedCells/${_challenge.cellCount} خانات'),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            'هدف الادخار',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _isSaving ? null : _editGoalDetails,
-                          tooltip: 'تعديل تفاصيل الهدف',
-                          icon: const Icon(Icons.edit_outlined),
-                        ),
-                      ],
+                PopupMenuButton<String>(
+                  tooltip: 'خيارات الهدف',
+                  onSelected: (value) {
+                    if (value == 'edit') _editGoalDetails();
+                    if (value == 'sequence') _showSequenceSheet();
+                  },
+                  itemBuilder: (_) => const <PopupMenuEntry<String>>[
+                    PopupMenuItem<String>(
+                      value: 'edit',
+                      child: Row(
+                        children: <Widget>[
+                          Icon(Icons.edit_outlined),
+                          SizedBox(width: 10),
+                          Text('تفاصيل الهدف'),
+                        ],
+                      ),
                     ),
-                    if (_challenge.goalNote != null) ...<Widget>[
-                      Text(_challenge.goalNote!),
-                      const SizedBox(height: 8),
-                    ],
-                    if (_challenge.deadline == null)
-                      const Text('بدون موعد نهائي')
-                    else ...<Widget>[
-                      Text(
-                        'الموعد: ${FinancialFormat.date(_challenge.deadline!)}'
-                        '${overdue ? ' • متأخر' : ''}',
+                    PopupMenuItem<String>(
+                      value: 'sequence',
+                      child: Row(
+                        children: <Widget>[
+                          Icon(Icons.sort_rounded),
+                          SizedBox(width: 10),
+                          Text('ترتيب الخانات'),
+                        ],
                       ),
-                      if (pace != null && !_challenge.isComplete) ...<Widget>[
-                        const SizedBox(height: 8),
-                        Text(
-                          'باقي ${pace.daysRemaining} يوم • '
-                          '${ChallengeFormat.amount(pace.weeklyAmount, _challenge.currency)} أسبوعياً • '
-                          '${ChallengeFormat.amount(pace.monthlyAmount, _challenge.currency)} شهرياً',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ],
-                    if (_challenge.isComplete) ...<Widget>[
-                      const SizedBox(height: 8),
-                      Text(
-                        'تم إكمال الهدف',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                    ],
+                    ),
                   ],
                 ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _GoalHero(
+              challenge: _challenge,
+              pace: pace,
+              overdue: overdue,
+              completedCells: completedCells,
             ),
             const SizedBox(height: 16),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    'خانات الادخار',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                Text(
+                  '$completedCells/${_challenge.cellCount}',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
             Text(
-              'ترتيب الخانات',
-              style: Theme.of(context).textTheme.titleMedium,
+              'اضغط على الخانة عند ادخار مبلغها. اضغط مرة أخرى للتراجع.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
-            const SizedBox(height: 8),
-            SegmentedButton<ChallengeSequence>(
-              showSelectedIcon: false,
-              segments: ChallengeSequence.values
-                  .map(
-                    (sequence) => ButtonSegment<ChallengeSequence>(
-                      value: sequence,
-                      label: Text(ChallengeFormat.sequenceLabel(sequence)),
-                    ),
-                  )
-                  .toList(growable: false),
-              selected: <ChallengeSequence>{_challenge.sequence},
-              onSelectionChanged: _isSaving
-                  ? null
-                  : (selection) => _changeSequence(selection.first),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (_challenge.cells.isEmpty)
               const Expanded(
                 child: Center(
@@ -354,14 +325,16 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                         ? 3
                         : constraints.maxWidth < 520
                             ? 4
-                            : 6;
+                            : constraints.maxWidth < 800
+                                ? 6
+                                : 8;
                     return GridView.builder(
-                      padding: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.only(bottom: 24),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: columns,
                         crossAxisSpacing: 8,
                         mainAxisSpacing: 8,
-                        childAspectRatio: 1.25,
+                        childAspectRatio: 1.2,
                       ),
                       itemCount: _challenge.cells.length,
                       itemBuilder: (context, index) {
@@ -377,6 +350,115 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                   },
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoalHero extends StatelessWidget {
+  const _GoalHero({
+    required this.challenge,
+    required this.pace,
+    required this.overdue,
+    required this.completedCells,
+  });
+
+  final SavingChallenge challenge;
+  final GoalPace? pace;
+  final bool overdue;
+  final int completedCells;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    ChallengeFormat.amount(
+                      challenge.savedAmount,
+                      challenge.currency,
+                    ),
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+                Text(
+                  FinancialFormat.progress(challenge.progress),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'من ${ChallengeFormat.amount(challenge.targetAmount, challenge.currency)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(
+              value: challenge.progress,
+              minHeight: 9,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            if (challenge.isComplete) ...<Widget>[
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  Icon(Icons.check_circle_rounded, color: colors.primary),
+                  const SizedBox(width: 8),
+                  const Text('تم إكمال الهدف'),
+                ],
+              ),
+            ] else if (challenge.deadline != null) ...<Widget>[
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  Icon(
+                    overdue ? Icons.warning_amber_rounded : Icons.event_outlined,
+                    size: 19,
+                    color: overdue ? colors.error : colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      overdue
+                          ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
+                          : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: overdue ? colors.error : colors.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              if (pace != null) ...<Widget>[
+                const SizedBox(height: 6),
+                Text(
+                  'للوصول بالموعد: ${ChallengeFormat.amount(pace.weeklyAmount, challenge.currency)} أسبوعياً',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
+            if (challenge.goalNote != null) ...<Widget>[
+              const SizedBox(height: 10),
+              Text(
+                challenge.goalNote!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+            ],
           ],
         ),
       ),
@@ -411,41 +493,45 @@ class _SavingCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
 
-    return Material(
-      color: cell.isCompleted
-          ? colors.primaryContainer
-          : colors.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(14),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (cell.isCompleted)
+    return Semantics(
+      button: true,
+      checked: cell.isCompleted,
+      label:
+          '${ChallengeFormat.amount(cell.value, currency)}${cell.isCompleted ? ' محفوظة' : ' غير محفوظة'}',
+      child: Material(
+        color: cell.isCompleted
+            ? colors.primaryContainer
+            : colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
                 Icon(
-                  Icons.check_circle,
+                  cell.isCompleted
+                      ? Icons.check_circle_rounded
+                      : Icons.circle_outlined,
                   size: 20,
-                  color: colors.primary,
-                )
-              else
-                const SizedBox(height: 20),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  ChallengeFormat.amount(cell.value, currency),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        decoration: cell.isCompleted
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                      ),
+                  color: cell.isCompleted
+                      ? colors.primary
+                      : colors.onSurfaceVariant,
                 ),
-              ),
-            ],
+                const SizedBox(height: 5),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    ChallengeFormat.amount(cell.value, currency),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
