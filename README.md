@@ -15,7 +15,7 @@ Single-user, offline-first Flutter app for personal finance tracking and gamifie
 - [Backup and restore](docs/BACKUP_RESTORE.md)
 - [Arabic localization and financial formatting](docs/LOCALIZATION_FORMATTING.md)
 - [Automated testing and QA](docs/TESTING.md)
-- [Android production release](docs/ANDROID_RELEASE.md)
+- [Android direct APK build](docs/ANDROID_RELEASE.md)
 
 ## Current foundation
 
