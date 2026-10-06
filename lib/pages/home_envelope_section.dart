@@ -6,6 +6,7 @@ import '../models/financial_event.dart';
 import '../models/weekly_envelope_allocation.dart';
 import '../services/recurring_income_service.dart';
 import '../services/weekly_envelope_service.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 class HomeEnvelopeSection extends StatefulWidget {
@@ -298,15 +299,16 @@ class _HomeEnvelopeSectionState extends State<HomeEnvelopeSection> {
             spacing: 8,
             runSpacing: 8,
             children: <Widget>[
-              Chip(
-                label: Text(
-                  'للمصاريف: ${FinancialFormat.assetBalance(totalExpenses, FinancialUnit.syp)}',
-                ),
+              UxStatusPill(
+                icon: Icons.receipt_long_outlined,
+                label:
+                    'للمصاريف: ${FinancialFormat.assetBalance(totalExpenses, FinancialUnit.syp)}',
+                color: Theme.of(context).colorScheme.tertiary,
               ),
-              Chip(
-                label: Text(
-                  'للادخار: ${FinancialFormat.assetBalance(totalSavings, FinancialUnit.syp)}',
-                ),
+              UxStatusPill(
+                icon: Icons.savings_outlined,
+                label:
+                    'للادخار: ${FinancialFormat.assetBalance(totalSavings, FinancialUnit.syp)}',
               ),
             ],
           ),
@@ -353,86 +355,92 @@ class _AllocationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
     final WeeklyEnvelopeAllocation? current = allocation;
     final int received = occurrence.receivedAmountMicros ?? 0;
     final int unallocated =
         current == null ? received : received - current.allocatedMicros;
+    final Color tone = current == null ? colors.tertiary : colors.primary;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'راتب ${FinancialFormat.date(occurrence.scheduledDate)}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'المستلم: ${FinancialFormat.assetBalance(received, FinancialUnit.syp)}',
-                      ),
-                    ],
-                  ),
-                ),
-                Chip(
-                  avatar: Icon(
-                    current == null
-                        ? Icons.pending_outlined
-                        : Icons.check_circle,
-                    size: 18,
-                  ),
-                  label: Text(
-                    current == null ? 'بانتظار التقسيم' : 'تم التوزيع',
-                  ),
-                ),
-              ],
-            ),
-            if (current != null) ...<Widget>[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  Chip(
-                    label: Text(
-                      'مصاريف ${FinancialFormat.assetBalance(current.expensesMicros, FinancialUnit.syp)}',
-                    ),
-                  ),
-                  Chip(
-                    label: Text(
-                      'ادخار ${FinancialFormat.assetBalance(current.savingsMicros, FinancialUnit.syp)}',
-                    ),
-                  ),
-                  if (unallocated > 0)
-                    Chip(
-                      label: Text(
-                        'غير موزع ${FinancialFormat.assetBalance(unallocated, FinancialUnit.syp)}',
-                      ),
-                    ),
-                ],
+    return UxSoftCard(
+      tone: tone,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              UxIconBadge(
+                icon: current == null
+                    ? Icons.call_split_rounded
+                    : Icons.check_rounded,
+                tone: tone,
               ),
-            ] else ...<Widget>[
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: isAllocating ? null : onAllocate,
-                icon: isAllocating
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.account_balance_wallet_outlined),
-                label: const Text('توزيع الراتب'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'راتب ${FinancialFormat.date(occurrence.scheduledDate)}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'المستلم: ${FinancialFormat.assetBalance(received, FinancialUnit.syp)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              UxStatusPill(
+                label: current == null ? 'بانتظار التقسيم' : 'تم التوزيع',
+                color: tone,
               ),
             ],
+          ),
+          if (current != null) ...<Widget>[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                UxStatusPill(
+                  icon: Icons.receipt_long_outlined,
+                  label:
+                      'مصاريف ${FinancialFormat.assetBalance(current.expensesMicros, FinancialUnit.syp)}',
+                  color: colors.tertiary,
+                ),
+                UxStatusPill(
+                  icon: Icons.savings_outlined,
+                  label:
+                      'ادخار ${FinancialFormat.assetBalance(current.savingsMicros, FinancialUnit.syp)}',
+                ),
+                if (unallocated > 0)
+                  UxStatusPill(
+                    icon: Icons.more_horiz_rounded,
+                    label:
+                        'غير موزع ${FinancialFormat.assetBalance(unallocated, FinancialUnit.syp)}',
+                    color: colors.onSurfaceVariant,
+                  ),
+              ],
+            ),
+          ] else ...<Widget>[
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: isAllocating ? null : onAllocate,
+              icon: isAllocating
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.call_split_rounded),
+              label: const Text('توزيع الراتب'),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
