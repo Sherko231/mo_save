@@ -116,105 +116,100 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         ),
       ),
     );
-    if (changed == true) {
-      await _load(showLoading: false);
-    }
+    if (changed == true) await _load(showLoading: false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: RefreshIndicator(
-            onRefresh: () => _load(showLoading: false),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    IconButton(
-                      tooltip: 'رجوع',
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'سجل الحركات',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          Text(
-                            'كل حركة مالية محفوظة في الـ Ledger',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _MonthSelector(
-                  title:
-                      '${_monthNames[_selectedMonth.month]} ${_selectedMonth.year}',
-                  onPrevious: () => _changeMonth(-1),
-                  onNext: () => _changeMonth(1),
-                ),
-                const SizedBox(height: 12),
-                _FilterRow(
-                  typeFilter: _typeFilter,
-                  unitFilter: _unitFilter,
-                  onTypeChanged: (value) {
-                    setState(() => _typeFilter = value);
-                    _load(showLoading: false);
-                  },
-                  onUnitChanged: (value) {
-                    setState(() => _unitFilter = value);
-                    _load(showLoading: false);
-                  },
-                ),
-                const SizedBox(height: 16),
-                if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_records.isEmpty)
-                  const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Column(
-                        children: <Widget>[
-                          Icon(Icons.receipt_long_outlined, size: 36),
-                          SizedBox(height: 10),
-                          Text('لا توجد حركات مطابقة لهذا الشهر.'),
-                        ],
-                      ),
-                    ),
-                  )
-                else ...<Widget>[
-                  Text(
-                    '${_records.length} حركة',
-                    style: Theme.of(context).textTheme.labelLarge,
+        child: RefreshIndicator(
+          onRefresh: () => _load(showLoading: false),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  IconButton(
+                    tooltip: 'رجوع',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const BackButtonIcon(),
                   ),
-                  const SizedBox(height: 8),
-                  ..._records.map(
-                    (record) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _TransactionCard(
-                        record: record,
-                        onTap: () => _openDetail(record),
-                      ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'سجل الحركات',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        Text(
+                          'كل حركة مالية محفوظة في السجل المالي.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              _MonthSelector(
+                title:
+                    '${_monthNames[_selectedMonth.month]} ${_selectedMonth.year}',
+                onPrevious: () => _changeMonth(-1),
+                onNext: () => _changeMonth(1),
+              ),
+              const SizedBox(height: 12),
+              _FilterRow(
+                typeFilter: _typeFilter,
+                unitFilter: _unitFilter,
+                onTypeChanged: (value) {
+                  setState(() => _typeFilter = value);
+                  _load(showLoading: false);
+                },
+                onUnitChanged: (value) {
+                  setState(() => _unitFilter = value);
+                  _load(showLoading: false);
+                },
+              ),
+              const SizedBox(height: 16),
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_records.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Column(
+                      children: <Widget>[
+                        Icon(Icons.receipt_long_outlined, size: 36),
+                        SizedBox(height: 10),
+                        Text('لا توجد حركات مطابقة لهذا الشهر.'),
+                      ],
+                    ),
+                  ),
+                )
+              else ...<Widget>[
+                Text(
+                  '${_records.length} حركة',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                ..._records.map(
+                  (record) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _TransactionCard(
+                      record: record,
+                      onTap: () => _openDetail(record),
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -282,7 +277,6 @@ class _FilterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool sideBySide = constraints.maxWidth >= 520;
         final Widget type = DropdownButtonFormField<String>(
           value: typeFilter,
           decoration: const InputDecoration(
@@ -316,12 +310,12 @@ class _FilterRow extends StatelessWidget {
           items: <DropdownMenuItem<String>>[
             const DropdownMenuItem<String>(
               value: 'all',
-              child: Text('كل العملات'),
+              child: Text('كل العملات والأصول'),
             ),
             ...FinancialUnit.values.map(
               (unit) => DropdownMenuItem<String>(
                 value: unit.name,
-                child: Text(_unitLabel(unit)),
+                child: Text(FinancialFormat.unitLabel(unit)),
               ),
             ),
           ],
@@ -330,7 +324,7 @@ class _FilterRow extends StatelessWidget {
           },
         );
 
-        if (sideBySide) {
+        if (constraints.maxWidth >= 520) {
           return Row(
             children: <Widget>[
               Expanded(child: type),
@@ -403,7 +397,7 @@ class _TransactionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_formatDateTime(event.occurredAt)}'
+                      '${FinancialFormat.dateTime(event.occurredAt)}'
                       '${event.category == null ? '' : ' • ${event.category}'}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
@@ -449,7 +443,8 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
 
   Future<void> _loadRevisions() async {
     try {
-      final revisions = await widget.service.loadRevisions(event.id);
+      final List<FinancialEventRevision> revisions =
+          await widget.service.loadRevisions(event.id);
       if (!mounted) return;
       setState(() {
         _revisions = revisions;
@@ -472,74 +467,71 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
     final _MetadataDraft? draft = await showDialog<_MetadataDraft>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('تعديل تفاصيل الحركة'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  TextField(
-                    controller: categoryController,
-                    decoration: const InputDecoration(
-                      labelText: 'التصنيف (اختياري)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'ملاحظة (اختياري)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: event.recurrenceKey != null
-                        ? null
-                        : () async {
-                            final DateTime? picked = await showDatePicker(
-                              context: dialogContext,
-                              initialDate: selectedDate,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setDialogState(() => selectedDate = picked);
-                            }
-                          },
-                    icon: const Icon(Icons.calendar_today_outlined),
-                    label: Text(
-                      event.recurrenceKey != null
-                          ? 'التاريخ مرتبط بالحركة الدورية'
-                          : _formatDate(selectedDate),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(
-                  dialogContext,
-                  _MetadataDraft(
-                    date: selectedDate,
-                    category: categoryController.text,
-                    note: noteController.text,
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('تعديل تفاصيل الحركة'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                TextField(
+                  controller: categoryController,
+                  decoration: const InputDecoration(
+                    labelText: 'التصنيف (اختياري)',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-                child: const Text('متابعة'),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظة (اختياري)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: event.recurrenceKey != null
+                      ? null
+                      : () async {
+                          final DateTime? picked = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  label: Text(
+                    event.recurrenceKey != null
+                        ? 'التاريخ مرتبط بالحركة الدورية'
+                        : FinancialFormat.date(selectedDate),
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                _MetadataDraft(
+                  date: selectedDate,
+                  category: categoryController.text,
+                  note: noteController.text,
+                ),
+              ),
+              child: const Text('متابعة'),
+            ),
+          ],
         ),
       ),
     );
@@ -569,7 +561,10 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
     final List<TextEditingController> controllers = event.entries
         .map(
           (entry) => TextEditingController(
-            text: _editableAmount(entry.amountMicros.abs(), entry.unit),
+            text: FinancialFormat.editableAmount(
+              entry.amountMicros.abs(),
+              entry.unit,
+            ),
           ),
         )
         .toList(growable: false);
@@ -578,74 +573,73 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
     final List<int>? amounts = await showDialog<List<int>>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('تصحيح مبالغ الحركة'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const Text(
-                    'عدّل القيمة فقط. اتجاه الحركة والعملات يبقيان كما هما.',
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('تصحيح مبالغ الحركة'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Text(
+                  'عدّل القيمة فقط. اتجاه الحركة والعملات يبقيان كما هما.',
+                ),
+                const SizedBox(height: 12),
+                for (int index = 0;
+                    index < event.entries.length;
+                    index++) ...<Widget>[
+                  TextField(
+                    controller: controllers[index],
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: _entryEditLabel(event.entries[index], index),
+                      suffixText:
+                          FinancialFormat.unitShort(event.entries[index].unit),
+                      border: const OutlineInputBorder(),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  for (int index = 0; index < event.entries.length; index++) ...<Widget>[
-                    TextField(
-                      controller: controllers[index],
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      decoration: InputDecoration(
-                        labelText: _entryEditLabel(event.entries[index], index),
-                        suffixText: _unitShort(event.entries[index].unit),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    if (index != event.entries.length - 1)
-                      const SizedBox(height: 10),
-                  ],
-                  if (errorText != null) ...<Widget>[
+                  if (index != event.entries.length - 1)
                     const SizedBox(height: 10),
-                    Text(
-                      errorText!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+                if (errorText != null) ...<Widget>[
+                  const SizedBox(height: 10),
+                  Text(
+                    errorText!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
             ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final List<int> parsed = <int>[];
-                  for (final TextEditingController controller in controllers) {
-                    final double? amount =
-                        double.tryParse(controller.text.trim());
-                    if (amount == null || amount <= 0) {
-                      setDialogState(() {
-                        errorText = 'أدخل قيمة موجبة لكل مبلغ.';
-                      });
-                      return;
-                    }
-                    parsed.add(LedgerEntry.amountToMicros(amount));
-                  }
-                  Navigator.pop(dialogContext, parsed);
-                },
-                child: const Text('متابعة'),
-              ),
-            ],
           ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final List<int> parsed = <int>[];
+                for (final TextEditingController controller in controllers) {
+                  final double? amount =
+                      double.tryParse(controller.text.trim());
+                  if (amount == null || amount <= 0) {
+                    setDialogState(() {
+                      errorText = 'أدخل قيمة موجبة لكل مبلغ.';
+                    });
+                    return;
+                  }
+                  parsed.add(LedgerEntry.amountToMicros(amount));
+                }
+                Navigator.pop(dialogContext, parsed);
+              },
+              child: const Text('متابعة'),
+            ),
+          ],
         ),
       ),
     );
@@ -657,7 +651,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
     final bool confirmed = await _confirm(
       title: 'تأكيد تصحيح المبالغ؟',
       message:
-          'سيعاد حساب الأرصدة من الـ Ledger وستُحفظ النسخة السابقة في سجل المراجعات.',
+          'سيعاد حساب الأرصدة من السجل المالي وستُحفظ النسخة السابقة في سجل المراجعات.',
       confirmLabel: 'تأكيد التصحيح',
     );
     if (!confirmed || !mounted) return;
@@ -675,7 +669,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
     final bool confirmed = await _confirm(
       title: 'حذف الحركة؟',
       message:
-          'سيتم حذفها من الـ Ledger الحالي مع الاحتفاظ بنسخة تدقيق محذوفة في السجل. لن يسمح التطبيق بالحذف إذا أدى لرصيد سالب أو كسر حركة مرتبطة.',
+          'سيتم حذفها من السجل المالي الحالي مع الاحتفاظ بنسخة تدقيق محذوفة. لن يسمح التطبيق بالحذف إذا أدى لرصيد سالب أو كسر حركة مرتبطة.',
       confirmLabel: 'حذف الحركة',
       destructive: true,
     );
@@ -695,28 +689,25 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
   }) async {
     return await showDialog<bool>(
           context: context,
-          builder: (dialogContext) => Directionality(
-            textDirection: TextDirection.rtl,
-            child: AlertDialog(
-              title: Text(title),
-              content: Text(message),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('إلغاء'),
-                ),
-                FilledButton(
-                  style: destructive
-                      ? FilledButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                          foregroundColor: Theme.of(context).colorScheme.onError,
-                        )
-                      : null,
-                  onPressed: () => Navigator.pop(dialogContext, true),
-                  child: Text(confirmLabel),
-                ),
-              ],
-            ),
+          builder: (dialogContext) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                style: destructive
+                    ? FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                        foregroundColor: Theme.of(context).colorScheme.onError,
+                      )
+                    : null,
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(confirmLabel),
+              ),
+            ],
           ),
         ) ??
         false;
@@ -752,138 +743,142 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final bool workflowManaged = widget.service.isWorkflowManaged(event);
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Column(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: Row(
-              children: <Widget>[
-                CircleAvatar(child: Icon(_eventIcon(event.type))),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        _eventTypeLabel(event.type),
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      Text(_formatDateTime(event.occurredAt)),
-                    ],
-                  ),
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          child: Row(
+            children: <Widget>[
+              CircleAvatar(child: Icon(_eventIcon(event.type))),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      _eventTypeLabel(event.type),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    Text(FinancialFormat.dateTime(event.occurredAt)),
+                  ],
                 ),
-                if (widget.record.isDeleted)
-                  const Chip(label: Text('محذوفة')),
-              ],
-            ),
+              ),
+              if (widget.record.isDeleted)
+                const Chip(label: Text('محذوفة')),
+            ],
           ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: <Widget>[
-                _DetailCard(
-                  title: 'القيم',
-                  children: <Widget>[
-                    for (int index = 0; index < event.entries.length; index++)
-                      _EntryRow(
-                        entry: event.entries[index],
-                        index: index,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _DetailCard(
-                  title: 'التفاصيل',
-                  children: <Widget>[
-                    _KeyValue('التصنيف', event.category ?? '—'),
-                    _KeyValue('الملاحظة', event.note ?? '—'),
-                    if (event.executedSypPerUsd != null)
-                      _KeyValue(
-                        'سعر التنفيذ',
-                        '${event.executedSypPerUsd!.toStringAsFixed(2)} ل.س / USD',
-                      ),
-                    if (event.recurrenceKey != null)
-                      _KeyValue('حركة دورية', 'نعم'),
-                    if (event.sourceEventId != null)
-                      const _KeyValue('مرتبطة بحركة أصل', 'نعم'),
-                    _KeyValue('أنشئت', _formatDateTime(event.createdAt)),
-                    _KeyValue('آخر تعديل', _formatDateTime(event.updatedAt)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _DetailCard(
-                  title: 'سجل المراجعات',
-                  children: <Widget>[
-                    if (_loadingRevisions)
-                      const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else if (_revisions.isEmpty)
-                      const Text('لا توجد تعديلات سابقة على هذه الحركة.')
-                    else
-                      ..._revisions.map(
-                        (revision) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          leading: Icon(
-                            revision.isDelete
-                                ? Icons.delete_outline
-                                : Icons.history,
-                          ),
-                          title: Text(
-                            revision.isDelete
-                                ? 'نسخة قبل الحذف'
-                                : 'نسخة قبل التعديل',
-                          ),
-                          subtitle: Text(_formatDateTime(revision.changedAt)),
-                          trailing: Text(_eventSummary(revision.snapshot)),
-                        ),
-                      ),
-                  ],
-                ),
-                if (!widget.record.isDeleted) ...<Widget>[
-                  const SizedBox(height: 16),
-                  if (workflowManaged)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(14),
-                        child: Text(
-                          'هذه مساهمة ادخار مرتبطة بشبكة التحدي. لتغييرها عدّل الخانات داخل التحدي حتى يبقى التقدم متطابقاً مع الـ Ledger.',
-                        ),
-                      ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: <Widget>[
+              _DetailCard(
+                title: 'القيم',
+                children: <Widget>[
+                  for (int index = 0;
+                      index < event.entries.length;
+                      index++)
+                    _EntryRow(entry: event.entries[index]),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _DetailCard(
+                title: 'التفاصيل',
+                children: <Widget>[
+                  _KeyValue('التصنيف', event.category ?? '—'),
+                  _KeyValue('الملاحظة', event.note ?? '—'),
+                  if (event.executedSypPerUsd != null)
+                    _KeyValue(
+                      'سعر التنفيذ',
+                      FinancialFormat.referenceRate(event.executedSypPerUsd!),
+                    ),
+                  if (event.recurrenceKey != null)
+                    const _KeyValue('حركة دورية', 'نعم'),
+                  if (event.sourceEventId != null)
+                    const _KeyValue('مرتبطة بحركة أصل', 'نعم'),
+                  _KeyValue(
+                    'أنشئت',
+                    FinancialFormat.dateTime(event.createdAt),
+                  ),
+                  _KeyValue(
+                    'آخر تعديل',
+                    FinancialFormat.dateTime(event.updatedAt),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _DetailCard(
+                title: 'سجل المراجعات',
+                children: <Widget>[
+                  if (_loadingRevisions)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Center(child: CircularProgressIndicator()),
                     )
-                  else ...<Widget>[
-                    OutlinedButton.icon(
-                      onPressed: _isMutating ? null : _editMetadata,
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('تعديل التفاصيل'),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _isMutating ? null : _correctAmounts,
-                      icon: const Icon(Icons.calculate_outlined),
-                      label: const Text('تصحيح المبالغ'),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: _isMutating ? null : _delete,
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
+                  else if (_revisions.isEmpty)
+                    const Text('لا توجد تعديلات سابقة على هذه الحركة.')
+                  else
+                    ..._revisions.map(
+                      (revision) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: Icon(
+                          revision.isDelete
+                              ? Icons.delete_outline
+                              : Icons.history,
+                        ),
+                        title: Text(
+                          revision.isDelete
+                              ? 'نسخة قبل الحذف'
+                              : 'نسخة قبل التعديل',
+                        ),
+                        subtitle: Text(
+                          FinancialFormat.dateTime(revision.changedAt),
+                        ),
+                        trailing: Text(_eventSummary(revision.snapshot)),
                       ),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('حذف الحركة'),
                     ),
-                  ],
+                ],
+              ),
+              if (!widget.record.isDeleted) ...<Widget>[
+                const SizedBox(height: 16),
+                if (workflowManaged)
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text(
+                        'هذه مساهمة ادخار مرتبطة بشبكة التحدي. لتغييرها عدّل الخانات داخل التحدي حتى يبقى التقدم متطابقاً مع السجل المالي.',
+                      ),
+                    ),
+                  )
+                else ...<Widget>[
+                  OutlinedButton.icon(
+                    onPressed: _isMutating ? null : _editMetadata,
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('تعديل التفاصيل'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _isMutating ? null : _correctAmounts,
+                    icon: const Icon(Icons.calculate_outlined),
+                    label: const Text('تصحيح المبالغ'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _isMutating ? null : _delete,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('حذف الحركة'),
+                  ),
                 ],
               ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -914,14 +909,14 @@ class _DetailCard extends StatelessWidget {
 }
 
 class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry, required this.index});
+  const _EntryRow({required this.entry});
 
   final LedgerEntry entry;
-  final int index;
 
   @override
   Widget build(BuildContext context) {
-    final String role = entry.role == null ? '' : ' • ${_roleLabel(entry.role!)}';
+    final String role =
+        entry.role == null ? '' : ' • ${_roleLabel(entry.role!)}';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -982,45 +977,29 @@ class _MetadataDraft {
 }
 
 String _eventTypeLabel(FinancialEventType type) {
-  switch (type) {
-    case FinancialEventType.income:
-      return 'دخل';
-    case FinancialEventType.expense:
-      return 'مصروف';
-    case FinancialEventType.savingContribution:
-      return 'مساهمة ادخار';
-    case FinancialEventType.weeklyAllocation:
-      return 'تقسيم راتب الخميس';
-    case FinancialEventType.currencyConversion:
-      return 'تحويل عملة';
-    case FinancialEventType.goldPurchase:
-      return 'شراء ذهب';
-    case FinancialEventType.goldSale:
-      return 'بيع ذهب';
-    case FinancialEventType.manualAdjustment:
-      return 'تصحيح يدوي';
-  }
+  return switch (type) {
+    FinancialEventType.income => 'دخل',
+    FinancialEventType.expense => 'مصروف',
+    FinancialEventType.savingContribution => 'مساهمة ادخار',
+    FinancialEventType.weeklyAllocation => 'تقسيم راتب الخميس',
+    FinancialEventType.currencyConversion => 'تحويل عملة',
+    FinancialEventType.goldPurchase => 'شراء ذهب',
+    FinancialEventType.goldSale => 'بيع ذهب',
+    FinancialEventType.manualAdjustment => 'تصحيح يدوي',
+  };
 }
 
 IconData _eventIcon(FinancialEventType type) {
-  switch (type) {
-    case FinancialEventType.income:
-      return Icons.south_west;
-    case FinancialEventType.expense:
-      return Icons.north_east;
-    case FinancialEventType.savingContribution:
-      return Icons.savings_outlined;
-    case FinancialEventType.weeklyAllocation:
-      return Icons.call_split;
-    case FinancialEventType.currencyConversion:
-      return Icons.currency_exchange;
-    case FinancialEventType.goldPurchase:
-      return Icons.diamond_outlined;
-    case FinancialEventType.goldSale:
-      return Icons.sell_outlined;
-    case FinancialEventType.manualAdjustment:
-      return Icons.tune;
-  }
+  return switch (type) {
+    FinancialEventType.income => Icons.south_west,
+    FinancialEventType.expense => Icons.north_east,
+    FinancialEventType.savingContribution => Icons.savings_outlined,
+    FinancialEventType.weeklyAllocation => Icons.call_split,
+    FinancialEventType.currencyConversion => Icons.currency_exchange,
+    FinancialEventType.goldPurchase => Icons.diamond_outlined,
+    FinancialEventType.goldSale => Icons.sell_outlined,
+    FinancialEventType.manualAdjustment => Icons.tune,
+  };
 }
 
 String _eventSummary(FinancialEvent event) {
@@ -1030,7 +1009,7 @@ String _eventSummary(FinancialEvent event) {
     final LedgerEntry? source = _firstEntry(event, negative: true);
     final LedgerEntry? destination = _firstEntry(event, negative: false);
     if (source != null && destination != null) {
-      return '${FinancialFormat.assetBalance(source.amountMicros.abs(), source.unit)} → '
+      return '${FinancialFormat.assetBalance(source.amountMicros.abs(), source.unit)} ← '
           '${FinancialFormat.assetBalance(destination.amountMicros.abs(), destination.unit)}';
     }
   }
@@ -1066,64 +1045,15 @@ String _formatSignedEntry(LedgerEntry entry) {
 
 String _entryEditLabel(LedgerEntry entry, int index) {
   final String direction = entry.amountMicros < 0 ? 'خصم' : 'إضافة';
-  final String role = entry.role == null ? '' : ' — ${_roleLabel(entry.role)}';
+  final String role =
+      entry.role == null ? '' : ' — ${_roleLabel(entry.role)}';
   return 'المبلغ ${index + 1} ($direction)$role';
 }
 
 String _roleLabel(LedgerEntryRole? role) {
-  switch (role) {
-    case LedgerEntryRole.weeklyExpensesEnvelope:
-      return 'المصاريف';
-    case LedgerEntryRole.weeklySavingsEnvelope:
-      return 'الادخار';
-    case null:
-      return 'تخصيص';
-  }
-}
-
-String _unitLabel(FinancialUnit unit) {
-  switch (unit) {
-    case FinancialUnit.usd:
-      return 'USD';
-    case FinancialUnit.syp:
-      return 'الليرة السورية';
-    case FinancialUnit.sypNew:
-      return 'الليرة السورية الجديدة';
-    case FinancialUnit.goldGram:
-      return 'ذهب';
-  }
-}
-
-String _unitShort(FinancialUnit unit) {
-  switch (unit) {
-    case FinancialUnit.usd:
-      return 'USD';
-    case FinancialUnit.syp:
-      return 'ل.س';
-    case FinancialUnit.sypNew:
-      return 'ل.س جديدة';
-    case FinancialUnit.goldGram:
-      return 'غ';
-  }
-}
-
-String _editableAmount(int micros, FinancialUnit unit) {
-  final double value = micros / LedgerEntry.microsPerUnit;
-  final int decimals = unit == FinancialUnit.goldGram
-      ? 3
-      : unit == FinancialUnit.usd
-          ? 2
-          : 0;
-  if (decimals == 0) return value.round().toString();
-  final String fixed = value.toStringAsFixed(decimals);
-  return fixed.replaceFirst(RegExp(r'\.?0+$'), '');
-}
-
-String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
-
-String _formatDateTime(DateTime date) {
-  final DateTime local = date.toLocal();
-  final String hour = local.hour.toString().padLeft(2, '0');
-  final String minute = local.minute.toString().padLeft(2, '0');
-  return '${local.day}/${local.month}/${local.year} $hour:$minute';
+  return switch (role) {
+    LedgerEntryRole.weeklyExpensesEnvelope => 'المصاريف',
+    LedgerEntryRole.weeklySavingsEnvelope => 'الادخار',
+    null => 'تخصيص',
+  };
 }
