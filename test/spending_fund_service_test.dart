@@ -219,6 +219,48 @@ void main() {
           FinancialEventType.openingBalance);
     });
 
+    test('corrected and deleted Spending payments preserve audit and cash',
+        () async {
+      await expenses.logExpense(
+        amountMicros: LedgerEntry.amountToMicros(80000),
+        unit: FinancialUnit.syp,
+        occurredAt: today,
+        category: 'طعام',
+        sourceFund: FinancialFund.spending,
+      );
+      final event = (await ledger.loadEvents(type: FinancialEventType.expense))
+          .single;
+      final audit = TransactionHistoryService(database: database, ledger: ledger);
+      await audit.correctAmounts(
+        eventId: event.id,
+        absoluteAmountsMicros: <int>[LedgerEntry.amountToMicros(50000)],
+      );
+      final afterCorrection = await spending.loadCurrentMonth(now: today);
+      expect(afterCorrection.spendableMicros(FinancialUnit.syp),
+          LedgerEntry.amountToMicros(835000));
+      expect(afterCorrection.paidFromSpendingMicros(FinancialUnit.syp),
+          LedgerEntry.amountToMicros(50000));
+      final revisions = await audit.loadRevisions(event.id);
+      expect(revisions, hasLength(1));
+      expect(revisions.single.snapshot.entries.single.fund,
+          FinancialFund.spending);
+      expect(revisions.single.snapshot.entries.single.amountMicros,
+          -LedgerEntry.amountToMicros(80000));
+
+      await audit.deleteEvent(event.id);
+      final afterDeletion = await spending.loadCurrentMonth(now: today);
+      expect(afterDeletion.spendableMicros(FinancialUnit.syp),
+          LedgerEntry.amountToMicros(885000));
+      expect(afterDeletion.paidFromSpendingMicros(FinancialUnit.syp), 0);
+      final deleted = await audit.loadMonth(
+        currentMonth,
+        fund: FinancialFund.spending,
+      );
+      expect(deleted.where((record) => record.isDeleted), hasLength(1));
+      expect((await ledger.loadEvents(type: FinancialEventType.expense)),
+          isEmpty);
+    });
+
     test('SYP New cash stays in its own per-currency row', () async {
       await ledger.addEvent(FinancialEvent.create(
         type: FinancialEventType.income,
