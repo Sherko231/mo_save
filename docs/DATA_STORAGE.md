@@ -129,6 +129,31 @@ When the user confirms receipt, the resulting income event stores that key. The 
 
 A configured monthly payday that does not exist in a shorter month is clamped to that month's final calendar day. Weekly occurrences are enumerated from actual dates, so months with five Thursdays naturally contain five weekly salary occurrences.
 
+### MS-05 — One-off income and opening assets (no new schema version)
+
+Manual cash entries reuse the canonical v10 `financial_events` and
+`financial_event_entries` tables. A real non-salary receipt uses event type
+`income` and a category such as `هدية`, `مكافأة`, `عمل جانبي`, or
+`بيع غرض غير مسجل كأصل`. A previously owned cash amount not yet recorded
+uses the separate `openingBalance` event type, so it increases owned cash
+once without being counted as earned income. Both have **one positive
+balance-affecting posting** in USD/SYP/SYP (N), attributed to exactly one
+`FinancialFund` (including the Unallocated option).
+
+The optional source and detail are saved as labelled human-readable lines in
+the existing event `note` (no new column); category and actual date use
+existing fields. Each form uses one unique `manual-cash:<request-id>`
+recurrence key for duplicate protection, **not** a recurring income schedule.
+The key remains stable during a permitted manual date correction and is
+included in ordinary backup/restore. Item sale income requires an explicit
+confirmation that the sold item was **not** a tracked asset; actual conversion
+or gold-sale ledger postings must be used for tracked holdings.
+
+History retains its normal pre-update/delete revision snapshots, and the
+manual opening type appears separately from earned income. See
+[MANUAL_INCOME.md](MANUAL_INCOME.md) and [TRANSACTION_HISTORY.md](TRANSACTION_HISTORY.md).
+No new SQLite migration or backup format version was introduced under MS-05.
+
 ### MS-04 — Ignored recurring paydays (no new schema version)
 
 An expected income occurrence may be intentionally **ignored** using existing
