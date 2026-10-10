@@ -29,7 +29,7 @@ void main() {
       await tempDirectory.delete(recursive: true);
     });
 
-    test('schema v1 upgrades to v10 without losing challenge data', () async {
+    test('schema v1 upgrades to v11 without losing challenge data', () async {
       final path = '${tempDirectory.path}${Platform.pathSeparator}legacy_v1.db';
       final legacy = await databaseFactoryFfi.openDatabase(
         path,
@@ -130,6 +130,7 @@ void main() {
       expect(tableNames, contains('financial_events'));
       expect(tableNames, contains('financial_event_entries'));
       expect(tableNames, contains('recurring_expense_items'));
+      expect(tableNames, contains('recurring_expense_plan_versions'));
       expect(tableNames, contains('financial_event_revisions'));
 
       final entryColumns = await upgraded.rawQuery(
@@ -278,11 +279,15 @@ void main() {
 
       final upgraded = LocalDatabase.forTesting(path);
       final db = await upgraded.database;
-      expect(await db.getVersion(), 10);
+      expect(await db.getVersion(), LocalDatabase.schemaVersion);
       expect(await db.query('financial_events'), hasLength(3));
       expect(await db.query('financial_event_entries'), hasLength(3));
       expect(await db.query('financial_event_revisions'), hasLength(1));
       expect(await db.query('recurring_expense_items'), hasLength(1));
+      final planVersions = await db.query('recurring_expense_plan_versions');
+      expect(planVersions, hasLength(1));
+      expect(planVersions.single['item_id'], 'utility');
+      expect(planVersions.single['is_active'], 1);
       expect((await db.query('financial_settings')).single['weekly_syp_income'], 885000);
       expect(await db.query('challenge_cells'), hasLength(1));
       expect((await db.query('app_metadata', where: 'key = ?',
