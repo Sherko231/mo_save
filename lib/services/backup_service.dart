@@ -445,6 +445,40 @@ class BackupService {
         );
       }
     }
+
+    final List<Map<String, Object?>> transfers =
+        await transaction.rawQuery('''
+      SELECT f.id, COUNT(*) AS entry_count,
+        COALESCE(SUM(e.amount_micros), 0) AS net_micros,
+        COUNT(DISTINCT e.unit) AS unit_count,
+        COUNT(DISTINCT e.fund) AS fund_count,
+        SUM(CASE WHEN e.affects_balance != 0 THEN 1 ELSE 0 END)
+          AS owned_entry_count,
+        SUM(CASE WHEN e.amount_micros > 0 THEN 1 ELSE 0 END)
+          AS positive_count,
+        SUM(CASE WHEN e.amount_micros < 0 THEN 1 ELSE 0 END)
+          AS negative_count,
+        SUM(CASE WHEN e.unit = 'goldGram' AND e.fund = 'spending'
+          THEN 1 ELSE 0 END) AS invalid_gold
+      FROM financial_events f
+      LEFT JOIN financial_event_entries e ON e.event_id = f.id
+      WHERE f.event_type = 'fundTransfer'
+      GROUP BY f.id
+    ''');
+    for (final transfer in transfers) {
+      if ((transfer['entry_count'] as num).toInt() != 2 ||
+          (transfer['net_micros'] as num).toInt() != 0 ||
+          (transfer['unit_count'] as num).toInt() != 1 ||
+          (transfer['fund_count'] as num).toInt() != 2 ||
+          (transfer['owned_entry_count'] as num).toInt() != 0 ||
+          (transfer['positive_count'] as num).toInt() != 1 ||
+          (transfer['negative_count'] as num).toInt() != 1 ||
+          (transfer['invalid_gold'] as num).toInt() != 0) {
+        throw const BackupException(
+          'النسخة تحتوي تحويل صناديق غير صالح.',
+        );
+      }
+    }
   }
 
   static bool _requireBool(Map<String, dynamic> map, String key) {
