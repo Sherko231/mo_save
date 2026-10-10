@@ -4,7 +4,7 @@ This file is for coding agents working in `Sherko231/mo_save`.
 
 ## Product and sources of truth
 
-This is an offline-first, single-user Arabic/RTL Flutter financial app using a versioned SQLite financial ledger. **The savings/spending fund redesign is planned, not yet implemented.** Never claim a requirement works merely because it appears in a roadmap.
+This is an offline-first, single-user Arabic/RTL Flutter financial app using a versioned SQLite financial ledger. **The savings/spending fund redesign is being implemented in bounded issues; consult the live progress tracker for the currently completed subset.** Never claim a requirement works merely because it appears in a roadmap or is marked committed without execution.
 
 Read, in this order:
 
