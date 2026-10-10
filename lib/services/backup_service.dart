@@ -60,6 +60,7 @@ class BackupService {
   static const String backupExtension = 'mosave';
   static const String _format = 'mo_save_backup';
   static const int _formatVersion = 1;
+  static const int _oldestRestorableSchemaVersion = 9;
   static const int _maxBackupBytes = 25 * 1024 * 1024;
 
   static const List<String> _tableNames = <String>[
@@ -210,6 +211,7 @@ class BackupService {
           'financial_event_revisions',
           decoded.tables,
         );
+        await _ensureRestoredFundsConserveAssets(transaction);
       });
     } catch (_) {
       try {
@@ -259,10 +261,13 @@ class BackupService {
       throw const BackupException('إصدار قاعدة البيانات مفقود من النسخة.');
     }
     final int databaseSchemaVersion = schemaRaw.toInt();
-    if (databaseSchemaVersion != LocalDatabase.schemaVersion) {
+    if (schemaRaw is! int ||
+        databaseSchemaVersion < _oldestRestorableSchemaVersion ||
+        databaseSchemaVersion > LocalDatabase.schemaVersion) {
       throw BackupException(
-        'هذه النسخة تستخدم قاعدة بيانات v$databaseSchemaVersion، '
-        'بينما هذا الإصدار من التطبيق يستخدم v${LocalDatabase.schemaVersion}.',
+        'نسخة قاعدة البيانات v$databaseSchemaVersion غير مدعومة. '
+        'يمكن استعادة النسخ من v$_oldestRestorableSchemaVersion '
+        'إلى v${LocalDatabase.schemaVersion} فقط.',
       );
     }
 
@@ -316,6 +321,24 @@ class BackupService {
         rows.add(Map<String, Object?>.from(rowRaw));
       }
       tables[table] = rows;
+    }
+
+    // Only schema v9 lacks a fund column. Never infer Savings ownership from
+    // checked goal cells or the old non-balance weekly allocations. The value
+    // is explicitly classified as Unallocated, not credited again as income.
+    for (final Map<String, Object?> entry in tables['financial_event_entries']!) {
+      if (databaseSchemaVersion == 9) {
+        if (entry.containsKey('fund')) {
+          throw const BackupException('نسخة v9 تحتوي حقلاً مالياً غير متوقع.');
+        }
+        entry['fund'] = 'unallocated';
+      } else {
+        final Object? fund = entry['fund'];
+        if (fund != 'savings' && fund != 'spending' &&
+            fund != 'unallocated') {
+          throw const BackupException('تصنيف صندوق مالي غير صالح في النسخة.');
+        }
+      }
     }
 
     if (tables['financial_settings']!.length > 1) {
@@ -390,6 +413,36 @@ class BackupService {
       );
       if (updated != 1) {
         throw const BackupException('تعذر استعادة رابط حركة مالية.');
+      }
+    }
+  }
+
+  /// Refuse backups whose asset totals and classified fund totals disagree.
+  /// Fund-only transfers must balance within the same unit; arbitrary
+  /// non-balance challenge/envelope entries do not count as fund movements.
+  static Future<void> _ensureRestoredFundsConserveAssets(
+    DatabaseExecutor transaction,
+  ) async {
+    final List<Map<String, Object?>> rows = await transaction.rawQuery('''
+      SELECT unit,
+        SUM(CASE WHEN affects_balance = 1 THEN amount_micros ELSE 0 END)
+          AS owned_micros,
+        SUM(CASE WHEN affects_balance = 1 OR
+                     event_type = 'fundTransfer' THEN amount_micros ELSE 0 END)
+          AS fund_micros
+      FROM (
+        SELECT e.unit, e.amount_micros, e.affects_balance, f.event_type
+        FROM financial_event_entries e
+        JOIN financial_events f ON f.id = e.event_id
+      )
+      GROUP BY unit
+    ''');
+    for (final Map<String, Object?> row in rows) {
+      if ((row['owned_micros'] as num).toInt() !=
+          (row['fund_micros'] as num).toInt()) {
+        throw const BackupException(
+          'النسخة تحتوي حركات غير متوازنة بين الأرصدة والصناديق.',
+        );
       }
     }
   }
