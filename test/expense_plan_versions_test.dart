@@ -169,6 +169,58 @@ void main() {
       expect(oldPayment.category, 'أمبير');
     });
 
+    test('one paid planned occurrence is unique; extra one-off remains possible',
+        () async {
+      final item = await addAmpere();
+      await ledger.addEvent(FinancialEvent.create(
+        type: FinancialEventType.income,
+        occurredAt: DateTime.now(),
+        entries: <LedgerEntry>[
+          LedgerEntry(
+            unit: FinancialUnit.syp,
+            amountMicros: LedgerEntry.amountToMicros(600000),
+            fund: FinancialFund.spending,
+          ),
+        ],
+      ));
+      Future<void> pay(String identity, {int amount = 240000}) =>
+          expenses.logExpense(
+            amountMicros: LedgerEntry.amountToMicros(amount),
+            unit: FinancialUnit.syp,
+            occurredAt: DateTime.now(),
+            category: item.name,
+            sourceFund: FinancialFund.spending,
+            plannedItemId: item.id,
+            requestId: identity,
+          );
+      await pay('ampere-month-payment');
+      final snapshot = await expenses.loadMonth(current);
+      expect(snapshot.paidPlanItemIds, contains(item.id));
+      expect(snapshot.actualTotalsMicros[FinancialUnit.syp],
+          LedgerEntry.amountToMicros(240000));
+      await pay('ampere-month-payment');
+      expect((await ledger.loadEvents(type: FinancialEventType.expense)),
+          hasLength(1));
+      await expectLater(pay('new-request-id', amount: 250000), throwsStateError);
+      await expenses.logExpense(
+        amountMicros: LedgerEntry.amountToMicros(10000),
+        unit: FinancialUnit.syp,
+        occurredAt: DateTime.now(),
+        category: 'أمبير إضافي',
+        sourceFund: FinancialFund.spending,
+      );
+      expect((await ledger.loadEvents(type: FinancialEventType.expense)),
+          hasLength(2));
+      await plans.updateItem(item.copyWith(
+        amountMicros: LedgerEntry.amountToMicros(310000),
+      ), effectiveFromMonth: next);
+      expect((await expenses.loadMonth(current)).actualTotalsMicros[FinancialUnit.syp],
+          LedgerEntry.amountToMicros(250000));
+      expect((await expenses.loadMonth(current)).paidPlanItemIds,
+          contains(item.id));
+      expect((await expenses.loadMonth(next)).paidPlanItemIds, isEmpty);
+    });
+
     test('future-only planned gas appears in management, not early reports',
         () async {
       final gas = RecurringExpenseItem.create(
