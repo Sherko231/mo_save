@@ -21,6 +21,11 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - Non-zero SYP (N) remains excluded from the combined USD estimate until a defined valuation rule exists.
 - Real-calendar recurring income with both four- and five-Thursday months.
 - Monthly payday 29–31 clamps to the real last day in shorter months.
+- A 50 USD manual gift is a single real-income receipt; Savings and owned-asset totals increase exactly once.
+- Opening pre-existing cash records an owned asset but is **not income** in period aggregates; Unallocated remains a separate bucket.
+- Stable manual entry request keys prevent duplicate receipts while rejecting changed-payload retries.
+- One-off cash receipts reject tracked gold, future dates, non-positive values and item-sale income without explicit untracked-item confirmation.
+- Correcting manually entered income preserves event type/fund and the original revision snapshot; manual dates may be corrected without relaxing recurring-payday date rules.
 - Ignoring a specific old payday persists after database restart and can be undone without writing income or balances.
 - A confirmed ignored payday is rejected; the receipt and ignore disposition cannot coexist.
 - Actual historical salary receipt and its already-spent amount are two linked atomic events, and the net balance is zero when the salary was spent in full.
@@ -35,7 +40,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02, MS-03 and MS-04 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-05 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
