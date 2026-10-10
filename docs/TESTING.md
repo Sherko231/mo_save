@@ -21,6 +21,10 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - Non-zero SYP (N) remains excluded from the combined USD estimate until a defined valuation rule exists.
 - Real-calendar recurring income with both four- and five-Thursday months.
 - Monthly payday 29–31 clamps to the real last day in shorter months.
+- Ignoring a specific old payday persists after database restart and can be undone without writing income or balances.
+- A confirmed ignored payday is rejected; the receipt and ignore disposition cannot coexist.
+- Actual historical salary receipt and its already-spent amount are two linked atomic events, and the net balance is zero when the salary was spent in full.
+- Receipt uniqueness survives repeated confirmation; changed salary defaults do not hide already-recorded historical occurrences.
 - Weekly envelope defaults clamp to the actual received salary.
 - Weekly envelope allocation remains non-balance-affecting and cannot be duplicated.
 - Actual expenses cannot exceed the currently owned balance.
@@ -29,11 +33,15 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - Insufficient cash prevents conversion/gold purchase mutations.
 - Challenge-grid progress keeps one canonical non-balance saving contribution and removes it when progress returns to zero.
 
+## Current verification status
+
+The MS-02, MS-03 and MS-04 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+
 ## Migration QA
 
 The migration suite covers two upgrade paths that contain client data:
 
-1. A real schema-v1 SQLite file is created, populated with a challenge and cells, then opened through the current `LocalDatabase`. The test verifies upgrade to schema v9, preservation of challenge data, and presence of the later ledger/settings/expense/revision schema.
+1. A real schema-v1 SQLite file is created, populated with a challenge and cells, then opened through the current `LocalDatabase`. The test verifies upgrade to schema v10, preservation of challenge data, and presence of the later ledger/settings/expense/revision schema.
 2. Legacy `saving_challenges_v1` SharedPreferences JSON is loaded through `ChallengeStorage`, migrated once into SQLite, removed from the legacy store, and reconciled into the canonical challenge-progress ledger event when completed cells already exist.
 
 These tests are intended to catch accidental missing migrations, destructive schema changes, duplicate legacy imports, and challenge/ledger divergence before release.
