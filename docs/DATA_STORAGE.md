@@ -306,6 +306,24 @@ Owned(unit) = Savings(unit) + Spending(unit) + Unallocated(unit)
 
 Implementation tests have been added in `test/fund_ledger_test.dart` but have **not** been run (CLI checks explicitly omitted at owner request). See the issue and progress tracker for verification status.
 
+### MS-08 — Paying actual expenses from Savings or Spending (no schema change)
+
+The actual expense form writes a single canonical `expense` event with one
+negative balance-affecting cash posting from the **explicitly selected**
+`savings` or `spending` fund. Category, actual payment date, and note
+(a mandatory reason for direct Savings withdrawals) are kept on the event.
+The source fund is stored per ledger entry and persists through audited
+corrections, deletions, backups, and revision snapshots. There is no second
+wallet balance, fund-transfer event, or income entry.
+
+A recurring expense plan item only prefills its category, currency, and
+proposed amount. It does not mark any scheduled bill occurrence settled or
+debit cash until an actual payment is confirmed; time-effective recurrence
+changes and paid-occurrence matching belong to MS-09. Client UI submissions
+use a stable per-form expense ID to protect against repeat debits even when
+the initial payment consumed all the source-fund cash. See
+[EXPENSE_FUND_WORKFLOW.md](EXPENSE_FUND_WORKFLOW.md).
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
