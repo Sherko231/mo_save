@@ -398,6 +398,16 @@ class TransactionHistoryService {
           );
         }
         break;
+      case FinancialEventType.openingBalance:
+        if (event.entries.length != 1 ||
+            event.entries.any((entry) => !entry.affectsBalance ||
+                entry.amountMicros <= 0 ||
+                entry.unit == FinancialUnit.goldGram)) {
+          throw const TransactionMutationException(
+            'الرصيد الافتتاحي يجب أن يكون مبلغاً نقدياً موجباً.',
+          );
+        }
+        break;
       case FinancialEventType.expense:
         if (event.entries.any(
           (entry) => !entry.affectsBalance || entry.amountMicros >= 0,
