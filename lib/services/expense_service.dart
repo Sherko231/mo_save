@@ -15,6 +15,20 @@ class ExpenseMonthSnapshot {
   final List<FinancialEvent> actualEvents;
   final Map<FinancialUnit, int> plannedTotalsMicros;
   final Map<FinancialUnit, int> actualTotalsMicros;
+
+  /// Plan item IDs explicitly linked to one paid occurrence for the month.
+  /// Category text matches alone do NOT establish a paid installment.
+  Set<String> get paidPlanItemIds {
+    final paid = <String>{};
+    for (final event in actualEvents) {
+      final key = event.recurrenceKey;
+      if (key == null || !key.startsWith('expense-plan:')) continue;
+      final body = key.substring('expense-plan:'.length);
+      final splitAt = body.lastIndexOf(':');
+      if (splitAt > 0) paid.add(body.substring(0, splitAt));
+    }
+    return paid;
+  }
 }
 
 class ExpenseService {
@@ -72,6 +86,7 @@ class ExpenseService {
     String? note,
     FinancialFund sourceFund = FinancialFund.unallocated,
     String? requestId,
+    String? plannedItemId,
   }) async {
     if (amountMicros <= 0) {
       throw ArgumentError('Expense amount must be greater than zero.');
@@ -107,8 +122,25 @@ class ExpenseService {
       throw ArgumentError('Expense date cannot be in the future.');
     }
 
+    final String? plannedId = plannedItemId?.trim();
+    String? plannedKey;
+    if (plannedId != null) {
+      if (plannedId.isEmpty) {
+        throw ArgumentError('Linked planned item ID cannot be empty.');
+      }
+      final active = await _planStorage.loadItemsForMonth(expenseDay);
+      if (!active.any((item) => item.id == plannedId && item.unit == unit)) {
+        throw ArgumentError(
+          'Selected planned item is not active in this payment month/currency.',
+        );
+      }
+      final monthKey = expenseDay.year * 100 + expenseDay.month;
+      plannedKey = 'expense-plan:$plannedId:$monthKey';
+    }
+
     final FinancialEvent event = FinancialEvent.create(
       id: cleanedRequestId == null ? null : 'expense_$cleanedRequestId',
+      recurrenceKey: plannedKey,
       type: FinancialEventType.expense,
       occurredAt: DateTime(
         expenseDay.year,
@@ -126,6 +158,16 @@ class ExpenseService {
       category: cleanCategory,
       note: cleanNote,
     );
+
+    // A planned installment has one stable occurrence identity per month.
+    // An extra ad hoc payment is always possible without plannedItemId.
+    if (plannedKey != null) {
+      final linked = await _ledgerStorage.loadEventByRecurrenceKey(plannedKey);
+      if (linked != null) {
+        if (_sameExpense(linked, event)) return;
+        throw StateError('This planned monthly installment was already paid.');
+      }
+    }
 
     // Recovered UI requests are checked BEFORE available cash: the original
     // payment might have spent the whole balance. Conflicting reuse fails.
@@ -155,9 +197,14 @@ class ExpenseService {
     try {
       await _ledgerStorage.addEvent(event);
     } catch (_) {
-      if (cleanedRequestId == null) rethrow;
-      final existing = await _ledgerStorage.loadEvent(event.id);
-      if (_sameExpense(existing, event)) return;
+      if (cleanedRequestId != null) {
+        final existing = await _ledgerStorage.loadEvent(event.id);
+        if (_sameExpense(existing, event)) return;
+      }
+      if (plannedKey != null &&
+          await _ledgerStorage.loadEventByRecurrenceKey(plannedKey) != null) {
+        throw StateError('This planned monthly installment was already paid.');
+      }
       rethrow;
     }
   }
@@ -169,6 +216,7 @@ class ExpenseService {
         existing.occurredAt != request.occurredAt ||
         existing.category != request.category ||
         existing.note != request.note ||
+        existing.recurrenceKey != request.recurrenceKey ||
         existing.entries.length != 1 ||
         request.entries.length != 1) {
       return false;
