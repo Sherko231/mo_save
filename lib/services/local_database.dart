@@ -12,7 +12,7 @@ class LocalDatabase {
   static final LocalDatabase instance = LocalDatabase._();
 
   static const String databaseName = 'mo_save.db';
-  static const int schemaVersion = 10;
+  static const int schemaVersion = 11;
 
   static bool _databaseFactoryConfigured = false;
 
@@ -73,6 +73,7 @@ class LocalDatabase {
         await _createSchemaV8(database);
         await _createSchemaV9(database);
         await _createSchemaV10(database);
+        await _createSchemaV11(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         await _runMigrations(database, oldVersion, newVersion);
@@ -320,6 +321,45 @@ class LocalDatabase {
     ''');
   }
 
+  /// Time-effective recurring plans. Older rows are preserved as a baseline
+  /// rather than overwritten on future edits. Legacy v10 supplies only the
+  /// final value, so a historically unknown earlier price cannot be recovered.
+  static Future<void> _createSchemaV11(DatabaseExecutor database) async {
+    await database.execute('''
+      CREATE TABLE recurring_expense_plan_versions (
+        item_id TEXT NOT NULL,
+        effective_month INTEGER NOT NULL CHECK (effective_month >= 190001),
+        name TEXT NOT NULL,
+        unit TEXT NOT NULL,
+        amount_micros INTEGER NOT NULL CHECK (amount_micros > 0),
+        is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+        recorded_at_ms INTEGER NOT NULL,
+        PRIMARY KEY (item_id, effective_month)
+      )
+    ''');
+    await database.execute('''
+      CREATE INDEX recurring_expense_plan_versions_month_idx
+      ON recurring_expense_plan_versions(effective_month, item_id)
+    ''');
+    // This is the single known baseline from the previous client, not a
+    // fictional historic revision. No financial event is created or changed.
+    final rows = await database.query('recurring_expense_items');
+    for (final row in rows) {
+      final created = DateTime.fromMillisecondsSinceEpoch(
+        (row['created_at_ms']! as num).toInt(),
+      );
+      await database.insert('recurring_expense_plan_versions', {
+        'item_id': row['id'],
+        'effective_month': created.year * 100 + created.month,
+        'name': row['name'],
+        'unit': row['unit'],
+        'amount_micros': row['amount_micros'],
+        'is_active': 1,
+        'recorded_at_ms': row['updated_at_ms'],
+      });
+    }
+  }
+
   static Future<void> _runMigrations(
     DatabaseExecutor database,
     int oldVersion,
@@ -353,6 +393,9 @@ class LocalDatabase {
           break;
         case 10:
           await _createSchemaV10(database);
+          break;
+        case 11:
+          await _createSchemaV11(database);
           break;
         default:
           throw StateError('Missing database migration for schema v$version.');
