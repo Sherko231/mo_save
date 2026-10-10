@@ -31,7 +31,7 @@ For **the current month**, each currency card shows four distinct quantities:
 
 **Important limitation:** Existing recurring expense plan items are not yet linked to paid bill occurrences. We therefore cannot reliably know how much of an individual recurring commitment is still unpaid. The projection explicitly assumes **all** planned items were to be paid *again from now*. It may double-count a bill that was in fact already paid, so it is a **conservative what-if scenario**, not a promised disposable remainder or confirmed outstanding balance. Negative hypothetical results are shown as an estimated shortfall, **never a negative real wallet**. True plan-versus-paid matching and effective-dated commitments are future MS-08/MS-09 work.
 
-Home's separate historic month picker continues to control historic overview and expense-detail sections. This new section has **its own live current-month label** and must not silently present a historic month's plan as money due right now.
+Home's separate historic month picker continues to control historic overview and expense-detail sections. This new section has **its own live current-month label** and must not silently present a historic month's plan as money due right now. Home refreshes and edits to the existing monthly expense-plan sheet invalidate the Spending dashboard and reload the snapshot, so a new plan amount is reflected without inventing any paid expense.
 
 ## Primary actions
 
