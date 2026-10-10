@@ -328,7 +328,9 @@ class LocalDatabase {
     await database.execute('''
       CREATE TABLE recurring_expense_plan_versions (
         item_id TEXT NOT NULL,
-        effective_month INTEGER NOT NULL CHECK (effective_month >= 190001),
+        effective_month INTEGER NOT NULL
+          CHECK (effective_month BETWEEN 190001 AND 999912
+            AND effective_month % 100 BETWEEN 1 AND 12),
         name TEXT NOT NULL,
         unit TEXT NOT NULL,
         amount_micros INTEGER NOT NULL CHECK (amount_micros > 0),
