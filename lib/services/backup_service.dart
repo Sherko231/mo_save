@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'financial_ledger_storage.dart';
 import 'local_database.dart';
+import 'expense_plan_storage.dart';
 import 'notification_preferences_storage.dart';
 
 class BackupException implements Exception {
@@ -68,7 +69,9 @@ class BackupService {
     'financial_settings',
     'challenges',
     'challenge_cells',
+    'recurring_expense_plan_versions',
     'recurring_expense_items',
+    'recurring_expense_plan_versions',
     'financial_events',
     'financial_event_entries',
     'financial_event_revisions',
@@ -200,6 +203,14 @@ class BackupService {
           'recurring_expense_items',
           decoded.tables,
         );
+        if (decoded.databaseSchemaVersion >= 11) {
+          await _insertRows(
+            transaction, 'recurring_expense_plan_versions', decoded.tables,
+          );
+        } else {
+          await ExpensePlanStorage.restoreLegacyPlanBaselines(transaction);
+        }
+        await _ensureRestoredPlansHaveBaselines(transaction);
         await _insertFinancialEvents(transaction, decoded.tables);
         await _insertRows(
           transaction,
@@ -310,6 +321,16 @@ class BackupService {
         <String, List<Map<String, Object?>>>{};
     for (final String table in _tableNames) {
       final Object? rowsRaw = tablesRaw[table];
+      if (table == 'recurring_expense_plan_versions' &&
+          databaseSchemaVersion < 11) {
+        if (rowsRaw != null) {
+          throw const BackupException(
+            'نسخة قديمة تحتوي سجلاً زمنياً غير متوقع للخطة.',
+          );
+        }
+        tables[table] = <Map<String, Object?>>[];
+        continue;
+      }
       if (rowsRaw is! List<dynamic>) {
         throw BackupException('الجدول $table مفقود أو غير صالح في النسخة.');
       }
@@ -364,6 +385,33 @@ class BackupService {
       tables: tables,
       notifications: notifications,
     );
+  }
+
+  /// Reject v11 archives with an omitted plan history before commit.
+  /// Source v9/v10 imports are explicitly seeded from their only known
+  /// baseline; no missing past prices are invented.
+  static Future<void> _ensureRestoredPlansHaveBaselines(
+    DatabaseExecutor txn,
+  ) async {
+    final invalid = await txn.rawQuery('''
+      SELECT COUNT(*) AS invalid_count
+      FROM recurring_expense_items i
+      WHERE NOT EXISTS (
+        SELECT 1 FROM recurring_expense_plan_versions v
+        WHERE v.item_id = i.id
+      )
+    ''');
+    final orphaned = await txn.rawQuery('''
+      SELECT COUNT(*) AS invalid_count
+      FROM recurring_expense_plan_versions v
+      WHERE NOT EXISTS (
+        SELECT 1 FROM recurring_expense_items i WHERE i.id = v.item_id
+      )
+    ''');
+    if ((invalid.single['invalid_count'] as num).toInt() != 0 ||
+        (orphaned.single['invalid_count'] as num).toInt() != 0) {
+      throw const BackupException('سجل تغييرات خطة المصاريف غير مكتمل.');
+    }
   }
 
   static Future<void> _insertRows(
