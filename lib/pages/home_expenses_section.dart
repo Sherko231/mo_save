@@ -1,15 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/financial_event.dart';
-import '../models/recurring_expense_item.dart';
 import '../services/expense_service.dart';
 import '../services/financial_ledger_storage.dart';
 import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'expense_plan_sheet.dart';
+import 'spending_quick_expense_page.dart';
 
 class HomeExpensesSection extends StatefulWidget {
   const HomeExpensesSection({
@@ -30,7 +29,6 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
   StreamSubscription<void>? _ledgerChanges;
   ExpenseMonthSnapshot? _snapshot;
   bool _isLoading = true;
-  bool _isSavingExpense = false;
 
   @override
   void initState() {
@@ -91,237 +89,17 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
   }
 
   Future<void> _logExpense() async {
-    final List<RecurringExpenseItem> planItems = _snapshot?.planItems ?? const [];
-    final TextEditingController amountController = TextEditingController();
-    final TextEditingController noteController = TextEditingController();
-    String category = planItems.isEmpty ? 'مصروف طارئ' : planItems.first.name;
-    FinancialUnit unit =
-        planItems.isEmpty ? FinancialUnit.syp : planItems.first.unit;
-    DateTime expenseDate = DateTime.now();
-
-    final _ActualExpenseDraft? draft = await showDialog<_ActualExpenseDraft>(
-      context: context,
-      builder: (dialogContext) {
-        String? amountError;
-        return StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: const Text('مصروف فعلي من صندوق المصاريف'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  DropdownButtonFormField<String>(
-                    value: planItems.any((item) => item.name == category)
-                        ? category
-                        : '__other__',
-                    decoration: const InputDecoration(
-                      labelText: 'التصنيف',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: <DropdownMenuItem<String>>[
-                      ...planItems.map(
-                        (item) => DropdownMenuItem<String>(
-                          value: item.name,
-                          child: Text(item.name),
-                        ),
-                      ),
-                      const DropdownMenuItem<String>(
-                        value: '__other__',
-                        child: Text('مصروف طارئ / آخر'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() {
-                        amountError = null;
-                        if (value == '__other__') {
-                          category = 'مصروف طارئ';
-                          unit = FinancialUnit.syp;
-                          amountController.clear();
-                        } else {
-                          category = value;
-                          final RecurringExpenseItem selected =
-                              planItems.firstWhere((item) => item.name == value);
-                          unit = selected.unit;
-                          amountController.text = FinancialFormat.editableAmount(
-                            selected.amountMicros,
-                            selected.unit,
-                          );
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    maxLength: 80,
-                    decoration: InputDecoration(
-                      labelText: 'اسم/تصنيف المصروف',
-                      hintText: category,
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: (value) {
-                      if (value.trim().isNotEmpty) category = value.trim();
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<FinancialUnit>(
-                    value: unit,
-                    decoration: const InputDecoration(
-                      labelText: 'العملة',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _cashUnits
-                        .map(
-                          (value) => DropdownMenuItem<FinancialUnit>(
-                            value: value,
-                            child: Text(FinancialFormat.unitLabel(value)),
-                          ),
-                        )
-                        .toList(growable: false),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() {
-                        unit = value;
-                        amountError = null;
-                        amountController.clear();
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.numberWithOptions(
-                      decimal: unit == FinancialUnit.usd,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      if (unit == FinancialUnit.usd)
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                      else
-                        FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    onChanged: (_) => setDialogState(() => amountError = null),
-                    decoration: InputDecoration(
-                      labelText: 'المبلغ المصروف',
-                      suffixText: FinancialFormat.unitShort(unit),
-                      errorText: amountError,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final DateTime now = DateTime.now();
-                      final DateTime today = DateTime(now.year, now.month, now.day);
-                      final DateTime? picked = await showDatePicker(
-                        context: dialogContext,
-                        initialDate: expenseDate.isAfter(today) ? today : expenseDate,
-                        firstDate: DateTime(2020),
-                        lastDate: today,
-                      );
-                      if (picked != null) {
-                        setDialogState(() => expenseDate = picked);
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_today_outlined),
-                    label: Text(FinancialFormat.date(expenseDate)),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 2,
-                    maxLength: 300,
-                    decoration: const InputDecoration(
-                      labelText: 'ملاحظة (اختياري)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final String rawAmount = amountController.text.trim();
-                  final num? amount = unit == FinancialUnit.usd
-                      ? double.tryParse(rawAmount)
-                      : int.tryParse(rawAmount);
-                  if (amount == null || amount <= 0) {
-                    setDialogState(() {
-                      amountError = 'أدخل مبلغاً صالحاً أكبر من صفر.';
-                    });
-                    return;
-                  }
-                  if (category.trim().isEmpty) {
-                    setDialogState(() {
-                      amountError = 'أدخل تصنيفاً للمصروف.';
-                    });
-                    return;
-                  }
-                  Navigator.pop(
-                    dialogContext,
-                    _ActualExpenseDraft(
-                      category: category.trim(),
-                      unit: unit,
-                      amount: amount,
-                      date: expenseDate,
-                      note: noteController.text.trim(),
-                    ),
-                  );
-                },
-                child: const Text('تسجيل'),
-              ),
-            ],
-          ),
-        );
-      },
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const SpendingQuickExpensePage(),
+      ),
     );
-
-    amountController.dispose();
-    noteController.dispose();
-    if (draft == null || !mounted) return;
-
-    setState(() => _isSavingExpense = true);
-    try {
-      await _service.logExpense(
-        amountMicros: LedgerEntry.amountToMicros(draft.amount),
-        unit: draft.unit,
-        occurredAt: draft.date,
-        category: draft.category,
-        note: draft.note.isEmpty ? null : draft.note,
-        sourceFund: FinancialFund.spending,
-      );
-      await _reload();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسجيل المصروف.')),
-      );
-    } on InsufficientBalanceException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'لا يمكن تسجيل المصروف لأن الرصيد غير كافٍ. المتاح ${FinancialFormat.assetBalance(error.availableMicros, error.unit)}.',
-          ),
-        ),
-      );
-    } on ArgumentError catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('بيانات المصروف غير صالحة. راجع المبلغ والتاريخ.')),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تسجيل المصروف.')),
-      );
-    } finally {
-      if (mounted) setState(() => _isSavingExpense = false);
-    }
+    if (!mounted || saved != true) return;
+    await _reload();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم تسجيل المصروف الفعلي.')),
+    );
   }
 
   @override
@@ -417,13 +195,8 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                 ),
               const SizedBox(height: 4),
               FilledButton.icon(
-                onPressed: _isSavingExpense ? null : _logExpense,
-                icon: _isSavingExpense
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add_card_rounded),
+                onPressed: _logExpense,
+                icon: const Icon(Icons.add_card_rounded),
                 label: const Text('تسجيل مصروف من الصندوق'),
               ),
             ],
@@ -533,22 +306,6 @@ class _MoneyStat extends StatelessWidget {
       ],
     );
   }
-}
-
-class _ActualExpenseDraft {
-  const _ActualExpenseDraft({
-    required this.category,
-    required this.unit,
-    required this.amount,
-    required this.date,
-    required this.note,
-  });
-
-  final String category;
-  final FinancialUnit unit;
-  final num amount;
-  final DateTime date;
-  final String note;
 }
 
 const List<FinancialUnit> _cashUnits = <FinancialUnit>[
