@@ -21,6 +21,10 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - Non-zero SYP (N) remains excluded from the combined USD estimate until a defined valuation rule exists.
 - Real-calendar recurring income with both four- and five-Thursday months.
 - Monthly payday 29–31 clamps to the real last day in shorter months.
+- An actual 885,000 SYP salary can be split 540,000 Spending / 345,000 Savings, with one income event and exact per-fund totals after reload.
+- Actual 300 USD monthly receipts support a user-edited split with nonzero Unallocated remainder, not mandatory all-Savings classification.
+- Prior spending reduces distributable cash before savings/spending allocations; 885k received minus 80k historic expense may produce 345k Savings + 460k Spending with zero Unallocated, preserving exactly one expense.
+- Invalid allocations fail before any partial receipt is written; manual split retries are idempotent for identical postings, and conflicting reuse fails.
 - A 50 USD manual gift is a single real-income receipt; Savings and owned-asset totals increase exactly once.
 - Opening pre-existing cash records an owned asset but is **not income** in period aggregates; Unallocated remains a separate bucket.
 - Stable manual entry request keys prevent duplicate receipts while rejecting changed-payload retries.
@@ -40,7 +44,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-05 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-06 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
