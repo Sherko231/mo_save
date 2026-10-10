@@ -82,7 +82,7 @@ class _HomeSpendingFundSectionState extends State<HomeSpendingFundSection> {
       await _refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسجيل مصروف من صندوق المصاريف.')),
+        const SnackBar(content: Text('تم تسجيل المصروف من الصندوق المختار.')),
       );
     }
   }
@@ -216,7 +216,7 @@ class _HomeSpendingFundSectionState extends State<HomeSpendingFundSection> {
         FilledButton.icon(
           onPressed: snapshot == null ? null : _openExpense,
           icon: const Icon(Icons.add_card_rounded),
-          label: const Text('إضافة مصروف من الصندوق'),
+          label: const Text('إضافة مصروف من المصاريف أو الادخار'),
         ),
         const SizedBox(height: 7),
         OutlinedButton.icon(
