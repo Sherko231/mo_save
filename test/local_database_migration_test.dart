@@ -27,7 +27,7 @@ void main() {
       await tempDirectory.delete(recursive: true);
     });
 
-    test('schema v1 upgrades to v9 without losing challenge data', () async {
+    test('schema v1 upgrades to v10 without losing challenge data', () async {
       final path = '${tempDirectory.path}${Platform.pathSeparator}legacy_v1.db';
       final legacy = await databaseFactoryFfi.openDatabase(
         path,
@@ -129,6 +129,11 @@ void main() {
       expect(tableNames, contains('financial_event_entries'));
       expect(tableNames, contains('recurring_expense_items'));
       expect(tableNames, contains('financial_event_revisions'));
+
+      final entryColumns = await upgraded.rawQuery(
+        'PRAGMA table_info(financial_event_entries)',
+      );
+      expect(entryColumns.map((row) => row['name']), contains('fund'));
 
       await database.close();
     });
