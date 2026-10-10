@@ -51,6 +51,6 @@ Expense reporting should include the historic expense once in its actual expense
 - Confirming an ignored occurrence throws without posting money.
 - A fully spent backdated 885,000 SYP salary creates exactly one receipt plus one expense linked to it; no remaining owned or fund balance.
 - Retrying a confirmed occurrence fails rather than posting a second receipt/expense.
-- Changing salary defaults/payd​​ay after recording a backdated USD receipt preserves its original recurrence identity and amount.
+- Changing salary defaults/payday after recording a backdated USD receipt preserves its original recurrence identity and amount.
 
 Tests have been added in `test/recurring_income_service_test.dart`, but **not executed**. Flutter analyzer, CLI test commands, Android build and device interaction remain unverified. Preserve independent backups until MS-18 completes acceptance.
