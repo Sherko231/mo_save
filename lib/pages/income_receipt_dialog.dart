@@ -113,7 +113,8 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                     ],
                     decoration: InputDecoration(
                       labelText: 'كم صرفت من هالدفعة مسبقاً؟',
-                      helperText: 'اتركه 0 إذا ما صرفت منها شيء.',
+                      helperText: 'اتركه 0 إذا لم تصرف منها أو سجّلت مصاريفها سابقاً، '
+                          'حتى لا تتكرر المصاريف.',
                       suffixText: FinancialFormat.unitShort(unit),
                     ),
                   ),
