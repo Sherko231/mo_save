@@ -236,6 +236,21 @@ void main() {
       expect((await expenses.loadMonth(current)).plannedTotalsMicros[FinancialUnit.syp], 0);
     });
 
+    test('existing restored bills are not duplicated by default seeding',
+        () async {
+      final original = await addAmpere();
+      await (await db.database).delete('app_metadata',
+        where: 'key = ?',
+        whereArgs: <Object?>['expense_plan_client_defaults_seeded_v1']);
+      final loaded = await plans.loadItems();
+      expect(loaded, hasLength(1));
+      expect(loaded.single.id, original.id);
+      expect((await (await db.database)
+          .query('recurring_expense_items')), hasLength(1));
+      expect((await (await db.database)
+          .query('recurring_expense_plan_versions')), hasLength(1));
+    });
+
     test('older and current months cannot be retroactively modified',
         () async {
       final item = await addAmpere();
