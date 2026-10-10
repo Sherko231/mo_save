@@ -266,8 +266,6 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                         savingsMicros: savings,
                         spendingMicros: spending,
                         alreadySpentMicros: spent,
-                      savingsMicros: savings,
-                      spendingMicros: spending,
                       );
                       return Text(
                         'المتبقي غير الموزّع: '
