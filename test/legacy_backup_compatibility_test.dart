@@ -9,6 +9,7 @@ import 'package:mo_save/services/backup_service.dart';
 import 'package:mo_save/services/financial_ledger_storage.dart';
 import 'package:mo_save/services/local_database.dart';
 import 'package:mo_save/services/notification_preferences_storage.dart';
+import 'package:mo_save/services/transaction_history_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -101,12 +102,16 @@ void main() {
         'created_at_ms': 1,
         'updated_at_ms': 1,
       });
-      await database.insert('financial_event_revisions', <String, Object?>{
-        'event_id': 'october-pay',
-        'action': 'update',
-        'snapshot_json': '{"id":"october-pay","note":"previous state"}',
-        'changed_at_ms': 123,
-      });
+      final history = TransactionHistoryService(
+        database: source,
+        ledger: ledger,
+      );
+      await history.updateMetadata(
+        eventId: 'october-pay',
+        occurredAt: DateTime.utc(2026, 10, 8),
+        category: 'salary',
+        note: 'Corrected historic salary note',
+      );
       await database.insert('app_metadata', <String, Object?>{
         'key': 'legacy_marker',
         'value': 'kept',
@@ -129,6 +134,16 @@ void main() {
       for (final item in entries) {
         (item as Map<String, dynamic>).remove('fund');
       }
+      final revisions = tables['financial_event_revisions']! as List<dynamic>;
+      for (final revision in revisions) {
+        final row = revision as Map<String, dynamic>;
+        final snapshot = jsonDecode(row['snapshot_json']! as String)
+            as Map<String, dynamic>;
+        for (final item in snapshot['entries']! as List<dynamic>) {
+          (item as Map<String, dynamic>).remove('fund');
+        }
+        row['snapshot_json'] = jsonEncode(snapshot);
+      }
       final text = jsonEncode(payload);
       outer['databaseSchemaVersion'] = 9;
       outer['payloadJson'] = text;
@@ -148,6 +163,14 @@ void main() {
       expect(await database.query('challenge_cells'), hasLength(1));
       expect(await database.query('recurring_expense_items'), hasLength(1));
       expect(await database.query('financial_event_revisions'), hasLength(1));
+      final history = TransactionHistoryService(
+        database: target,
+        ledger: FinancialLedgerStorage(database: target),
+      );
+      final historyRevisions = await history.loadRevisions('october-pay');
+      expect(historyRevisions, hasLength(1));
+      expect(historyRevisions.single.snapshot.entries.single.fund,
+          FinancialFund.unallocated);
       final metadata = await database.query('app_metadata',
           where: 'key = ?', whereArgs: <Object?>['legacy_marker']);
       expect(metadata.single['value'], 'kept');
