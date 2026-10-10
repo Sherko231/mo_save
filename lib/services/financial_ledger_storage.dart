@@ -269,9 +269,12 @@ class FinancialLedgerStorage {
   Future<void> addGoldCorrection(FinancialEvent event) async {
     final _BalanceRequirement? requirement = _validateGoldCorrection(event);
     if (requirement == null) {
+      _validateFundEntryShape(event);
       final Database database = await _database.database;
       await database.transaction((transaction) async {
+        final before = await _loadFundBalances(transaction);
         await _insertEvent(transaction, event);
+        await _ensureSafeFundMutation(transaction, before);
       });
       notifyChanged();
       return;
@@ -431,6 +434,16 @@ class FinancialLedgerStorage {
     final balances = await loadFundBalancesMicros();
     return balances[fund]![unit]!;
   }
+
+  /// Transaction-scoped balance snapshots for audited history corrections.
+  static Future<Map<FinancialFund, Map<FinancialUnit, int>>>
+      loadFundBalancesForMutation(DatabaseExecutor executor) =>
+          _loadFundBalances(executor);
+
+  static Future<void> ensureFundMutationSafe(
+    DatabaseExecutor executor,
+    Map<FinancialFund, Map<FinancialUnit, int>> before,
+  ) => _ensureSafeFundMutation(executor, before);
 
   static Future<Map<FinancialFund, Map<FinancialUnit, int>>> _loadFundBalances(
     DatabaseExecutor executor,
