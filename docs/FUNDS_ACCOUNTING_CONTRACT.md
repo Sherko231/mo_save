@@ -53,7 +53,9 @@ SUM_f(deltaFund(T,u,f)) = 0
 deltaOwned(T,u) = 0
 
 For each goal G and asset unit u:
-0 <= earmarked(G,u) <= eligible unassigned Savings for G,u
+0 <= earmarked(G,u) <= F[u,Savings]
+For any new earmark or increase D on goal G:
+0 < D <= F[u,Savings] - SUM_goals earmarked(before increase, u)
 SUM_goals earmarked(G,u) <= F[u,Savings]
 ```
 
