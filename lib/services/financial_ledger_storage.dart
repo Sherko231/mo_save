@@ -176,13 +176,17 @@ class FinancialLedgerStorage {
         );
         final List<Map<String, Object?>> meta = await transaction.query(
           'financial_events',
-          columns: <String>['event_type'],
+          columns: <String>['event_type', 'occurred_at_ms', 'recurrence_key', 'note'],
           where: 'id = ?',
           whereArgs: <Object?>[id],
           limit: 1,
         );
         final bool matches = meta.single['event_type'] ==
                 FinancialEventType.fundTransfer.name &&
+            (meta.single['occurred_at_ms'] as num).toInt() ==
+                event.occurredAt.toUtc().millisecondsSinceEpoch &&
+            meta.single['recurrence_key'] == event.recurrenceKey &&
+            meta.single['note'] == _normalizeOptionalText(event.note) &&
             rows.length == event.entries.length &&
             List<bool>.generate(rows.length, (index) {
               final row = rows[index];
