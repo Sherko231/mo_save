@@ -1089,6 +1089,16 @@ IconData _eventIcon(FinancialEventType type) {
 }
 
 String _eventSummary(FinancialEvent event) {
+  if (event.type == FinancialEventType.fundTransfer &&
+      event.entries.length == 2) {
+    final source = event.entries.first;
+    final destination = event.entries.last;
+    return 'من ${_fundLabel(source.fund)} إلى '
+        '${_fundLabel(destination.fund)} • '
+        '${FinancialFormat.assetBalance(
+          source.amountMicros.abs(), source.unit,
+        )}';
+  }
   if (event.type == FinancialEventType.currencyConversion ||
       event.type == FinancialEventType.fundTransfer ||
       event.type == FinancialEventType.goldPurchase ||
