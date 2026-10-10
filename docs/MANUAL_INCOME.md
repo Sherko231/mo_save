@@ -28,6 +28,18 @@ An optional **source** field and a separate user **note** field are saved as rea
 
 The event `category` preserves the chosen inflow classification. The cash input stores the user's actual date, unit, amount, chosen fund, source and note. The selected fund is a classification of the **same receipt**: `savings`, `spending`, or `unallocated`. It is **not** a fund-transfer event and does not create a second deposit. More granular split allocation on a recurring salary is MS-06.
 
+## MS-06 — Optional multi-fund classification
+
+The simple single-fund entry remains available. The new **تقسيم المبلغ على
+أكثر من صندوق** toggle accepts precise Savings and Spending allocations
+for one receipt. The remainder is explicitly Unallocated. The posted event
+still has **one identity and one total**; changing allocations does not
+create extra income or an internal transfer. Retries of a multi-entry
+manual operation use the same event identity and verify the exact fund
+postings. Opening balances retain their non-income classification even
+if split across funds. See
+[RECEIPT_FUND_ALLOCATION.md](RECEIPT_FUND_ALLOCATION.md).
+
 ## Opening cash and duplicate safeguards
 
 Opening balances exist to represent **previously owned cash never entered before**, without displaying it as new income. Users are explicitly warned not to post money already included in owned balances. Previously recorded legacy money in `Unallocated` must be moved by **Settings → توزيع أرصدتك القديمة**; it must not be entered as a second opening balance.
