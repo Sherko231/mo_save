@@ -88,6 +88,7 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                   const SizedBox(height: 10),
                   TextField(
                     controller: amountController,
+                    onChanged: (_) => update(() => errorText = null),
                     keyboardType: TextInputType.numberWithOptions(
                       decimal: !isWhole,
                     ),
@@ -119,6 +120,7 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                   const Divider(),
                   TextField(
                     controller: spentController,
+                    onChanged: (_) => update(() => errorText = null),
                     keyboardType: TextInputType.numberWithOptions(
                       decimal: !isWhole,
                     ),
@@ -184,7 +186,7 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                             settings!.weeklyExpensesAllocation,
                           );
                           final wantedSavings = LedgerEntry.amountToMicros(
-                            settings.weeklySavingsAllocation,
+                            settings!.weeklySavingsAllocation,
                           );
                           spending = wantedSpending > available
                               ? available : wantedSpending;
