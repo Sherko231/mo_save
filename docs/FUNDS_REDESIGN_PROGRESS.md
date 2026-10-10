@@ -1,20 +1,20 @@
 # Mo Save — Redesign Implementation Progress
 
-> Initial tracking snapshot: 2026-10-10. **All 18 redesign issues are OPEN and NOT STARTED at creation.** This file is a human/AI-readable navigation index, not a replacement for GitHub issue states. Never infer implementation from a document or checkbox alone.
+> Progress updated: 2026-10-10. **MS-01 design contract complete; MS-02 through MS-18 still open/not implemented.** This file is a human/AI-readable navigation index, not a replacement for GitHub issue states. Never infer code implementation from design documentation or a checkbox alone.
 
 ## Current checkpoint
 
-- **Next task:** [MS-01 — Define fund-ledger accounting invariants](https://github.com/Sherko231/mo_save/issues/75).
+- **Next task:** [MS-02 — Implement fund-aware ledger and persistence](https://github.com/Sherko231/mo_save/issues/76).
 - **Active implementation:** None.
-- **Redesign progress:** 0 / 18 complete.
-- **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction; linked GitHub Issues contain bounded work and acceptance criteria.
+- **Redesign progress:** 1 / 18 complete (**documentation-only MS-01**; no redesign runtime code implemented).
+- **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
 
 ## Task tracker
 
 | Phase | Task | GitHub Issue | Dependencies | Status |
 | --- | --- | --- | --- | --- |
-| P1 | MS-01 — Define fund-ledger accounting invariants | [#75](https://github.com/Sherko231/mo_save/issues/75) | — | Not started |
+| P1 | MS-01 — Define fund-ledger accounting invariants | [#75](https://github.com/Sherko231/mo_save/issues/75) | — | Done — documentation contract [commit](https://github.com/Sherko231/mo_save/commit/29be2562f1121dc0e474b9547b975b021cd4d10c) |
 | P1 | MS-02 — Implement fund-aware ledger and persistence | [#76](https://github.com/Sherko231/mo_save/issues/76) | MS-01 | Not started |
 | P1 | MS-03 — Safely migrate existing SQLite v9 data | [#77](https://github.com/Sherko231/mo_save/issues/77) | MS-02 | Not started |
 | P2 | MS-04 — Dismiss or backdate overdue salary occurrences | [#78](https://github.com/Sherko231/mo_save/issues/78) | MS-02, MS-03 | Not started |
@@ -65,4 +65,5 @@
 
 ## Change log
 
+- **2026-10-10 — MS-01 complete:** finalized [fund-ledger accounting contract](FUNDS_ACCOUNTING_CONTRACT.md), per-unit conservation/expense/income/fund transfer rules, gold and FX, goal backing, existing v9 migration constraints, audit preservation and explicit deferred decisions. Closed [Issue #75](https://github.com/Sherko231/mo_save/issues/75). No app code changed and no CLI checks/tests/builds executed. Next: [MS-02 / #76](https://github.com/Sherko231/mo_save/issues/76).
 - **2026-10-10** — Redesign specification agreed from client feedback; Issues MS-01..MS-18 (#75..#92) created. No application implementation done as part of planning.
