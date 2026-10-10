@@ -8,6 +8,7 @@ import '../services/spending_fund_service.dart';
 import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'spending_quick_expense_page.dart';
+import 'fund_transfer_page.dart';
 import 'transaction_history_page.dart';
 import 'unallocated_funds_page.dart';
 
@@ -83,6 +84,24 @@ class _HomeSpendingFundSectionState extends State<HomeSpendingFundSection> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تسجيل المصروف من الصندوق المختار.')),
+      );
+    }
+  }
+
+  Future<void> _openTransfer() async {
+    final moved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const FundTransferPage(),
+      ),
+    );
+    if (!mounted) return;
+    if (moved == true) {
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(
+          'تم نقل المال بين الصندوقين بدون تسجيل دخل أو مصروف.',
+        )),
       );
     }
   }
@@ -217,6 +236,12 @@ class _HomeSpendingFundSectionState extends State<HomeSpendingFundSection> {
           onPressed: snapshot == null ? null : _openExpense,
           icon: const Icon(Icons.add_card_rounded),
           label: const Text('إضافة مصروف من المصاريف أو الادخار'),
+        ),
+        const SizedBox(height: 7),
+        OutlinedButton.icon(
+          onPressed: _openTransfer,
+          icon: const Icon(Icons.swap_horiz_rounded),
+          label: const Text('نقل من الادخار للمصاريف أو بالعكس'),
         ),
         const SizedBox(height: 7),
         OutlinedButton.icon(
