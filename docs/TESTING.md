@@ -41,6 +41,11 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - Receipt uniqueness survives repeated confirmation; changed salary defaults do not hide already-recorded historical occurrences.
 - Weekly envelope defaults clamp to the actual received salary.
 - Weekly envelope allocation remains non-balance-affecting and cannot be duplicated.
+- MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
+- MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
+- MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
+- MS-08: choosing a bill plan item prefills only; the plan alone does not debit cash.
+- MS-08: one-form retry is idempotent even for a fully depleted fund; a changed-payload retry rejects. Corrections/deletions preserve the original fund and revisions, and SYP (N) remains distinct.
 - Actual expenses cannot exceed the designated paying fund's balance; quick Spending payments never spend Savings or Unallocated cash.
 - SYP↔USD conversions reconcile source/destination balances and persist the executed rate.
 - Gold purchases reconcile cash-out and gram-in postings without double counting.
@@ -49,7 +54,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-07 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-08 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
