@@ -129,6 +129,26 @@ When the user confirms receipt, the resulting income event stores that key. The 
 
 A configured monthly payday that does not exist in a shorter month is clamped to that month's final calendar day. Weekly occurrences are enumerated from actual dates, so months with five Thursdays naturally contain five weekly salary occurrences.
 
+### MS-06 — Actual receipt split within the existing ledger (no schema change)
+
+A single balance-affecting `income` event may have several positive entries
+in the **same unit**, one each for `savings`, `spending`, and
+`unallocated`. The sum equals the actual receipt amount in fixed integer
+micros. No second receipt, fund-transfer event or cash balance cache is
+created. If a linked historic expense is recorded, its amount is reserved
+inside the receipt's Unallocated positive posting and then deducted by a
+separate linked actual expense within the **same SQLite transaction**.
+Consequently only the net **still owned** money is distributed between
+Savings and Spending, and fund totals equal the owned asset total.
+
+The manual one-off inflow and opening-balance workflow may also assign
+the receipt across several funds through the same postings, retaining its
+`manual-cash:` duplicate-request identity. Prior weekly
+`weeklyAllocation` non-balance events remain historical planning data and
+are **not** interpreted as true fund assignments. Old history and v9 backup
+compatibility remain unchanged. Details and concrete 885k/300 USD examples:
+[RECEIPT_FUND_ALLOCATION.md](RECEIPT_FUND_ALLOCATION.md).
+
 ### MS-05 — One-off income and opening assets (no new schema version)
 
 Manual cash entries reuse the canonical v10 `financial_events` and
