@@ -30,7 +30,7 @@ class ExpenseService {
   Future<ExpenseMonthSnapshot> loadMonth(DateTime month) async {
     final DateTime start = DateTime(month.year, month.month, 1);
     final DateTime end = DateTime(month.year, month.month + 1, 1);
-    final List<RecurringExpenseItem> planItems = await _planStorage.loadItems();
+    final List<RecurringExpenseItem> planItems = await _planStorage.loadItemsForMonth(month);
     final List<FinancialEvent> events = await _ledgerStorage.loadEvents(
       from: start,
       to: end,
