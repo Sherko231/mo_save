@@ -69,6 +69,44 @@ class ExpensePlanStorage {
     )).toList(growable: false);
   }
 
+  /// Settings must also show entries that START in a future month, even
+  /// though they do not affect this month's amount or current quick-pay list.
+  Future<List<RecurringExpenseItem>> loadManageableItems() async {
+    final current = await loadItemsForMonth(DateTime.now());
+    final known = {for (final item in current) item.id: item};
+    final database = await _database.database;
+    final rows = await database.query('recurring_expense_items',
+      orderBy: 'sort_order ASC, created_at_ms ASC');
+    final month = _monthKey(DateTime.now());
+    for (final row in rows) {
+      final id = row['id']! as String;
+      if (known.containsKey(id)) continue;
+      final upcoming = await database.query('recurring_expense_plan_versions',
+        where: 'item_id = ? AND effective_month > ? AND is_active = 1',
+        whereArgs: <Object?>[id, month],
+        orderBy: 'effective_month ASC', limit: 1);
+      if (upcoming.isEmpty) continue;
+      final version = upcoming.first;
+      known[id] = RecurringExpenseItem(
+        id: id,
+        name: version['name']! as String,
+        unit: _parseUnit(version['unit']! as String),
+        amountMicros: (version['amount_micros']! as num).toInt(),
+        sortOrder: (row['sort_order']! as num).toInt(),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+          (row['created_at_ms']! as num).toInt(), isUtc: true),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(
+          (version['recorded_at_ms']! as num).toInt(), isUtc: true),
+      );
+    }
+    final result = known.values.toList(growable: false);
+    result.sort((a,b) {
+      final sort = a.sortOrder.compareTo(b.sortOrder);
+      return sort == 0 ? a.createdAt.compareTo(b.createdAt) : sort;
+    });
+    return result;
+  }
+
   /// Future changes for a named plan, including scheduled discontinuation.
   Future<List<ExpensePlanChange>> loadFutureChanges(String id, {
     DateTime? fromMonth,
