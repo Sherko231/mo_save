@@ -325,6 +325,13 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
           const SizedBox(height: 18),
+          UxActionTile(
+            icon: Icons.add_circle_outline,
+            title: 'إضافة دخل أو رصيد سابق',
+            subtitle: 'هدية، مكافأة، عمل جانبي، بيع غرض أو مال موجود سابقاً',
+            onTap: _openManualInflow,
+          ),
+          const SizedBox(height: 10),
           _HistoryShortcut(onTap: _openHistory),
           const SizedBox(height: 16),
           const UxSectionHeader(
