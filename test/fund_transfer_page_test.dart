@@ -63,6 +63,8 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '100000');
     await tester.pumpAndSettle();
     expect(find.textContaining('بعد التحويل'), findsOneWidget);
+    await tester.ensureVisible(find.text('نقل المبلغ'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('نقل المبلغ'));
     await tester.pumpAndSettle();
     expect(find.text('تأكيد تحويل بين الصناديق'), findsOneWidget);
