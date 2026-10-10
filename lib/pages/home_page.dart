@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/expected_income.dart';
-import '../models/financial_event.dart';
 import '../services/financial_ledger_storage.dart';
 import '../services/home_dashboard_service.dart';
 import '../services/recurring_income_service.dart';
@@ -306,7 +304,7 @@ class _HomePageState extends State<HomePage> {
                   occurrence: occurrence,
                   isConfirming: _confirmingKey == occurrence.recurrenceKey,
                   onConfirm: () => _confirmReceived(occurrence),
-                   onIgnore: () => _ignoreOccurrence(occurrence),
+                  onIgnore: () => _ignoreOccurrence(occurrence),
                 ),
               ),
             ),
