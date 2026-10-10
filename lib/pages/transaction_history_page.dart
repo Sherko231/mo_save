@@ -11,7 +11,10 @@ import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 class TransactionHistoryPage extends StatefulWidget {
-  const TransactionHistoryPage({super.key});
+  const TransactionHistoryPage({super.key, this.initialFund});
+
+  /// Open directly on one fund without hiding the standard all-funds option.
+  final FinancialFund? initialFund;
 
   @override
   State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
@@ -24,6 +27,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String _typeFilter = 'all';
   String _unitFilter = 'all';
+  String _fundFilter = 'all';
   List<TransactionHistoryRecord> _records = const <TransactionHistoryRecord>[];
   bool _isLoading = true;
 
@@ -46,6 +50,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   @override
   void initState() {
     super.initState();
+    _fundFilter = widget.initialFund?.name ?? 'all';
     _ledgerSubscription = FinancialLedgerStorage.changes.listen((_) {
       if (mounted) _load(showLoading: false);
     });
@@ -65,6 +70,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     );
   }
 
+  FinancialFund? get _selectedFund => _fundFilter == 'all'
+      ? null : FinancialFund.values.byName(_fundFilter);
+
   FinancialUnit? get _selectedUnit {
     if (_unitFilter == 'all') return null;
     return FinancialUnit.values.firstWhere(
@@ -79,6 +87,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         _selectedMonth,
         type: _selectedType,
         unit: _selectedUnit,
+        fund: _selectedFund,
       );
       if (!mounted) return;
       setState(() {
@@ -159,6 +168,11 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               _FilterRow(
                 typeFilter: _typeFilter,
                 unitFilter: _unitFilter,
+                fundFilter: _fundFilter,
+                onFundChanged: (value) {
+                  setState(() => _fundFilter = value);
+                  _load(showLoading: false);
+                },
                 onTypeChanged: (value) {
                   setState(() => _typeFilter = value);
                   _load(showLoading: false);
@@ -266,12 +280,16 @@ class _FilterRow extends StatelessWidget {
   const _FilterRow({
     required this.typeFilter,
     required this.unitFilter,
+    required this.fundFilter,
+    required this.onFundChanged,
     required this.onTypeChanged,
     required this.onUnitChanged,
   });
 
   final String typeFilter;
   final String unitFilter;
+  final String fundFilter;
+  final ValueChanged<String> onFundChanged;
   final ValueChanged<String> onTypeChanged;
   final ValueChanged<String> onUnitChanged;
 
@@ -326,20 +344,51 @@ class _FilterRow extends StatelessWidget {
           },
         );
 
+        final Widget fund = DropdownButtonFormField<String>(
+          value: fundFilter,
+          decoration: const InputDecoration(
+            labelText: 'الصندوق',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          items: const <DropdownMenuItem<String>>[
+            DropdownMenuItem(value: 'all', child: Text('كل الصناديق')),
+            DropdownMenuItem(value: 'spending', child: Text('المصاريف')),
+            DropdownMenuItem(value: 'savings', child: Text('الادخار')),
+            DropdownMenuItem(value: 'unallocated', child: Text('غير موزّع')),
+          ],
+          onChanged: (value) {
+            if (value != null) onFundChanged(value);
+          },
+        );
+
+        if (constraints.maxWidth >= 800) {
+          return Row(children: <Widget>[
+            Expanded(child: type),
+            const SizedBox(width: 10),
+            Expanded(child: unit),
+            const SizedBox(width: 10),
+            Expanded(child: fund),
+          ]);
+        }
         if (constraints.maxWidth >= 520) {
-          return Row(
-            children: <Widget>[
+          return Column(children: <Widget>[
+            Row(children: <Widget>[
               Expanded(child: type),
               const SizedBox(width: 10),
               Expanded(child: unit),
-            ],
-          );
+            ]),
+            const SizedBox(height: 10),
+            fund,
+          ]);
         }
         return Column(
           children: <Widget>[
             type,
             const SizedBox(height: 10),
             unit,
+            const SizedBox(height: 10),
+            fund,
           ],
         );
       },
