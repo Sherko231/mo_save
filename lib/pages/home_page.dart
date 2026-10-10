@@ -13,6 +13,7 @@ import 'home_dashboard_overview.dart';
 import 'home_envelope_section.dart';
 import 'home_expenses_section.dart';
 import 'income_receipt_dialog.dart';
+import 'manual_inflow_page.dart';
 import 'transaction_history_page.dart';
 
 class HomePage extends StatefulWidget {
