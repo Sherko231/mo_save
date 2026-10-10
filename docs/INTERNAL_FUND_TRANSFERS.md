@@ -90,6 +90,8 @@ reference rate.
 
 ## Authored regression coverage — NOT RUN
 
+`test/fund_transfer_page_test.dart` also defines a widget scenario for opening the Arabic form, entering 100,000 SYP, confirming the transfer and checking both fund balances without changing owned assets.
+
 `test/fund_transfer_workflow_test.dart` includes 500→400+100 USD fund
 conservation followed by a real 100 USD Spending expense; reverse transfer;
 insufficient source balance; full-source duplicate retry with payload
