@@ -10,6 +10,7 @@ import 'package:mo_save/services/financial_settings_storage.dart';
 import 'package:mo_save/services/local_database.dart';
 import 'package:mo_save/services/manual_inflow_service.dart';
 import 'package:mo_save/services/recurring_income_service.dart';
+import 'package:mo_save/services/transaction_history_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -164,6 +165,48 @@ void main() {
       );
       expect(await ledger.loadEvents(), isEmpty);
       expect((await ledger.loadBalanceMicros())[FinancialUnit.syp], 0);
+    });
+
+    test('audited split correction preserves source and exact total',
+        () async {
+      final cash = await manual.record(
+        kind: ManualInflowKind.gift,
+        unit: FinancialUnit.usd,
+        amountMicros: LedgerEntry.amountToMicros(50),
+        occurredAt: DateTime(2026, 10, 10),
+        fund: FinancialFund.unallocated,
+        savingsMicros: LedgerEntry.amountToMicros(30),
+        spendingMicros: LedgerEntry.amountToMicros(15),
+        source: 'Friend',
+        requestId: 'correct-split',
+      );
+      final audit = TransactionHistoryService(database: database, ledger: ledger);
+      await audit.correctAmounts(
+        eventId: cash.id,
+        absoluteAmountsMicros: <int>[
+          LedgerEntry.amountToMicros(25),
+          LedgerEntry.amountToMicros(20),
+          LedgerEntry.amountToMicros(5),
+        ],
+      );
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
+          LedgerEntry.amountToMicros(50));
+      expect(await ledger.loadFundBalanceMicros(
+        FinancialFund.savings, FinancialUnit.usd,
+      ), LedgerEntry.amountToMicros(25));
+      expect(await ledger.loadFundBalanceMicros(
+        FinancialFund.spending, FinancialUnit.usd,
+      ), LedgerEntry.amountToMicros(20));
+      expect(await ledger.loadFundBalanceMicros(
+        FinancialFund.unallocated, FinancialUnit.usd,
+      ), LedgerEntry.amountToMicros(5));
+      final revisions = await audit.loadRevisions(cash.id);
+      expect(revisions, hasLength(1));
+      expect(revisions.single.snapshot.entries[0].fund, FinancialFund.savings);
+      expect(revisions.single.snapshot.entries[0].amountMicros,
+          LedgerEntry.amountToMicros(30));
+      expect((await ledger.loadEvent(cash.id))!.note,
+          contains('Friend'));
     });
 
     test('manual gift split creates one income and retry cannot duplicate it',
