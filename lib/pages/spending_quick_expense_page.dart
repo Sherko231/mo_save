@@ -246,10 +246,11 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
           'الرصيد الفعلي تغيّر، ولم يُسجّل المصروف.');
     } on StateError catch (_) {
       if (!mounted) return;
+      await _loadReferenceData();
+      if (!mounted) return;
       setState(() => _error =
           'هذه الفاتورة الشهرية مسجّلة كمدفوعة سابقاً. '
           'لنفقة إضافية اختَر تصنيفاً عادياً بدلاً من بند الخطة.');
-      await _loadReferenceData();
     } on ArgumentError catch (_) {
       if (!mounted) return;
       setState(() => _error = 'راجع المبلغ والعملة والتصنيف وسبب المصروف.');
