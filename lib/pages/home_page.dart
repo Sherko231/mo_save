@@ -170,6 +170,8 @@ class _HomePageState extends State<HomePage> {
         amountMicros: draft.amountMicros,
         receivedAt: draft.receivedAt,
         alreadySpentMicros: draft.alreadySpentMicros,
+        savingsMicros: draft.savingsMicros,
+        spendingMicros: draft.spendingMicros,
         spentAt: draft.spentAt,
         spentCategory: draft.spentCategory,
         spentNote: draft.spentNote,
