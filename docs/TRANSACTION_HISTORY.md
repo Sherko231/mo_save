@@ -10,7 +10,7 @@ Home exposes **سجل الحركات والتصحيحات**. The history is chro
 - financial event type;
 - currency/asset unit.
 
-The history includes income, expenses, challenge saving contributions, weekly allocations, SYP/USD conversions, gold purchases/sales and manual adjustments. Opening one record shows every ledger entry, metadata, executed conversion rate when present, creation/update timestamps and prior revisions.
+The history includes income, **distinct non-income opening balances**, expenses, challenge saving contributions, weekly allocations, SYP/USD conversions, gold purchases/sales and manual adjustments. Manual gift/bonus/side-work/item-sale receipts are income events identified by their category; their readable source and reason are kept in the note and visible in history. Opening one record shows every ledger entry, metadata, executed conversion rate when present, creation/update timestamps and prior revisions.
 
 ## Corrections do not edit balances directly
 
@@ -29,7 +29,7 @@ A correction or deletion is rejected when it would:
 
 Challenge saving contributions are therefore read-only in History. Their amount must be changed by changing the challenge cells, preserving the challenge/ledger reconciliation contract.
 
-Recurring event dates remain attached to their generated occurrence and cannot be moved to another day from History. Notes/categories can still be corrected.
+Generated recurring payday event dates remain attached to their generated occurrence and cannot be moved to another day from History. **Manual cash entries with `manual-cash:` identities may have their true date corrected**, since their identity is only an idempotent request key rather than a scheduled payday. Categories/notes and amounts can still be corrected with audit snapshots.
 
 ## Deletion and audit retention
 
