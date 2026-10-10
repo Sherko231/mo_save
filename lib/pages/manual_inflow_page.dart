@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/financial_event.dart';
+import '../models/receipt_fund_allocation.dart';
 import '../services/manual_inflow_service.dart';
 import '../utils/financial_format.dart';
 
@@ -17,6 +18,8 @@ class ManualInflowPage extends StatefulWidget {
 class _ManualInflowPageState extends State<ManualInflowPage> {
   final _service = ManualInflowService();
   final _amountController = TextEditingController();
+  final _savingsController = TextEditingController(text: '0');
+  final _spendingController = TextEditingController(text: '0');
   final _sourceController = TextEditingController();
   final _noteController = TextEditingController();
   final String _requestId = FinancialEvent.newId();
@@ -24,6 +27,7 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
   ManualInflowKind _kind = ManualInflowKind.gift;
   FinancialUnit _unit = FinancialUnit.syp;
   FinancialFund _fund = FinancialFund.unallocated;
+  bool _splitFunds = false;
   DateTime _date = DateTime.now();
   bool _saving = false;
   String? _error;
@@ -31,6 +35,8 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
   @override
   void dispose() {
     _amountController.dispose();
+    _savingsController.dispose();
+    _spendingController.dispose();
     _sourceController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -82,6 +88,19 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
       return;
     }
 
+    final int? savings = _splitFunds
+        ? _parseAmount(_savingsController.text) : null;
+    final int? spending = _splitFunds
+        ? _parseAmount(_spendingController.text) : null;
+    if (_splitFunds) {
+      if (savings == null || spending == null ||
+          savings > amount || spending > amount - savings) {
+        setState(() => _error =
+            'توزيع الادخار والمصاريف أكبر من المبلغ المستلم.');
+        return;
+      }
+    }
+
     if (_kind.isOpeningBalance || _kind == ManualInflowKind.itemSale) {
       final bool? confirm = await showDialog<bool>(
         context: context,
@@ -121,7 +140,9 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
         unit: _unit,
         amountMicros: amount,
         occurredAt: _date,
-        fund: _fund,
+        fund: _splitFunds ? FinancialFund.unallocated : _fund,
+        savingsMicros: savings,
+        spendingMicros: spending,
         source: _sourceController.text,
         note: _noteController.text,
         requestId: _requestId,
@@ -201,6 +222,7 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
             TextField(
               controller: _amountController,
               enabled: !_saving,
+              onChanged: (_) => setState(() => _error = null),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: <TextInputFormatter>[
@@ -239,26 +261,93 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
               ),
             ),
             const SizedBox(height: 14),
-            DropdownButtonFormField<FinancialFund>(
-              value: _fund,
-              decoration: const InputDecoration(
-                labelText: 'وين بدك تخصص المبلغ؟',
-                border: OutlineInputBorder(),
+            SwitchListTile.adaptive(
+              title: const Text('تقسيم المبلغ على أكثر من صندوق'),
+              subtitle: const Text(
+                'اختياري. توزع المبلغ الحقيقي بدون إنشاء إيداع ثاني.',
               ),
-              items: FinancialFund.values
-                  .map((fund) => DropdownMenuItem<FinancialFund>(
-                        value: fund,
-                        child: Text(_fundLabel(fund)),
-                      ))
-                  .toList(growable: false),
-              onChanged: _saving ? null : (fund) {
-                if (fund != null) setState(() => _fund = fund);
-              },
+              value: _splitFunds,
+              onChanged: _saving ? null : (value) =>
+                  setState(() { _splitFunds = value; _error = null; }),
             ),
+            if (!_splitFunds)
+              DropdownButtonFormField<FinancialFund>(
+                value: _fund,
+                decoration: const InputDecoration(
+                  labelText: 'وين بدك تخصص المبلغ؟',
+                  border: OutlineInputBorder(),
+                ),
+                items: FinancialFund.values
+                    .map((fund) => DropdownMenuItem<FinancialFund>(
+                          value: fund,
+                          child: Text(_fundLabel(fund)),
+                        ))
+                    .toList(growable: false),
+                onChanged: _saving ? null : (fund) {
+                  if (fund != null) setState(() => _fund = fund);
+                },
+              )
+            else ...<Widget>[
+              TextField(
+                controller: _spendingController,
+                enabled: !_saving,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (_) => setState(() => _error = null),
+                decoration: InputDecoration(
+                  labelText: 'إلى صندوق المصاريف',
+                  suffixText: FinancialFormat.unitShort(_unit),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _savingsController,
+                enabled: !_saving,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (_) => setState(() => _error = null),
+                decoration: InputDecoration(
+                  labelText: 'إلى صندوق الادخار',
+                  suffixText: FinancialFormat.unitShort(_unit),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Builder(builder: (context) {
+                final amount = _parseAmount(_amountController.text);
+                final savings = _parseAmount(_savingsController.text);
+                final spending = _parseAmount(_spendingController.text);
+                if (amount == null || savings == null || spending == null) {
+                  return const Text('أدخل مبالغ صحيحة لحساب الباقي.');
+                }
+                try {
+                  final split = ReceiptFundAllocation(
+                    receivedMicros: amount,
+                    savingsMicros: savings,
+                    spendingMicros: spending,
+                  );
+                  return Text(
+                    'المتبقي غير الموزّع: '
+                    '${FinancialFormat.assetBalance(
+                      split.remainingUnallocatedMicros, _unit,
+                    )}',
+                  );
+                } on ArgumentError {
+                  return const Text('مجموع التوزيع أكبر من المبلغ المتاح.');
+                }
+              }),
+            ],
             const SizedBox(height: 8),
             const Text(
-              'التخصيص هون يحدد الصندوق لنفس المبلغ، '
-              'وما بيضيفه مرتين. إذا مو متأكد اختار «غير موزّع حالياً».',
+              'كل صندوق يأخذ جزءاً من نفس المبلغ. '
+              'أي مبلغ غير مخصص يبقى غير موزّع حتى تختار له صندوقاً.',
             ),
             if (_error != null) ...<Widget>[
               const SizedBox(height: 12),
