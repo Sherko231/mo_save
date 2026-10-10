@@ -110,6 +110,25 @@ void main() {
       ), LedgerEntry.amountToMicros(25));
     });
 
+    test('untracked item sale requires explicit confirmation', () async {
+      Future<FinancialEvent> sale({required bool confirmed}) => manual.record(
+        kind: ManualInflowKind.itemSale,
+        unit: FinancialUnit.usd,
+        amountMicros: LedgerEntry.amountToMicros(30),
+        occurredAt: DateTime(2026, 10, 10),
+        fund: FinancialFund.unallocated,
+        untrackedAssetSaleConfirmed: confirmed,
+        requestId: 'untracked-item-sale',
+      );
+      await expectLater(sale(confirmed: false), throwsArgumentError);
+      expect(await ledger.loadEvents(), isEmpty);
+      final event = await sale(confirmed: true);
+      expect(event.type, FinancialEventType.income);
+      expect(event.category, 'بيع غرض غير مسجل كأصل');
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
+          LedgerEntry.amountToMicros(30));
+    });
+
     test('manual receipts are cash-only, positive and not future-dated', () async {
       Future<FinancialEvent> submit({
         required FinancialUnit unit,
