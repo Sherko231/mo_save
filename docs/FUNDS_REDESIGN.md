@@ -1,6 +1,6 @@
 # Mo Save — Savings and Spending Redesign Specification
 
-Status: **PLANNED, NOT IMPLEMENTED**. Created 2026-10-10 after client feedback. This is the product specification for GitHub issues MS-01 through MS-18, indexed in [FUNDS_REDESIGN_PROGRESS.md](FUNDS_REDESIGN_PROGRESS.md).
+Status: **IMPLEMENTATION IN PROGRESS** (MS-01..MS-04 delivered to source, but runtime not checked). Created 2026-10-10 after client feedback. This is the product specification for GitHub issues MS-01 through MS-18, indexed in [FUNDS_REDESIGN_PROGRESS.md](FUNDS_REDESIGN_PROGRESS.md).
 
 ## The real product goal
 
@@ -33,7 +33,7 @@ Income receipt, fund allocation, internal transfers, transaction history, initia
 
 ## Account model and invariants
 
-**MS-01 accounting contract is complete as a design deliverable:** [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md). The contract defines exact per-unit conservation equations, fund attribution, transaction matrix, goal earmark checks, migration limitations and implementation/test vectors. It is the normative reference for MS-02 onward. This section is the higher-level product summary; **none of these redesign behaviors are implemented in the app yet**.
+**MS-01 accounting contract is complete as a design deliverable:** [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md). The contract defines exact per-unit conservation equations, fund attribution, transaction matrix, goal earmark checks, migration limitations and implementation/test vectors. It is the normative reference for MS-02 onward. This section is the higher-level product summary. The fund-ledger foundation, v9 data reconciliation, and old-payday dismissal/historical receipt handling have source changes, but the unified Savings/Spending UI, fund allocation on receipt, goal backing and forecasting are still future issues. No runtime verification has been executed.
 
 **Owned asset**: a separate unit such as USD, SYP, SYP (N), or gold grams.
 **Fund**: Savings, Spending, or Unallocated (temporary intake/migration bucket; never silently label this as saved).
