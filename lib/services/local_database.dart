@@ -12,7 +12,7 @@ class LocalDatabase {
   static final LocalDatabase instance = LocalDatabase._();
 
   static const String databaseName = 'mo_save.db';
-  static const int schemaVersion = 9;
+  static const int schemaVersion = 10;
 
   static bool _databaseFactoryConfigured = false;
 
@@ -72,6 +72,7 @@ class LocalDatabase {
         await _createSchemaV7(database);
         await _createSchemaV8(database);
         await _createSchemaV9(database);
+        await _createSchemaV10(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         await _runMigrations(database, oldVersion, newVersion);
@@ -304,6 +305,21 @@ class LocalDatabase {
     ''');
   }
 
+  /// v10 preserves every legacy ledger posting while treating its fund as
+  /// unknown. Existing rows receive the SQLite DEFAULT 'unallocated'.
+  /// No opening income or invented Savings deposit is written.
+  static Future<void> _createSchemaV10(DatabaseExecutor database) async {
+    await database.execute('''
+      ALTER TABLE financial_event_entries
+      ADD COLUMN fund TEXT NOT NULL DEFAULT 'unallocated'
+        CHECK (fund IN ('savings', 'spending', 'unallocated'))
+    ''');
+    await database.execute('''
+      CREATE INDEX financial_event_entries_fund_unit_idx
+      ON financial_event_entries(fund, unit)
+    ''');
+  }
+
   static Future<void> _runMigrations(
     DatabaseExecutor database,
     int oldVersion,
@@ -334,6 +350,9 @@ class LocalDatabase {
           break;
         case 9:
           await _createSchemaV9(database);
+          break;
+        case 10:
+          await _createSchemaV10(database);
           break;
         default:
           throw StateError('Missing database migration for schema v$version.');
