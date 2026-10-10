@@ -28,7 +28,19 @@ Backups use the `.mosave` extension. The file is JSON with an outer envelope con
 
 The checksum is verified before any current data is changed. The payload contains table snapshots plus notification preferences.
 
-The current implementation deliberately requires the backup SQLite schema version to match the app's current `LocalDatabase.schemaVersion`. An incompatible backup is rejected before restore. Future schema migrations must explicitly define compatible backup migration behavior rather than silently guessing at older/newer structures.
+The current application uses SQLite schema **v10**. This version can restore `.mosave` backups created under schema **v9 or v10** with the existing backup envelope format version 1. Older (<v9) or newer (>v10) schemas, non-integral version values, malformed payloads and checksum failures are rejected **before replacing local data**. Restoration **replaces**, never merges, the local database.
+
+For a verified v9 archive, the `financial_event_entries` rows lack the `fund` column. Import adds `fund = unallocated` to each such entry **after checksum verification** and before the single SQLite restore transaction. Historic income, expense and asset postings are not altered or replayed; their existing net amounts determine actual holdings. Old `weeklyAllocation` and `savingContribution` events remain non-balance-affecting historical entries and do **not** automatically constitute new Savings. Original event identities, notes, recurrence keys, exchange rates, expense plans, goal grid cells, revision JSON, app metadata and notification choices are restored. v9 revision snapshots lacking fund are interpreted as Unallocated when displayed.
+
+For v10 archives each financial entry must carry a recognized `savings`, `spending` or `unallocated` fund designation. The import verifies per-unit fund attribution against owned balances inside the SQLite transaction, and rolls back invalid imports. This is **not** a promise to recover a corrupted or tampered backup; SHA-256 checksums validate integrity but do not encrypt or authenticate the file.
+
+After restore, the user can open **Settings → Distribute old balances** (`توزيع أرصدتك القديمة`) to split actually owned, still-Unallocated money among Savings and Spending through explicit atomic **fund-only transfers**. Such transfers never create income or inflate asset totals. Gold may be allocated to Savings, not directly to cash spending. Negative historical holdings are surfaced for correction, not silently reset. The action remains accessible for future unallocated deposits.
+
+Versioned on-device upgrades use SQLite's incremental `onUpgrade` from v9 → v10 (adding the new fund field with the Unallocated default). **Never uninstall or reset the user's application to perform this upgrade.** Prior challenge progress is preserved but is not promoted to goal-backed Savings until MS-13 reconciles it.
+
+New backups exported by schema v10 carry v10 metadata, including explicit fund assignments. A subsequent v10 restore must not duplicate any receipts or internal fund transfer postings; a restore is a replacement, not an append.
+
+The MS-03 tests (`test/local_database_migration_test.dart`, `test/legacy_backup_compatibility_test.dart`) include a v9 SQLite fixture and the v9→v10 backup conversion/round-trip, revisions, goals, budgets, checksum rejection, and no phantom income. **Tests were authored but not executed**, per the requested no-CLI-check workflow; a real device/data acceptance run remains required before final release.
 
 ## Export
 
