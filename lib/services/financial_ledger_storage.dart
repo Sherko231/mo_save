@@ -305,9 +305,16 @@ class FinancialLedgerStorage {
             entry.amountMicros;
       }
       for (final MapEntry<FinancialUnit, int> paid in spent.entries) {
-        if (paid.value > (received[paid.key] ?? 0)) {
+        final int reserved = income.entries
+            .where((entry) =>
+                entry.unit == paid.key &&
+                entry.fund == FinancialFund.unallocated)
+            .fold<int>(0, (total, entry) => total + entry.amountMicros);
+        if (paid.value > (received[paid.key] ?? 0) ||
+            paid.value > reserved) {
           throw ArgumentError(
-            'Historical spending exceeds the receipt for ${paid.key.name}.',
+            'Historical spending must be reserved from this receipt\'s '
+            'Unallocated posting for ${paid.key.name}.',
           );
         }
       }
