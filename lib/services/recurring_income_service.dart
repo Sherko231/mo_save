@@ -30,9 +30,6 @@ class RecurringIncomeService {
       monthStart: monthStart,
     );
 
-    // Fetch by scheduled identity: an actual backdated payment may belong
-    // to a different reporting month. Preserve old receipts after the user
-    // changes recurring salary amounts or payday settings.
     final List<FinancialEvent> incomeEvents =
         await _ledgerStorage.loadRecurringIncomeEventsForMonth(monthStart);
     final Map<String, FinancialEvent> receivedByKey = <String, FinancialEvent>{
@@ -52,17 +49,15 @@ class RecurringIncomeService {
     final ignoredKeys = ignoredRows
         .map((row) => (row['key']! as String).substring(_ignoredPrefix.length))
         .toSet();
-
     final Map<String, ExpectedIncome> byKey = <String, ExpectedIncome>{
       for (final occurrence in expected) occurrence.recurrenceKey: occurrence,
     };
-    // A recorded occurrence remains visible even if it no longer matches the
-    // current schedule. Never turn that historic receipt back into "overdue".
+    // Actual receipts survive a later change of salary schedule or amount.
     for (final event in incomeEvents) {
       final key = event.recurrenceKey;
       if (key == null || byKey.containsKey(key)) continue;
-      final parsed = _parseRecordedOccurrence(event);
-      if (parsed != null) byKey[key] = parsed;
+      final recorded = _parseRecordedOccurrence(event);
+      if (recorded != null) byKey[key] = recorded;
     }
     final result = byKey.values.map((occurrence) {
       final received = receivedByKey[occurrence.recurrenceKey];
@@ -112,20 +107,17 @@ class RecurringIncomeService {
     }
 
     _validateOccurrence(occurrence);
-    final DateTime now = DateTime.now();
-    final DateTime today = DateTime(now.year, now.month, now.day);
-    final DateTime scheduledDay = _calendarDay(occurrence.scheduledDate);
-    if (scheduledDay.isAfter(today)) {
+    final today = _calendarDay(DateTime.now());
+    if (_calendarDay(occurrence.scheduledDate).isAfter(today)) {
       throw StateError('Future recurring income cannot be confirmed yet.');
     }
     if (alreadySpentMicros < 0 || alreadySpentMicros > amountMicros) {
-      throw ArgumentError.value(alreadySpentMicros, 'alreadySpentMicros',
-          'Recorded historical spending must be within the amount received.');
+      throw ArgumentError('Historical expense must not exceed receipt.');
     }
-    final DateTime actualDate = _calendarDay(
+    final DateTime actualDay = _calendarDay(
       receivedAt ?? occurrence.scheduledDate,
     );
-    if (actualDate.isAfter(today)) {
+    if (actualDay.isAfter(today)) {
       throw ArgumentError('Actual receipt date cannot be in the future.');
     }
     final FinancialEvent? existing =
@@ -133,7 +125,8 @@ class RecurringIncomeService {
     if (existing != null) {
       throw StateError('This recurring income occurrence is already confirmed.');
     }
-    final DateTime scheduledLocal = actualDate;
+
+    final DateTime scheduledLocal = actualDay;
     final FinancialEvent event = FinancialEvent.create(
       type: FinancialEventType.income,
       occurredAt: DateTime(
@@ -163,7 +156,7 @@ class RecurringIncomeService {
             id: 'historical_spent_${event.id}',
             type: FinancialEventType.expense,
             occurredAt: DateTime(
-              actualDate.year, actualDate.month, actualDate.day, 12,
+              actualDay.year, actualDay.month, actualDay.day, 12,
             ),
             entries: <LedgerEntry>[
               LedgerEntry(
@@ -187,13 +180,13 @@ class RecurringIncomeService {
     return event;
   }
 
-  /// Dismiss only this scheduled occurrence; no income or balance-affecting
-  /// event is created. A confirmed receipt cannot simultaneously be ignored.
+  /// Ignore one occurrence without posting any money.
+  /// This metadata is already included in the portable app backup.
   Future<void> ignoreOccurrence(ExpectedIncome occurrence) async {
     _validateOccurrence(occurrence);
-    final today = _calendarDay(DateTime.now());
-    if (_calendarDay(occurrence.scheduledDate).isAfter(today)) {
-      throw StateError('Future recurring income cannot be ignored yet.');
+    if (_calendarDay(occurrence.scheduledDate)
+        .isAfter(_calendarDay(DateTime.now()))) {
+      throw StateError('Future income cannot be ignored yet.');
     }
     final Database database = await _database.database;
     await database.transaction((transaction) async {
@@ -205,7 +198,7 @@ class RecurringIncomeService {
         limit: 1,
       );
       if (existing.isNotEmpty) {
-        throw StateError('An already-received occurrence cannot be ignored.');
+        throw StateError('Received income cannot be ignored.');
       }
       await transaction.insert(
         'app_metadata',
@@ -218,7 +211,7 @@ class RecurringIncomeService {
     });
   }
 
-  /// Restore the reminder for this one occurrence, without receiving money.
+  /// Undo ignoring a single occurrence. It remains unpaid until recorded.
   Future<void> undoIgnore(ExpectedIncome occurrence) async {
     _validateOccurrence(occurrence);
     final Database database = await _database.database;
@@ -237,89 +230,22 @@ class RecurringIncomeService {
       kind: occurrence.kind,
       date: occurrence.scheduledDate,
     ) != occurrence.recurrenceKey) {
-      throw ArgumentError('Recurring occurrence key does not match its date.');
+      throw ArgumentError('Recurring occurrence key and date disagree.');
     }
     if ((occurrence.kind == RecurringIncomeKind.weeklySyp &&
             occurrence.unit != FinancialUnit.syp) ||
         (occurrence.kind == RecurringIncomeKind.monthlyUsd &&
             occurrence.unit != FinancialUnit.usd)) {
-      throw ArgumentError('Recurring occurrence unit does not match its kind.');
+      throw ArgumentError('Recurring income kind and unit disagree.');
     }
   }
 
   static ExpectedIncome? _parseRecordedOccurrence(FinancialEvent event) {
     final key = event.recurrenceKey;
     if (key == null) return null;
-    final match = RegExp(r'^income:(weeklySyp|monthlyUsd):(\d{4})-(\d{2})-(\d{2})({
-    required FinancialSettings settings,
-    required DateTime monthStart,
-  }) {
-    final int daysInMonth = DateTime(
-      monthStart.year,
-      monthStart.month + 1,
-      0,
-    ).day;
-    final List<ExpectedIncome> result = <ExpectedIncome>[];
-
-    for (int day = 1; day <= daysInMonth; day++) {
-      final DateTime date = DateTime(monthStart.year, monthStart.month, day);
-      if (date.weekday == settings.weeklyPayday &&
-          settings.weeklySypIncome > 0) {
-        result.add(
-          ExpectedIncome(
-            recurrenceKey: _recurrenceKey(
-              kind: RecurringIncomeKind.weeklySyp,
-              date: date,
-            ),
-            kind: RecurringIncomeKind.weeklySyp,
-            scheduledDate: date,
-            unit: FinancialUnit.syp,
-            expectedAmountMicros:
-                LedgerEntry.amountToMicros(settings.weeklySypIncome),
-          ),
-        );
-      }
-    }
-
-    if (settings.monthlyUsdIncome > 0) {
-      final int payday = settings.monthlyPayday.clamp(1, daysInMonth).toInt();
-      final DateTime date = DateTime(monthStart.year, monthStart.month, payday);
-      result.add(
-        ExpectedIncome(
-          recurrenceKey: _recurrenceKey(
-            kind: RecurringIncomeKind.monthlyUsd,
-            date: date,
-          ),
-          kind: RecurringIncomeKind.monthlyUsd,
-          scheduledDate: date,
-          unit: FinancialUnit.usd,
-          expectedAmountMicros:
-              LedgerEntry.amountToMicros(settings.monthlyUsdIncome),
-        ),
-      );
-    }
-
-    result.sort((a, b) {
-      final int dateCompare = a.scheduledDate.compareTo(b.scheduledDate);
-      if (dateCompare != 0) {
-        return dateCompare;
-      }
-      return a.kind.index.compareTo(b.kind.index);
-    });
-    return result;
-  }
-
-  static String _recurrenceKey({
-    required RecurringIncomeKind kind,
-    required DateTime date,
-  }) {
-    final String month = date.month.toString().padLeft(2, '0');
-    final String day = date.day.toString().padLeft(2, '0');
-    return 'income:${kind.name}:${date.year}-$month-$day';
-  }
-}
-)
-        .firstMatch(key);
+    final match = RegExp(
+      r'^income:(weeklySyp|monthlyUsd):(\d{4})-(\d{2})-(\d{2})$',
+    ).firstMatch(key);
     if (match == null) return null;
     final kind = match.group(1) == 'weeklySyp'
         ? RecurringIncomeKind.weeklySyp
@@ -332,14 +258,14 @@ class RecurringIncomeService {
     if (_recurrenceKey(kind: kind, date: date) != key) return null;
     final unit = kind == RecurringIncomeKind.weeklySyp
         ? FinancialUnit.syp : FinancialUnit.usd;
-    final receivedAmount = event.balanceDeltaMicros(unit);
-    if (receivedAmount <= 0) return null;
+    final amount = event.balanceDeltaMicros(unit);
+    if (amount <= 0) return null;
     return ExpectedIncome(
       recurrenceKey: key,
       kind: kind,
       scheduledDate: date,
       unit: unit,
-      expectedAmountMicros: receivedAmount,
+      expectedAmountMicros: amount,
       receivedEvent: event,
     );
   }
