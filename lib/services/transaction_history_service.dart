@@ -226,6 +226,7 @@ class TransactionHistoryService {
             amountMicros: sign * absoluteAmountsMicros[index],
             affectsBalance: old.affectsBalance,
             role: old.role,
+            fund: old.fund,
           ),
         );
       }
@@ -257,6 +258,7 @@ class TransactionHistoryService {
         oldEvent: current,
         newEvent: corrected,
       );
+      final fundBefore = await FinancialLedgerStorage.loadFundBalancesForMutation(transaction);
       await _writeRevision(transaction, current, action: 'update');
 
       await transaction.update(
@@ -274,6 +276,7 @@ class TransactionHistoryService {
         whereArgs: <Object?>[current.id],
       );
       await _insertEntries(transaction, corrected);
+      await FinancialLedgerStorage.ensureFundMutationSafe(transaction, fundBefore);
     });
 
     FinancialLedgerStorage.notifyChanged();
@@ -296,12 +299,14 @@ class TransactionHistoryService {
       }
 
       await _ensureDeletionBalancesSafe(transaction, current);
+      final fundBefore = await FinancialLedgerStorage.loadFundBalancesForMutation(transaction);
       await _writeRevision(transaction, current, action: 'delete');
       await transaction.delete(
         'financial_events',
         where: 'id = ?',
         whereArgs: <Object?>[current.id],
       );
+      await FinancialLedgerStorage.ensureFundMutationSafe(transaction, fundBefore);
     });
 
     FinancialLedgerStorage.notifyChanged();
@@ -356,6 +361,7 @@ class TransactionHistoryService {
               affectsBalance:
                   (entry['affects_balance']! as num).toInt() == 1,
               role: _parseEntryRole(entry['entry_role'] as String?),
+              fund: FinancialFund.values.byName(entry['fund']! as String),
             ),
           )
           .toList(growable: false),
@@ -432,6 +438,19 @@ class TransactionHistoryService {
           'مساهمة هدف الادخار تتبع التحدي ولا تُصحح يدوياً.',
         );
       case FinancialEventType.manualAdjustment:
+        break;
+      case FinancialEventType.fundTransfer:
+        if (event.entries.length != 2 ||
+            event.entries[0].affectsBalance ||
+            event.entries[1].affectsBalance ||
+            event.entries[0].unit != event.entries[1].unit ||
+            event.entries[0].fund == event.entries[1].fund ||
+            event.entries[0].amountMicros >= 0 ||
+            event.entries[1].amountMicros <= 0 ||
+            event.entries[0].amountMicros != -event.entries[1].amountMicros ||
+            event.entries.any((entry) => entry.unit == FinancialUnit.goldGram && entry.fund == FinancialFund.spending)) {
+          throw const TransactionMutationException('تحويل الصناديق غير متوازن.');
+        }
         break;
     }
   }
@@ -631,6 +650,7 @@ class TransactionHistoryService {
           'amount_micros': entry.amountMicros,
           'affects_balance': entry.affectsBalance ? 1 : 0,
           'entry_role': entry.role?.name,
+          'fund': entry.fund.name,
         },
       );
     }
@@ -657,6 +677,7 @@ class TransactionHistoryService {
               'amountMicros': entry.amountMicros,
               'affectsBalance': entry.affectsBalance,
               'role': entry.role?.name,
+              'fund': entry.fund.name,
             },
           )
           .toList(growable: false),
@@ -680,6 +701,7 @@ class TransactionHistoryService {
                 amountMicros: (entry['amountMicros']! as num).toInt(),
                 affectsBalance: entry['affectsBalance'] as bool? ?? true,
                 role: _parseEntryRole(entry['role'] as String?),
+                fund: FinancialFund.values.byName(entry['fund'] as String? ?? 'unallocated'),
               );
             },
           )
@@ -712,7 +734,8 @@ class TransactionHistoryService {
       if (a[index].unit != b[index].unit ||
           a[index].amountMicros != b[index].amountMicros ||
           a[index].affectsBalance != b[index].affectsBalance ||
-          a[index].role != b[index].role) {
+          a[index].role != b[index].role ||
+          a[index].fund != b[index].fund) {
         return false;
       }
     }
