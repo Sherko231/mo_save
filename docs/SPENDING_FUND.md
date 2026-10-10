@@ -37,6 +37,14 @@ Home's separate historic month picker continues to control historic overview and
 
 **إضافة مصروف من المصاريف أو الادخار** now opens the shared MS-08 actual-expense form: category, date, currency, amount and reason, with an explicit **Savings or Spending source fund** (Spending initially selected). Direct Savings payments require a reason and a second confirmation; they debit Savings exactly once and appear in monthly actual expenses without altering Spending. No automatic transfer between funds occurs. The existing expanded Expenses section opens this same form. See [EXPENSE_FUND_WORKFLOW.md](EXPENSE_FUND_WORKFLOW.md).
 
+**نقل من الادخار للمصاريف أو بالعكس** opens the MS-10 cash transfer page.
+The same action is accessible as a Home shortcut. The owner chooses the
+direction, same-unit amount, date and note; current per-fund balances and
+a projected after-transfer view are displayed before explicit confirmation.
+The ledger posts a fund-only event, not income/expense, and both funds
+refresh from the canonical ledger afterward. See
+[INTERNAL_FUND_TRANSFERS.md](INTERNAL_FUND_TRANSFERS.md).
+
 **سجل حركات صندوق المصاريف** opens the existing `TransactionHistoryPage` with `initialFund: FinancialFund.spending`. The standard history now exposes a **صندوق** filter; a Spending receipt split, direct Spending expense, or transfer involving Spending appears, while unrelated Savings-only or Unallocated-only entries are excluded by default. Users can switch back to **كل الصناديق**. The history retains corrections, deletion snapshots and existing audit details.
 
 ### Example
