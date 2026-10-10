@@ -21,6 +21,25 @@ class InsufficientBalanceException implements Exception {
       'Insufficient balance for ${unit.name}: $availableMicros < $requiredMicros';
 }
 
+/// Raised when an operation would make a fund negative.
+class InsufficientFundBalanceException implements Exception {
+  const InsufficientFundBalanceException({
+    required this.fund,
+    required this.unit,
+    required this.availableMicros,
+    required this.requiredMicros,
+  });
+
+  final FinancialFund fund;
+  final FinancialUnit unit;
+  final int availableMicros;
+  final int requiredMicros;
+
+  @override
+  String toString() =>
+      'Insufficient ${fund.name} ${unit.name}: $availableMicros < $requiredMicros';
+}
+
 class FinancialLedgerStorage {
   FinancialLedgerStorage({LocalDatabase? database})
       : _database = database ?? LocalDatabase.instance;
@@ -116,15 +135,100 @@ class FinancialLedgerStorage {
       case FinancialEventType.goldSale:
         await addGoldSale(event);
         return;
+      case FinancialEventType.fundTransfer:
+        await addFundTransfer(event);
+        return;
       default:
         break;
     }
 
     final Database database = await _database.database;
     await database.transaction((transaction) async {
+      _validateFundEntryShape(event);
+      final before = await _loadFundBalances(transaction);
       await _insertEvent(transaction, event);
+      await _ensureSafeFundMutation(transaction, before);
     });
     notifyChanged();
+  }
+
+  /// Move an existing asset between funds without altering owned assets,
+  /// income, or expense. A stable event ID / recurrence key may be retried.
+  Future<void> addFundTransfer(FinancialEvent event) async {
+    _validateFundTransfer(event);
+    final Database database = await _database.database;
+    final bool inserted = await database.transaction((transaction) async {
+      final List<Map<String, Object?>> duplicate = await transaction.rawQuery(
+        '''
+        SELECT id FROM financial_events
+        WHERE id = ? OR (recurrence_key IS NOT NULL AND recurrence_key = ?)
+        LIMIT 1
+        ''',
+        <Object?>[event.id, event.recurrenceKey],
+      );
+      if (duplicate.isNotEmpty) {
+        final String id = duplicate.single['id']! as String;
+        final List<Map<String, Object?>> rows = await transaction.query(
+          'financial_event_entries',
+          where: 'event_id = ?',
+          whereArgs: <Object?>[id],
+          orderBy: 'position ASC',
+        );
+        final List<Map<String, Object?>> meta = await transaction.query(
+          'financial_events',
+          columns: <String>['event_type'],
+          where: 'id = ?',
+          whereArgs: <Object?>[id],
+          limit: 1,
+        );
+        final bool matches = meta.single['event_type'] ==
+                FinancialEventType.fundTransfer.name &&
+            rows.length == event.entries.length &&
+            List<bool>.generate(rows.length, (index) {
+              final row = rows[index];
+              final entry = event.entries[index];
+              return row['unit'] == entry.unit.name &&
+                  row['fund'] == entry.fund.name &&
+                  (row['amount_micros'] as num).toInt() == entry.amountMicros &&
+                  (row['affects_balance'] as num).toInt() == 0;
+            }).every((same) => same);
+        if (!matches) {
+          throw StateError('A different financial event already uses this identity.');
+        }
+        return false; // A genuine retry is a no-op.
+      }
+      final before = await _loadFundBalances(transaction);
+      await _insertEvent(transaction, event);
+      await _ensureSafeFundMutation(transaction, before);
+      return true;
+    });
+    if (inserted) notifyChanged();
+  }
+
+  Future<void> transferFunds({
+    required FinancialUnit unit,
+    required FinancialFund source,
+    required FinancialFund destination,
+    required int amountMicros,
+    required DateTime occurredAt,
+    String? note,
+    String? id,
+    String? recurrenceKey,
+  }) async {
+    final FinancialEvent event = FinancialEvent.create(
+      type: FinancialEventType.fundTransfer,
+      id: id,
+      recurrenceKey: recurrenceKey,
+      occurredAt: occurredAt,
+      note: note,
+      entries: <LedgerEntry>[
+        LedgerEntry(unit: unit, amountMicros: -amountMicros,
+            affectsBalance: false, fund: source),
+        LedgerEntry(unit: unit, amountMicros: amountMicros,
+            affectsBalance: false, fund: destination),
+      ],
+    );
+    await addFundTransfer(event);
   }
 
   /// Adds one real SYP <-> USD conversion as one atomic ledger event.
@@ -188,6 +292,8 @@ class FinancialLedgerStorage {
     final Database database = await _database.database;
 
     await database.transaction((transaction) async {
+      _validateFundEntryShape(event);
+      final before = await _loadFundBalances(transaction);
       final int available = await _loadUnitBalanceMicros(
         transaction,
         requiredUnit,
@@ -201,6 +307,7 @@ class FinancialLedgerStorage {
       }
 
       await _insertEvent(transaction, event);
+      await _ensureSafeFundMutation(transaction, before);
     });
     notifyChanged();
   }
@@ -210,6 +317,10 @@ class FinancialLedgerStorage {
   /// The event keeps its original id and creation timestamp. Entries are
   /// replaced atomically with the corrected event payload.
   Future<void> updateEvent(FinancialEvent event) async {
+    _validateFundEntryShape(event);
+    if (event.type == FinancialEventType.fundTransfer) {
+      _validateFundTransfer(event);
+    }
     switch (event.type) {
       case FinancialEventType.currencyConversion:
         _validateCurrencyConversion(event);
@@ -226,6 +337,7 @@ class FinancialLedgerStorage {
 
     final Database database = await _database.database;
     await database.transaction((transaction) async {
+      final before = await _loadFundBalances(transaction);
       final List<Map<String, Object?>> existing = await transaction.query(
         'financial_events',
         columns: <String>['created_at_ms'],
@@ -254,6 +366,7 @@ class FinancialLedgerStorage {
         whereArgs: <Object?>[event.id],
       );
       await _insertEntries(transaction, event);
+      await _ensureSafeFundMutation(transaction, before);
     });
     notifyChanged();
   }
@@ -261,11 +374,23 @@ class FinancialLedgerStorage {
   /// Explicit user-authorized deletion of a historical event.
   Future<void> deleteEvent(String eventId) async {
     final Database database = await _database.database;
-    final int deleted = await database.delete(
-      'financial_events',
-      where: 'id = ?',
-      whereArgs: <Object?>[eventId],
-    );
+    final int deleted = await database.transaction((transaction) async {
+      final before = await _loadFundBalances(transaction);
+      final dependents = await transaction.rawQuery(
+        'SELECT id FROM financial_events WHERE source_event_id = ? LIMIT 1',
+        <Object?>[eventId],
+      );
+      if (dependents.isNotEmpty) {
+        throw StateError('Cannot delete an event with dependent transactions.');
+      }
+      final count = await transaction.delete(
+        'financial_events',
+        where: 'id = ?',
+        whereArgs: <Object?>[eventId],
+      );
+      if (count > 0) await _ensureSafeFundMutation(transaction, before);
+      return count;
+    });
     if (deleted > 0) {
       notifyChanged();
     }
@@ -292,6 +417,91 @@ class FinancialLedgerStorage {
     }
 
     return balances;
+  }
+
+  /// Active fund holdings. The fund-only transfer postings are deliberately
+  /// excluded from owned-asset balances but included here. The sum over
+  /// funds for each unit must equal loadBalanceMicros()[unit].
+  Future<Map<FinancialFund, Map<FinancialUnit, int>>> loadFundBalancesMicros() async {
+    final Database database = await _database.database;
+    return _loadFundBalances(database);
+  }
+
+  Future<int> loadFundBalanceMicros(FinancialFund fund, FinancialUnit unit) async {
+    final balances = await loadFundBalancesMicros();
+    return balances[fund]![unit]!;
+  }
+
+  static Future<Map<FinancialFund, Map<FinancialUnit, int>>> _loadFundBalances(
+    DatabaseExecutor executor,
+  ) async {
+    final rows = await executor.rawQuery('''
+      SELECT e.fund, e.unit, SUM(e.amount_micros) AS amount
+      FROM financial_event_entries e
+      JOIN financial_events f ON f.id = e.event_id
+      WHERE e.affects_balance = 1 OR f.event_type = 'fundTransfer'
+      GROUP BY e.fund, e.unit
+    ''');
+    final result = <FinancialFund, Map<FinancialUnit, int>>{
+      for (final fund in FinancialFund.values)
+        fund: <FinancialUnit, int>{
+          for (final unit in FinancialUnit.values) unit: 0,
+        },
+    };
+    for (final row in rows) {
+      final fund = FinancialFund.values.byName(row['fund']! as String);
+      final unit = _parseUnit(row['unit']! as String);
+      result[fund]![unit] = (row['amount']! as num).toInt();
+    }
+    return result;
+  }
+
+  static Future<void> _ensureSafeFundMutation(
+    DatabaseExecutor executor,
+    Map<FinancialFund, Map<FinancialUnit, int>> before,
+  ) async {
+    final after = await _loadFundBalances(executor);
+    for (final fund in FinancialFund.values) {
+      for (final unit in FinancialUnit.values) {
+        final previous = before[fund]![unit]!;
+        final next = after[fund]![unit]!;
+        if (next < 0 && next < previous) {
+          throw InsufficientFundBalanceException(
+            fund: fund,
+            unit: unit,
+            availableMicros: previous,
+            requiredMicros: previous - next,
+          );
+        }
+      }
+    }
+  }
+
+  static void _validateFundEntryShape(FinancialEvent event) {
+    for (final entry in event.entries) {
+      if (entry.unit == FinancialUnit.goldGram &&
+          entry.fund == FinancialFund.spending) {
+        throw ArgumentError('Gold grams cannot be held as spendable cash.');
+      }
+    }
+  }
+
+  static void _validateFundTransfer(FinancialEvent event) {
+    _validateFundEntryShape(event);
+    if (event.type != FinancialEventType.fundTransfer ||
+        event.entries.length != 2) {
+      throw ArgumentError('Fund transfer requires two entries.');
+    }
+    final outgoing = event.entries[0];
+    final incoming = event.entries[1];
+    if (outgoing.affectsBalance || incoming.affectsBalance ||
+        outgoing.unit != incoming.unit ||
+        outgoing.fund == incoming.fund ||
+        outgoing.amountMicros >= 0 || incoming.amountMicros <= 0 ||
+        outgoing.amountMicros != -incoming.amountMicros ||
+        outgoing.role != null || incoming.role != null) {
+      throw ArgumentError('Fund transfers must be equal, opposite, same-unit postings.');
+    }
   }
 
   /// Goal/challenge progress is intentionally separate from owned-asset
@@ -354,6 +564,7 @@ class FinancialLedgerStorage {
                   affectsBalance:
                       (entry['affects_balance']! as num).toInt() == 1,
                   role: _parseEntryRole(entry['entry_role'] as String?),
+                  fund: FinancialFund.values.byName(entry['fund']! as String),
                 ),
               )
               .toList(growable: false),
@@ -426,6 +637,7 @@ class FinancialLedgerStorage {
           'amount_micros': entry.amountMicros,
           'affects_balance': entry.affectsBalance ? 1 : 0,
           'entry_role': entry.role?.name,
+          'fund': entry.fund.name,
         },
         conflictAlgorithm: ConflictAlgorithm.abort,
       );
