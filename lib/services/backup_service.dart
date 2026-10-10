@@ -446,6 +446,18 @@ class BackupService {
       }
     }
 
+    final List<Map<String, Object?>> goldAsSpending =
+        await transaction.rawQuery('''
+      SELECT COUNT(*) AS total
+      FROM financial_event_entries
+      WHERE unit = 'goldGram' AND fund = 'spending'
+    ''');
+    if ((goldAsSpending.single['total'] as num).toInt() != 0) {
+      throw const BackupException(
+        'الذهب لا يمكن إدخاله ضمن صندوق المصاريف مباشرة.',
+      );
+    }
+
     final List<Map<String, Object?>> transfers =
         await transaction.rawQuery('''
       SELECT f.id, COUNT(*) AS entry_count,
