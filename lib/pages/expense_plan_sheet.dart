@@ -106,6 +106,18 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
   Future<void> _deleteItem(RecurringExpenseItem item) async {
     final now = DateTime.now();
     DateTime effective = DateTime(now.year, now.month + 1);
+    // A future-only bill cannot be canceled before its first scheduled month.
+    final currentItems = await _storage.loadItemsForMonth(now);
+    if (!mounted) return;
+    if (!currentItems.any((entry) => entry.id == item.id)) {
+      final scheduled = _upcoming[item.id] ?? const <ExpensePlanChange>[];
+      for (final change in scheduled) {
+        if (change.isActive && change.effectiveMonth.isAfter(effective)) {
+          effective = change.effectiveMonth;
+          break;
+        }
+      }
+    }
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
