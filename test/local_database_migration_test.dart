@@ -151,6 +151,19 @@ void main() {
               CREATE TABLE app_metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)
             ''');
             await db.execute('''
+              CREATE TABLE financial_settings(
+                id INTEGER PRIMARY KEY,
+                weekly_syp_income INTEGER NOT NULL,
+                weekly_payday INTEGER NOT NULL,
+                monthly_usd_income REAL NOT NULL,
+                monthly_payday INTEGER NOT NULL,
+                reference_syp_per_usd REAL NOT NULL,
+                gold_usd_per_gram REAL NOT NULL,
+                weekly_expenses_allocation INTEGER NOT NULL,
+                weekly_savings_allocation INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL)
+            ''');
+            await db.execute('''
               CREATE TABLE challenges(
                 id TEXT PRIMARY KEY, name TEXT NOT NULL,
                 target_amount REAL NOT NULL, currency TEXT NOT NULL,
@@ -193,6 +206,18 @@ void main() {
                 event_id TEXT NOT NULL, action TEXT NOT NULL,
                 snapshot_json TEXT NOT NULL, changed_at_ms INTEGER NOT NULL)
             ''');
+            await db.insert('financial_settings', <String, Object?>{
+              'id': 1,
+              'weekly_syp_income': 885000,
+              'weekly_payday': 4,
+              'monthly_usd_income': 300.0,
+              'monthly_payday': 1,
+              'reference_syp_per_usd': 13000.0,
+              'gold_usd_per_gram': 95.0,
+              'weekly_expenses_allocation': 540000,
+              'weekly_savings_allocation': 345000,
+              'updated_at': 15,
+            });
             await db.insert('app_metadata', <String, Object?>{
               'key': 'legacy_install',
               'value': 'retained',
@@ -258,6 +283,7 @@ void main() {
       expect(await db.query('financial_event_entries'), hasLength(3));
       expect(await db.query('financial_event_revisions'), hasLength(1));
       expect(await db.query('recurring_expense_items'), hasLength(1));
+      expect((await db.query('financial_settings')).single['weekly_syp_income'], 885000);
       expect(await db.query('challenge_cells'), hasLength(1));
       expect((await db.query('app_metadata', where: 'key = ?',
           whereArgs: <Object?>['legacy_install'])).single['value'],
