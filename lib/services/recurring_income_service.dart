@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/expected_income.dart';
 import '../models/financial_event.dart';
 import '../models/financial_settings.dart';
+import '../models/receipt_fund_allocation.dart';
 import 'financial_ledger_storage.dart';
 import 'financial_settings_storage.dart';
 import 'local_database.dart';
@@ -95,6 +96,8 @@ class RecurringIncomeService {
     required int amountMicros,
     DateTime? receivedAt,
     int alreadySpentMicros = 0,
+    int savingsMicros = 0,
+    int spendingMicros = 0,
     String? spentCategory,
     String? spentNote,
     DateTime? spentAt,
@@ -112,9 +115,12 @@ class RecurringIncomeService {
     if (_calendarDay(occurrence.scheduledDate).isAfter(today)) {
       throw StateError('Future recurring income cannot be confirmed yet.');
     }
-    if (alreadySpentMicros < 0 || alreadySpentMicros > amountMicros) {
-      throw ArgumentError('Historical expense must not exceed receipt.');
-    }
+    final allocation = ReceiptFundAllocation(
+      receivedMicros: amountMicros,
+      savingsMicros: savingsMicros,
+      spendingMicros: spendingMicros,
+      alreadySpentMicros: alreadySpentMicros,
+    );
     final DateTime actualDay = _calendarDay(
       receivedAt ?? occurrence.scheduledDate,
     );
@@ -136,12 +142,7 @@ class RecurringIncomeService {
         scheduledLocal.day,
         12,
       ),
-      entries: <LedgerEntry>[
-        LedgerEntry(
-          unit: occurrence.unit,
-          amountMicros: amountMicros,
-        ),
-      ],
+      entries: allocation.receiptEntries(occurrence.unit),
       category: occurrence.kind == RecurringIncomeKind.weeklySyp
           ? 'راتب أسبوعي'
           : 'راتب شهري',
