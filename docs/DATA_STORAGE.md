@@ -324,6 +324,25 @@ use a stable per-form expense ID to protect against repeat debits even when
 the initial payment consumed all the source-fund cash. See
 [EXPENSE_FUND_WORKFLOW.md](EXPENSE_FUND_WORKFLOW.md).
 
+### MS-10 — Explicit same-unit Savings ↔ Spending transfers (no schema change)
+
+The user-facing form calls `FundTransferService.move` with distinct Savings
+and Spending source/destination, a cash unit, exact fixed-point micro amount,
+actual date, optional note and a stable per-form request ID. It wraps the
+existing `FinancialLedgerStorage.transferFunds`, which atomically writes
+two equal/opposite, `affects_balance=0` postings under one
+`fundTransfer` event. No owned-asset, income, expense or conversion-rate
+entries are written. SQL transaction checks prevent a new negative source
+balance and conserve asset totals per unit. Identical retries compare all
+relevant fields, and conflicting reuse is rejected. Transactions remain
+available in history, backups and audit revisions; deletion/amount correction
+is subject to the same conservation checks.
+
+The internal transfer UI is **cash-only** (USD, SYP, SYP (N)); real cross-unit
+conversions remain the separate executed SYP↔USD ledger operation with
+`executed_syp_per_usd`. Historic Unallocated reconciliation has its own
+screen. See [INTERNAL_FUND_TRANSFERS.md](INTERNAL_FUND_TRANSFERS.md).
+
 ## Schema v11 — Time-effective recurring expense plans (MS-09)
 
 The `recurring_expense_plan_versions` table persists one immutable
