@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../models/expense_category.dart';
 import '../models/financial_event.dart';
 import '../models/recurring_expense_item.dart';
-import '../services/expense_plan_storage.dart';
 import '../services/expense_service.dart';
 import '../services/financial_ledger_storage.dart';
 import '../utils/financial_format.dart';
@@ -34,7 +33,6 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
 
   final ExpenseService _expenses = ExpenseService();
   final FinancialLedgerStorage _ledger = FinancialLedgerStorage();
-  final ExpensePlanStorage _plans = ExpensePlanStorage();
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _otherCategory = TextEditingController();
   final TextEditingController _note = TextEditingController();
@@ -44,6 +42,7 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
   FinancialUnit _unit = FinancialUnit.syp;
   String _categoryChoice = 'cat:food';
   List<RecurringExpenseItem> _planItems = const <RecurringExpenseItem>[];
+  Set<String> _paidPlanItemIds = <String>{};
   Map<FinancialFund, Map<FinancialUnit, int>>? _available;
   DateTime _date = DateTime.now();
   bool _isSaving = false;
@@ -67,11 +66,17 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
 
   Future<void> _loadReferenceData() async {
     try {
-      final plans = await _plans.loadItems();
+      final month = await _expenses.loadMonth(_date);
+      final plans = month.planItems;
       final balances = await _ledger.loadFundBalancesMicros();
       if (!mounted) return;
       setState(() {
         _planItems = plans;
+        _paidPlanItemIds = month.paidPlanItemIds;
+        if (_categoryChoice.startsWith('plan:') &&
+            !plans.any((item) => 'plan:${item.id}' == _categoryChoice)) {
+          _categoryChoice = 'cat:food';
+        }
         _available = balances;
         _isLoadingBalances = false;
         _error = null;
@@ -143,7 +148,10 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
       firstDate: DateTime(2000),
       lastDate: today,
     );
-    if (date != null && mounted) setState(() => _date = date);
+    if (date != null && mounted) {
+      setState(() => _date = date);
+      await _loadReferenceData();
+    }
   }
 
   Future<void> _save() async {
@@ -217,6 +225,9 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
         note: _note.text.trim(),
         sourceFund: _fund,
         requestId: _requestId,
+        plannedItemId: _categoryChoice.startsWith('plan:')
+            ? _categoryChoice.substring('plan:'.length)
+            : null,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -233,6 +244,12 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
       if (!mounted) return;
       setState(() => _error =
           'الرصيد الفعلي تغيّر، ولم يُسجّل المصروف.');
+    } on StateError catch (_) {
+      if (!mounted) return;
+      setState(() => _error =
+          'هذه الفاتورة الشهرية مسجّلة كمدفوعة سابقاً. '
+          'لنفقة إضافية اختَر تصنيفاً عادياً بدلاً من بند الخطة.');
+      await _loadReferenceData();
     } on ArgumentError catch (_) {
       if (!mounted) return;
       setState(() => _error = 'راجع المبلغ والعملة والتصنيف وسبب المصروف.');
@@ -349,7 +366,8 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
                     )),
                 ..._planItems.map((item) => DropdownMenuItem<String>(
                   value: 'plan:${item.id}',
-                  child: Text('من الخطة: ${item.name}'),
+                  child: Text('من الخطة: ${item.name}'
+                      '${_paidPlanItemIds.contains(item.id) ? ' • مدفوع' : ''}'),
                 )),
               ],
               onChanged: _isSaving ? null : (value) {
@@ -371,8 +389,9 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
             if (_categoryChoice.startsWith('plan:')) ...<Widget>[
               const SizedBox(height: 6),
               Text(
-                'اختيار بند من الخطة يملأ المبلغ والعملة فقط؛ '
-                'لا يؤكد دفع الفاتورة تلقائياً ولا يعدّل الخطة.',
+                'اختيار بند من الخطة يملأ المبلغ والعملة، وعند الحفظ '
+                'يسجّل دفع قسط هذا الشهر مرة واحدة. '
+                'إذا دفعته سابقاً، سجّل أي نفقة إضافية بتصنيف عادي.' ,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
