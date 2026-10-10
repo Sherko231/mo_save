@@ -124,6 +124,29 @@ class FinancialLedgerStorage {
     return events.single;
   }
 
+  /// Receipts are indexed by their scheduled recurrence date, not necessarily
+  /// the actual receipt date, which can be backdated to another month.
+  /// This also preserves already-confirmed receipts when schedule defaults change.
+  Future<List<FinancialEvent>> loadRecurringIncomeEventsForMonth(
+    DateTime month,
+  ) async {
+    final String yearMonth =
+        '${month.year}-${month.month.toString().padLeft(2, '0')}';
+    final Database database = await _database.database;
+    final rows = await database.query(
+      'financial_events',
+      where: 'event_type = ? AND '
+          '(recurrence_key LIKE ? OR recurrence_key LIKE ?)',
+      whereArgs: <Object?>[
+        FinancialEventType.income.name,
+        'income:weeklySyp:$yearMonth-%',
+        'income:monthlyUsd:$yearMonth-%',
+      ],
+      orderBy: 'occurred_at_ms ASC, created_at_ms ASC',
+    );
+    return _hydrateEvents(database, rows);
+  }
+
   Future<void> addEvent(FinancialEvent event) async {
     switch (event.type) {
       case FinancialEventType.currencyConversion:
