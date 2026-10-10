@@ -1,12 +1,12 @@
 # Mo Save — Redesign Implementation Progress
 
-> Progress updated: 2026-10-10. **MS-01, MS-02, and MS-03 closed; MS-04 is next.** GitHub Issue states are authoritative; all code/tests committed for MS-02/MS-03 remain **runtime-unverified**, because CLI and device checks were not run.
+> Progress updated: 2026-10-10. **MS-01 through MS-04 closed; MS-05 is next.** GitHub Issues are the completion authority. All code and tests committed for MS-02 through MS-04 remain **runtime-unverified**; CLI checks and device tests have not been executed.
 
 ## Current checkpoint
 
-- **Next task:** [MS-04 — Dismiss or backdate overdue salary occurrences](https://github.com/Sherko231/mo_save/issues/78).
+- **Next task:** [MS-05 — Record gifts, item sales, bonuses, and opening cash](https://github.com/Sherko231/mo_save/issues/79).
 - **Active implementation:** None.
-- **Redesign progress:** 3 / 18 issues closed. **MS-02 and MS-03 are implemented but not tested; Android migration and backup restore on client data remain unverified.**
+- **Redesign progress:** 4 / 18 issues closed. **MS-02–MS-04 code is committed, but not run or verified.** Android migration, client backup restore and receipt dialog acceptance are still pending.
 - **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
 
@@ -17,7 +17,7 @@
 | P1 | MS-01 — Define fund-ledger accounting invariants | [#75](https://github.com/Sherko231/mo_save/issues/75) | — | Done — documentation contract [commit](https://github.com/Sherko231/mo_save/commit/29be2562f1121dc0e474b9547b975b021cd4d10c) |
 | P1 | MS-02 — Implement fund-aware ledger and persistence | [#76](https://github.com/Sherko231/mo_save/issues/76) | MS-01 | Done — code committed; runtime unverified [commit](https://github.com/Sherko231/mo_save/commit/2a71c08c74230d60bc7c70af334b2301ba89e6bd) |
 | P1 | MS-03 — Safely migrate existing SQLite v9 data | [#77](https://github.com/Sherko231/mo_save/issues/77) | MS-02 | Done — v9 backup compatibility and manual reconciliation, unverified [commit](https://github.com/Sherko231/mo_save/commit/769e2fc17e168d50aa67d970a30813d9004e3b14) |
-| P2 | MS-04 — Dismiss or backdate overdue salary occurrences | [#78](https://github.com/Sherko231/mo_save/issues/78) | MS-02, MS-03 | Not started |
+| P2 | MS-04 — Dismiss or backdate overdue salary occurrences | [#78](https://github.com/Sherko231/mo_save/issues/78) | MS-02, MS-03 | Done — ignored disposition, Undo, backdated receipt and linked historic spending; tests unrun [commit](https://github.com/Sherko231/mo_save/commit/e771e4c224b4de74cc255edfaea164577668cd92) |
 | P2 | MS-05 — Record gifts, item sales, bonuses, and opening cash | [#79](https://github.com/Sherko231/mo_save/issues/79) | MS-02 | Not started |
 | P2 | MS-06 — Split received amounts across Savings and Spending | [#80](https://github.com/Sherko231/mo_save/issues/80) | MS-02, MS-04, MS-05 | Not started |
 | P3 | MS-07 — Build Spending fund dashboard | [#81](https://github.com/Sherko231/mo_save/issues/81) | MS-02, MS-06 | Not started |
@@ -65,6 +65,7 @@
 
 ## Change log
 
+- **2026-10-10 — MS-04 closed (#78):** added a non-financial ignored payday disposition in `app_metadata`, month-by-scheduled-key receipt lookup, Ignore/Undo controls in Home, actual receipt/spent date dialog, optional atomic linked historical expense (so old fully spent pay is net zero), and actual-month income accounting. Added service regression tests and `docs/INCOME_OCCURRENCES.md`. **No CLI, Flutter/analyzer, device tests or builds executed; source implementation only, runtime unverified.** Next [MS-05 / #79](https://github.com/Sherko231/mo_save/issues/79).
 - **2026-10-10 — MS-03 closed (#77):** implemented backward-compatible checksummed v9 `.mosave` import into v10, retained original balance-affecting events and non-balance goal progress, defaulted unknowable fund ownership to Unallocated, added atomic fund reconciliation from Settings, protected gold and fund transfer integrity, and authored v9 SQLite fixture plus backup round-trip tests. Updated `BACKUP_RESTORE.md` and `DATA_STORAGE.md`. **Not run:** Flutter tests, CLI checks, APK/device and real customer data migration. Keep independent old-app backups and complete acceptance under MS-18. Next: [MS-04 / #78](https://github.com/Sherko231/mo_save/issues/78).
 - **2026-10-10 — MS-02 closed (#76):** added `FinancialFund`, fund transfer event, per-ledger-entry fund attribution, SQLite v10 `fund` column with Unallocated migration default, fund balance queries, atomic transfer checks and conservation, fund-aware transaction revisions/corrections, history labels, new unit tests and DATA_STORAGE documentation. **No CLI checks, Flutter tests, analyzer, APK builds or on-device migrations were executed**; implementation remains runtime-unverified. **Important MS-03 handoff:** schema-v9 `.mosave` backups cannot currently restore under schema v10 due to strict equality in `BackupService`; implement compatibility and real upgrade/restore validation before release. [Issue #77](https://github.com/Sherko231/mo_save/issues/77) is next.
 - **2026-10-10 — MS-01 complete:** finalized [fund-ledger accounting contract](FUNDS_ACCOUNTING_CONTRACT.md), per-unit conservation/expense/income/fund transfer rules, gold and FX, goal backing, existing v9 migration constraints, audit preservation and explicit deferred decisions. Closed [Issue #75](https://github.com/Sherko231/mo_save/issues/75). No app code changed and no CLI checks/tests/builds executed. Next: [MS-02 / #76](https://github.com/Sherko231/mo_save/issues/76).
