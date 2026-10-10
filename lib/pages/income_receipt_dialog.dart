@@ -343,6 +343,8 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                       amountMicros: received,
                       receivedAt: receiptDate,
                       alreadySpentMicros: spent,
+                      savingsMicros: savings,
+                      spendingMicros: spending,
                       spentAt: spentDate,
                       spentCategory: categoryController.text,
                       spentNote: noteController.text,
