@@ -1,5 +1,7 @@
 # Mo Save — Client-Ready Roadmap
 
+> **Update — 2026-10-10: New client redesign supersedes the implementation order below.** The former roadmap tracks the prior app foundation. For all new work, follow [AGENTS.md](../AGENTS.md), [Funds redesign specification](FUNDS_REDESIGN.md), and [live progress tracker](FUNDS_REDESIGN_PROGRESS.md), starting with MS-01 / [Issue #75](https://github.com/Sherko231/mo_save/issues/75). The new 18-issue sequence is #75–#92. Former release Issues #28 and #29 remain open but are not final client acceptance gates until the redesigned funds and savings-goal model has been implemented and validated. Sections below are preserved as historical implementation context and do not establish that redesign features exist.
+
 This roadmap is the ordered implementation plan from the repository's current state to a client-ready Android build.
 
 Work should proceed one bounded GitHub Issue at a time. Do not skip dependencies unless the owner explicitly authorizes it.
