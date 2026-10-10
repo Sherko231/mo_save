@@ -14,6 +14,7 @@ import 'home_expenses_section.dart';
 import 'home_spending_fund_section.dart';
 import 'income_receipt_dialog.dart';
 import 'manual_inflow_page.dart';
+import 'fund_transfer_page.dart';
 import 'transaction_history_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -127,6 +128,22 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم تسجيل المبلغ في سجل الحركات.')),
+    );
+  }
+
+  Future<void> _openFundTransfer() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const FundTransferPage(),
+      ),
+    );
+    if (!mounted || saved != true) return;
+    await _reload(showLoading: false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(
+        'تم نقل المال بين الادخار والمصاريف بدون دخل أو مصروف إضافي.',
+      )),
     );
   }
 
@@ -334,6 +351,13 @@ class _HomePageState extends State<HomePage> {
             title: 'إضافة دخل أو رصيد سابق',
             subtitle: 'هدية، مكافأة، عمل جانبي، بيع غرض أو مال موجود سابقاً',
             onTap: _openManualInflow,
+          ),
+          const SizedBox(height: 10),
+          UxActionTile(
+            icon: Icons.swap_horiz_rounded,
+            title: 'نقل بين الادخار والمصاريف',
+            subtitle: 'تغيير توزيع أموالك بدون دخل أو مصروف جديد',
+            onTap: _openFundTransfer,
           ),
           const SizedBox(height: 10),
           _HistoryShortcut(onTap: _openHistory),
