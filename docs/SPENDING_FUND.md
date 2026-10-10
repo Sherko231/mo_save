@@ -24,12 +24,12 @@ For **the current month**, each currency card shows four distinct quantities:
 | Label | Source | Affects actual Spending now? |
 | --- | --- | --- |
 | متاح للصرف الآن | Current `FinancialFund.spending` holdings in this exact cash unit | This **is** the actual spendable balance |
-| التزامات الخطة الشهرية | Current sum of `recurring_expense_items` per currency | **No**, planned only |
+| التزامات الخطة الشهرية | Sum of effective-month `recurring_expense_plan_versions` per currency | **No**, planned only |
 | دُفع من صندوق المصاريف هذا الشهر | Net negative cash postings in actual `expense` events whose entry fund is Spending | Already debited once by the actual event |
 | إجمالي المصروف الفعلي من كل الصناديق (when different) | All actual `expense` postings in the month, regardless of original fund | For reporting only; **not** an extra debit |
 | تقدير افتراضي بعد دفع كامل الخطة من الآن | `current Spending cash - full monthly plan` | **No**, hypothetical only |
 
-**Important limitation:** Existing recurring expense plan items are not yet linked to paid bill occurrences. We therefore cannot reliably know how much of an individual recurring commitment is still unpaid. The projection explicitly assumes **all** planned items were to be paid *again from now*. It may double-count a bill that was in fact already paid, so it is a **conservative what-if scenario**, not a promised disposable remainder or confirmed outstanding balance. Negative hypothetical results are shown as an estimated shortfall, **never a negative real wallet**. True plan-versus-paid matching and effective-dated commitments are future MS-08/MS-09 work.
+**Important limitation:** MS-09 now links explicitly confirmed monthly plan installments to actual expense events, and keeps their effective prices by month. Old category-only payments may remain unlinked, and partial settlements are not automatically inferred. This dashboard still subtracts the full monthly plan in its what-if calculation and may count already-paid bills again; it is not a confirmed unpaid-bills total. Negative results are hypothetical shortfalls, never negative real balances. Richer analytics follow in MS-11.
 
 Home's separate historic month picker continues to control historic overview and expense-detail sections. This new section has **its own live current-month label** and must not silently present a historic month's plan as money due right now. Home refreshes and edits to the existing monthly expense-plan sheet invalidate the Spending dashboard and reload the snapshot, so a new plan amount is reflected without inventing any paid expense.
 
