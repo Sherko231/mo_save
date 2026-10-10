@@ -389,11 +389,13 @@ class _AttentionIncomeCard extends StatelessWidget {
     required this.occurrence,
     required this.isConfirming,
     required this.onConfirm,
+    required this.onIgnore,
   });
 
   final ExpectedIncome occurrence;
   final bool isConfirming;
   final VoidCallback onConfirm;
+  final VoidCallback onIgnore;
 
   @override
   Widget build(BuildContext context) {
@@ -461,7 +463,13 @@ class _AttentionIncomeCard extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.check_rounded),
-            label: Text(isConfirming ? 'جاري التسجيل...' : 'تأكيد الاستلام'),
+            label: Text(isConfirming ? 'جاري التسجيل...' : 'تسجيل الاستلام'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: isConfirming ? null : onIgnore,
+            icon: const Icon(Icons.visibility_off_outlined),
+            label: const Text('تجاهل هذه الدفعة'),
           ),
         ],
       ),
@@ -474,11 +482,15 @@ class _IncomeDetails extends StatelessWidget {
     required this.occurrences,
     required this.confirmingKey,
     required this.onConfirm,
+    required this.onIgnore,
+    required this.onUndoIgnore,
   });
 
   final List<ExpectedIncome> occurrences;
   final String? confirmingKey;
   final Future<void> Function(ExpectedIncome occurrence) onConfirm;
+  final Future<void> Function(ExpectedIncome occurrence) onIgnore;
+  final Future<void> Function(ExpectedIncome occurrence) onUndoIgnore;
 
   @override
   Widget build(BuildContext context) {
@@ -498,6 +510,8 @@ class _IncomeDetails extends StatelessWidget {
                 occurrence: occurrence,
                 isConfirming: confirmingKey == occurrence.recurrenceKey,
                 onConfirm: () => onConfirm(occurrence),
+                onIgnore: () => onIgnore(occurrence),
+                onUndoIgnore: () => onUndoIgnore(occurrence),
               ),
             ),
           )
@@ -511,11 +525,15 @@ class _IncomeOccurrenceRow extends StatelessWidget {
     required this.occurrence,
     required this.isConfirming,
     required this.onConfirm,
+    required this.onIgnore,
+    required this.onUndoIgnore,
   });
 
   final ExpectedIncome occurrence;
   final bool isConfirming;
   final VoidCallback onConfirm;
+  final VoidCallback onIgnore;
+  final VoidCallback onUndoIgnore;
 
   @override
   Widget build(BuildContext context) {
@@ -528,11 +546,13 @@ class _IncomeOccurrenceRow extends StatelessWidget {
       occurrence.scheduledDate.day,
     );
     final bool isFuture = scheduled.isAfter(today);
-    final bool isLate = !occurrence.isReceived && scheduled.isBefore(today);
+    final bool isLate = occurrence.needsAction && scheduled.isBefore(today);
 
     final String status = occurrence.isReceived
         ? 'مستلم'
-        : isFuture
+        : occurrence.isIgnored
+            ? 'تم تجاهل الدفعة'
+            : isFuture
             ? 'قادم'
             : isLate
                 ? 'غير مستلم'
@@ -540,7 +560,9 @@ class _IncomeOccurrenceRow extends StatelessWidget {
 
     final Color tone = occurrence.isReceived
         ? colors.primary
-        : isLate
+        : occurrence.isIgnored
+            ? colors.secondary
+            : isLate
             ? colors.error
             : colors.onSurfaceVariant;
 
@@ -551,7 +573,9 @@ class _IncomeOccurrenceRow extends StatelessWidget {
           UxIconBadge(
             icon: occurrence.isReceived
                 ? Icons.check_rounded
-                : isFuture
+                : occurrence.isIgnored
+                    ? Icons.visibility_off_outlined
+                    : isFuture
                     ? Icons.schedule_rounded
                     : Icons.payments_outlined,
             tone: tone,
@@ -589,10 +613,25 @@ class _IncomeOccurrenceRow extends StatelessWidget {
                 ),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
-              if (!occurrence.isReceived && !isFuture)
+              if (occurrence.isIgnored)
                 TextButton(
-                  onPressed: isConfirming ? null : onConfirm,
-                  child: Text(isConfirming ? '...' : 'تأكيد'),
+                  onPressed: isConfirming ? null : onUndoIgnore,
+                  child: const Text('إلغاء التجاهل'),
+                )
+              else if (!occurrence.isReceived && !isFuture)
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 2,
+                  children: <Widget>[
+                    TextButton(
+                      onPressed: isConfirming ? null : onConfirm,
+                      child: Text(isConfirming ? '...' : 'تسجيل'),
+                    ),
+                    TextButton(
+                      onPressed: isConfirming ? null : onIgnore,
+                      child: const Text('تجاهل'),
+                    ),
+                  ],
                 ),
             ],
           ),
