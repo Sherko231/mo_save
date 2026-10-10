@@ -192,13 +192,33 @@ void main() {
           challengeId: 'old-goal', unit: FinancialUnit.usd),
           LedgerEntry.amountToMicros(100));
 
+      await ledger.transferFunds(
+        id: 'classify-old-money',
+        unit: FinancialUnit.syp,
+        source: FinancialFund.unallocated,
+        destination: FinancialFund.savings,
+        amountMicros: LedgerEntry.amountToMicros(345000),
+        occurredAt: DateTime.utc(2026, 10, 10),
+      );
+      expect(await ledger.loadFundBalanceMicros(
+          FinancialFund.savings, FinancialUnit.syp),
+          LedgerEntry.amountToMicros(345000));
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.syp],
+          LedgerEntry.amountToMicros(885000));
+
       final again = await targetBackup.createBackupBytes();
       expect(targetBackup.inspectBackupBytes(again).databaseSchemaVersion, 10);
       await targetBackup.restoreBackupBytes(again);
-      expect(await database.query('financial_events'), hasLength(3));
+      expect(await database.query('financial_events'), hasLength(4));
       expect(await database.query('financial_event_revisions'), hasLength(1));
       expect((await ledger.loadBalanceMicros())[FinancialUnit.syp],
           LedgerEntry.amountToMicros(885000));
+      expect(await ledger.loadFundBalanceMicros(
+          FinancialFund.savings, FinancialUnit.syp),
+          LedgerEntry.amountToMicros(345000));
+      expect(await ledger.loadFundBalanceMicros(
+          FinancialFund.unallocated, FinancialUnit.syp),
+          LedgerEntry.amountToMicros(540000));
     });
 
     test('rejects corrupt checksum and future schema without deleting data', () async {
