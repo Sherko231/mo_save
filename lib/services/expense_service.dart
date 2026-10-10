@@ -70,6 +70,7 @@ class ExpenseService {
     required DateTime occurredAt,
     required String category,
     String? note,
+    FinancialFund sourceFund = FinancialFund.unallocated,
   }) async {
     if (amountMicros <= 0) {
       throw ArgumentError('Expense amount must be greater than zero.');
@@ -90,9 +91,10 @@ class ExpenseService {
       throw ArgumentError('Expense date cannot be in the future.');
     }
 
-    final Map<FinancialUnit, int> balances =
-        await _ledgerStorage.loadBalanceMicros();
-    final int availableMicros = balances[unit] ?? 0;
+    // Legacy callers remain Unallocated; Spending's primary action debits
+    // only Spending. The ledger repeats the safety check transactionally.
+    final int availableMicros =
+        await _ledgerStorage.loadFundBalanceMicros(sourceFund, unit);
     if (availableMicros < amountMicros) {
       throw InsufficientBalanceException(
         unit: unit,
@@ -113,6 +115,7 @@ class ExpenseService {
         LedgerEntry(
           unit: unit,
           amountMicros: -amountMicros,
+          fund: sourceFund,
         ),
       ],
       category: cleanCategory,
