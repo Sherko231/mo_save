@@ -129,6 +129,29 @@ When the user confirms receipt, the resulting income event stores that key. The 
 
 A configured monthly payday that does not exist in a shorter month is clamped to that month's final calendar day. Weekly occurrences are enumerated from actual dates, so months with five Thursdays naturally contain five weekly salary occurrences.
 
+### MS-04 — Ignored recurring paydays (no new schema version)
+
+An expected income occurrence may be intentionally **ignored** using existing
+`app_metadata` with key `ignored_income_occurrence:<recurrence-key>` and
+value `1`. This is a **non-financial occurrence disposition**, not a
+`financial_events` entry, income, expense, or balance-affecting posting. It
+is retained in the existing `.mosave` backup because `app_metadata` is
+already exported/restored.
+
+Ignore and receipt confirmation use serialized SQLite transactions so a
+single occurrence cannot be both ignored and received. Removing the metadata
+key cancels Ignore and restores the option to register the receipt.
+
+Historical income may use a different actual receipt date from its scheduled
+payday, without losing the original `recurrence_key`. The Income screen
+resolves receipts by scheduled identity, while monthly **actual** receipts
+are grouped by the `occurred_at_ms` month. An optional already-spent amount
+creates a separate `expense` event with `source_event_id` referencing the
+receipt, in the same transaction, so fully spent old salaries do not increase
+current cash. Such an expense counts once and must not duplicate expenses
+previously recorded by the user. Legacy v9 data and old income events are
+unchanged. See [INCOME_OCCURRENCES.md](INCOME_OCCURRENCES.md).
+
 ## Schema v5 — Recurring expense plan
 
 ### `recurring_expense_items`
