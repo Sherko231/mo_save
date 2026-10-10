@@ -10,7 +10,6 @@ import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'home_balance_section.dart';
 import 'home_dashboard_overview.dart';
-import 'home_envelope_section.dart';
 import 'home_expenses_section.dart';
 import 'income_receipt_dialog.dart';
 import 'manual_inflow_page.dart';
@@ -359,16 +358,6 @@ class _HomePageState extends State<HomePage> {
               onConfirm: _confirmReceived,
               onIgnore: _ignoreOccurrence,
               onUndoIgnore: _undoIgnore,
-            ),
-          ),
-          const SizedBox(height: 8),
-          UxDisclosureCard(
-            title: 'تقسيم راتب الأسبوع',
-            subtitle: 'المصاريف والادخار لكل دفعة أسبوعية',
-            icon: Icons.call_split_outlined,
-            child: HomeEnvelopeSection(
-              month: _selectedMonth,
-              refreshToken: _incomeRefreshToken,
             ),
           ),
           const SizedBox(height: 8),
