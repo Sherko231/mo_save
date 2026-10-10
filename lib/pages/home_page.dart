@@ -308,7 +308,7 @@ class _HomePageState extends State<HomePage> {
             onNextMonth: () => _changeMonth(1),
           ),
           const SizedBox(height: 18),
-          const HomeSpendingFundSection(),
+          HomeSpendingFundSection(refreshToken: _incomeRefreshToken),
           if (attention.isNotEmpty) ...<Widget>[
             const SizedBox(height: 18),
             const UxSectionHeader(
@@ -368,7 +368,10 @@ class _HomePageState extends State<HomePage> {
             title: 'المصاريف',
             subtitle: 'الخطة الشهرية والتسجيل الفعلي',
             icon: Icons.receipt_long_outlined,
-            child: HomeExpensesSection(month: _selectedMonth),
+            child: HomeExpensesSection(
+              month: _selectedMonth,
+              onPlanChanged: () => _reload(showLoading: false),
+            ),
           ),
         ],
       ),
