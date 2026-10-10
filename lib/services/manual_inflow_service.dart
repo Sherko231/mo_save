@@ -1,4 +1,5 @@
 import '../models/financial_event.dart';
+import '../models/receipt_fund_allocation.dart';
 import 'financial_ledger_storage.dart';
 
 /// Sources of a one-off cash inflow. These are not recurring salaries,
@@ -40,6 +41,8 @@ class ManualInflowService {
     required int amountMicros,
     required DateTime occurredAt,
     required FinancialFund fund,
+    int? savingsMicros,
+    int? spendingMicros,
     String? source,
     String? note,
     String? requestId,
@@ -91,6 +94,18 @@ class ManualInflowService {
             if (noteText != null) 'التفاصيل: $noteText',
           ].join('\n');
 
+    final bool explicitSplit = savingsMicros != null || spendingMicros != null;
+    if (explicitSplit && fund != FinancialFund.unallocated) {
+      throw ArgumentError('Choose Unallocated when providing an explicit split.');
+    }
+    final ReceiptFundAllocation? allocation = explicitSplit
+        ? ReceiptFundAllocation(
+            receivedMicros: amountMicros,
+            savingsMicros: savingsMicros ?? 0,
+            spendingMicros: spendingMicros ?? 0,
+          )
+        : null;
+
     final event = FinancialEvent.create(
       id: 'cash_$identity',
       recurrenceKey: 'manual-cash:$identity',
@@ -100,7 +115,7 @@ class ManualInflowService {
       occurredAt: occurredDay,
       category: kind.categoryLabel,
       note: description,
-      entries: <LedgerEntry>[
+      entries: allocation?.receiptEntries(unit) ?? <LedgerEntry>[
         LedgerEntry(
           unit: unit,
           amountMicros: amountMicros,
@@ -123,11 +138,15 @@ class ManualInflowService {
           existing.occurredAt == event.occurredAt &&
           existing.category == event.category &&
           existing.note == event.note &&
-          existing.entries.length == 1 &&
-          existing.entries.single.unit == unit &&
-          existing.entries.single.amountMicros == amountMicros &&
-          existing.entries.single.fund == fund &&
-          existing.entries.single.affectsBalance) {
+          existing.entries.length == event.entries.length &&
+          List<bool>.generate(event.entries.length, (index) {
+            final prior = existing.entries[index];
+            final incoming = event.entries[index];
+            return prior.unit == incoming.unit &&
+                prior.amountMicros == incoming.amountMicros &&
+                prior.fund == incoming.fund &&
+                prior.affectsBalance == incoming.affectsBalance;
+          }).every((same) => same)) {
         return existing;
       }
       rethrow;
