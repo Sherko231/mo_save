@@ -13,6 +13,7 @@ class ExpectedIncome {
     required this.unit,
     required this.expectedAmountMicros,
     this.receivedEvent,
+    this.isIgnored = false,
   });
 
   final String recurrenceKey;
@@ -21,6 +22,11 @@ class ExpectedIncome {
   final FinancialUnit unit;
   final int expectedAmountMicros;
   final FinancialEvent? receivedEvent;
+
+  /// Ignored recurrence is only a reminder disposition: it is not income.
+  final bool isIgnored;
+
+  bool get needsAction => !isReceived && !isIgnored;
 
   bool get isReceived => receivedEvent != null;
 
@@ -42,6 +48,17 @@ class ExpectedIncome {
       unit: unit,
       expectedAmountMicros: expectedAmountMicros,
       receivedEvent: event,
+    );
+  }
+
+  ExpectedIncome copyWithIgnored() {
+    return ExpectedIncome(
+      recurrenceKey: recurrenceKey,
+      kind: kind,
+      scheduledDate: scheduledDate,
+      unit: unit,
+      expectedAmountMicros: expectedAmountMicros,
+      isIgnored: true,
     );
   }
 }
