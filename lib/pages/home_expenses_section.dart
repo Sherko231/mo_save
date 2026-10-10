@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,6 +25,7 @@ class HomeExpensesSection extends StatefulWidget {
 
 class _HomeExpensesSectionState extends State<HomeExpensesSection> {
   final ExpenseService _service = ExpenseService();
+  StreamSubscription<void>? _ledgerChanges;
   ExpenseMonthSnapshot? _snapshot;
   bool _isLoading = true;
   bool _isSavingExpense = false;
@@ -30,7 +33,16 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
   @override
   void initState() {
     super.initState();
+    _ledgerChanges = FinancialLedgerStorage.changes.listen((_) {
+      if (mounted) _reload();
+    });
     _reload();
+  }
+
+  @override
+  void dispose() {
+    _ledgerChanges?.cancel();
+    super.dispose();
   }
 
   @override
@@ -88,7 +100,7 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
         String? amountError;
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('تسجيل مصروف فعلي'),
+            title: const Text('مصروف فعلي من صندوق المصاريف'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -276,6 +288,7 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
         occurredAt: draft.date,
         category: draft.category,
         note: draft.note.isEmpty ? null : draft.note,
+        sourceFund: FinancialFund.spending,
       );
       await _reload();
       if (!mounted) return;
@@ -406,7 +419,7 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.add_card_rounded),
-                label: const Text('تسجيل مصروف فعلي'),
+                label: const Text('تسجيل مصروف من الصندوق'),
               ),
             ],
           ),
