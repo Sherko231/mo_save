@@ -1001,6 +1001,7 @@ Color _eventTone(FinancialEventType type, ColorScheme colors) {
     FinancialEventType.goldSale => const Color(0xFF9A7A34),
     FinancialEventType.manualAdjustment => colors.onSurfaceVariant,
     FinancialEventType.fundTransfer => colors.secondary,
+    FinancialEventType.openingBalance => colors.tertiary,
   };
 }
 
@@ -1015,6 +1016,7 @@ String _eventTypeLabel(FinancialEventType type) {
     FinancialEventType.goldSale => 'بيع ذهب',
     FinancialEventType.manualAdjustment => 'تصحيح يدوي',
     FinancialEventType.fundTransfer => 'تحويل بين الصناديق',
+    FinancialEventType.openingBalance => 'رصيد افتتاحي (ليس دخلاً)',
   };
 }
 
@@ -1029,6 +1031,7 @@ IconData _eventIcon(FinancialEventType type) {
     FinancialEventType.goldSale => Icons.sell_outlined,
     FinancialEventType.manualAdjustment => Icons.tune,
     FinancialEventType.fundTransfer => Icons.swap_horiz,
+    FinancialEventType.openingBalance => Icons.account_balance_wallet_outlined,
   };
 }
 
