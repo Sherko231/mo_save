@@ -193,6 +193,44 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                     ),
                   ),
                 ),
+              if (snapshot.planItems.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 8),
+                Text(
+                  'بنود الخطة لهذا الشهر',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                for (final item in snapshot.planItems)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            '${item.name} • '
+                            '${FinancialFormat.assetBalance(item.amountMicros, item.unit)}',
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          snapshot.paidPlanItemIds.contains(item.id)
+                              ? 'دُفع القسط'
+                              : 'مخطط فقط',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: snapshot.paidPlanItemIds.contains(item.id)
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Text(
+                  'يظهر القسط مدفوعاً عند تسجيله من بند الخطة. '
+                  'المدفوعات القديمة غير المرتبطة قد تبقى «مخطط فقط».',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 4),
               FilledButton.icon(
                 onPressed: _logExpense,
