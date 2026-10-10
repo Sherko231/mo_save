@@ -7,6 +7,7 @@ enum FinancialEventType {
   goldPurchase,
   goldSale,
   manualAdjustment,
+  fundTransfer,
 }
 
 enum FinancialUnit {
@@ -15,6 +16,9 @@ enum FinancialUnit {
   sypNew,
   goldGram,
 }
+
+/// Fund classification is independent of owned-asset currency.
+enum FinancialFund { savings, spending, unallocated }
 
 enum LedgerEntryRole {
   weeklyExpensesEnvelope,
@@ -26,6 +30,7 @@ class LedgerEntry {
     required this.unit,
     required this.amountMicros,
     this.affectsBalance = true,
+    this.fund = FinancialFund.unallocated,
     this.role,
   }) : assert(amountMicros != 0);
 
@@ -46,6 +51,10 @@ class LedgerEntry {
   /// Goal/saving tracking and envelope allocation can deliberately use
   /// non-balance entries so earmarking cash does not count it twice.
   final bool affectsBalance;
+
+  /// Fund holding this asset, or contributing to an explicit fund-only transfer.
+  /// Legacy ledger rows default to unallocated, never presumed Savings.
+  final FinancialFund fund;
 
   /// Optional semantic role inside a multi-entry event.
   final LedgerEntryRole? role;
