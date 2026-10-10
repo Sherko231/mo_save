@@ -91,6 +91,15 @@ class _BackupSettingsSectionState extends State<BackupSettingsSection> {
                 ),
                 Text('الحركات المالية: ${selected.summary.transactionCount}'),
                 Text('أهداف الادخار: ${selected.summary.challengeCount}'),
+                if (selected.summary.databaseSchemaVersion == 9) ...<Widget>[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'هذه نسخة قديمة (v9). رح تنحفظ جميع أرصدتها وحركاتها، '
+                    'لكن الأموال القديمة رح تظهر بانتظار توزيعها بين '
+                    'صندوق الادخار وصندوق المصاريف من الإعدادات. '
+                    'تقدم التحديات القديمة لا يتحوّل لمدخرات حقيقية تلقائياً.',
+                  ),
+                ],
                 Text(
                   'بنود خطة المصاريف: ${selected.summary.expensePlanCount}',
                 ),
