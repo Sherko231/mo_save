@@ -10,7 +10,11 @@ import '../utils/financial_format.dart';
 /// currency switch as part of the transaction: exchanging SYP and USD needs
 /// a separate executed FX event with its recorded exchange rate.
 class FundTransferPage extends StatefulWidget {
-  const FundTransferPage({super.key});
+  const FundTransferPage({super.key, this.ledger, this.service});
+
+  /// Optional dependency injection for isolated widget acceptance scenarios.
+  final FinancialLedgerStorage? ledger;
+  final FundTransferService? service;
 
   @override
   State<FundTransferPage> createState() => _FundTransferPageState();
@@ -23,8 +27,8 @@ class _FundTransferPageState extends State<FundTransferPage> {
     FinancialUnit.sypNew,
   ];
 
-  final FinancialLedgerStorage _ledger = FinancialLedgerStorage();
-  final FundTransferService _transfers = FundTransferService();
+  late final FinancialLedgerStorage _ledger;
+  late final FundTransferService _transfers;
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _note = TextEditingController();
   final String _requestId = FinancialEvent.newId();
@@ -51,6 +55,8 @@ class _FundTransferPageState extends State<FundTransferPage> {
   @override
   void initState() {
     super.initState();
+    _ledger = widget.ledger ?? FinancialLedgerStorage();
+    _transfers = widget.service ?? FundTransferService(ledger: _ledger);
     _reload();
   }
 
