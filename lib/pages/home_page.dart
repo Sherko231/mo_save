@@ -11,6 +11,7 @@ import '../utils/financial_format.dart';
 import 'home_balance_section.dart';
 import 'home_dashboard_overview.dart';
 import 'home_expenses_section.dart';
+import 'home_spending_fund_section.dart';
 import 'income_receipt_dialog.dart';
 import 'manual_inflow_page.dart';
 import 'transaction_history_page.dart';
@@ -306,6 +307,8 @@ class _HomePageState extends State<HomePage> {
             onPreviousMonth: () => _changeMonth(-1),
             onNextMonth: () => _changeMonth(1),
           ),
+          const SizedBox(height: 18),
+          const HomeSpendingFundSection(),
           if (attention.isNotEmpty) ...<Widget>[
             const SizedBox(height: 18),
             const UxSectionHeader(
