@@ -149,6 +149,12 @@ class FinancialLedgerStorage {
 
   Future<void> addEvent(FinancialEvent event) async {
     switch (event.type) {
+      case FinancialEventType.income:
+        if (event.recurrenceKey?.startsWith('income:') ?? false) {
+          await addRecurringIncomeReceipt(income: event);
+          return;
+        }
+        break;
       case FinancialEventType.currencyConversion:
         await addCurrencyConversion(event);
         return;
