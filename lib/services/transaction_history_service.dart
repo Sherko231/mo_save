@@ -173,6 +173,7 @@ class TransactionHistoryService {
         current.occurredAt.toLocal().minute,
       ).toUtc();
       if (current.recurrenceKey != null &&
+          !current.recurrenceKey!.startsWith('manual-cash:') &&
           !_sameLocalDay(normalizedDate, current.occurredAt)) {
         throw const TransactionMutationException(
           'تاريخ الحركة الدورية مرتبط بموعدها الأصلي ولا يمكن نقله ليوم آخر.',
