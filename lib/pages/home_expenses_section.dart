@@ -15,9 +15,11 @@ class HomeExpensesSection extends StatefulWidget {
   const HomeExpensesSection({
     super.key,
     required this.month,
+    this.onPlanChanged,
   });
 
   final DateTime month;
+  final VoidCallback? onPlanChanged;
 
   @override
   State<HomeExpensesSection> createState() => _HomeExpensesSectionState();
@@ -82,7 +84,10 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
         child: ExpensePlanSheet(),
       ),
     );
-    if (changed == true) await _reload();
+    if (changed == true) {
+      await _reload();
+      if (mounted) widget.onPlanChanged?.call();
+    }
   }
 
   Future<void> _logExpense() async {
