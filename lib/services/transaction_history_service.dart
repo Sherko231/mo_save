@@ -55,6 +55,7 @@ class TransactionHistoryService {
     DateTime month, {
     FinancialEventType? type,
     FinancialUnit? unit,
+    FinancialFund? fund,
   }) async {
     final DateTime start = DateTime(month.year, month.month, 1);
     final DateTime end = DateTime(month.year, month.month + 1, 1);
@@ -68,6 +69,10 @@ class TransactionHistoryService {
     final Map<String, int> revisionCounts = await _loadRevisionCounts(database);
     final List<TransactionHistoryRecord> result = active
         .where((event) => unit == null || _containsUnit(event, unit))
+        .where((event) => fund == null ||
+            event.entries.any((entry) => entry.fund == fund &&
+                (entry.affectsBalance ||
+                    event.type == FinancialEventType.fundTransfer)))
         .map(
           (event) => TransactionHistoryRecord(
             event: event,
@@ -96,6 +101,11 @@ class TransactionHistoryService {
         continue;
       }
       if (unit != null && !_containsUnit(event, unit)) {
+        continue;
+      }
+      if (fund != null && !event.entries.any((entry) =>
+          entry.fund == fund && (entry.affectsBalance ||
+              event.type == FinancialEventType.fundTransfer))) {
         continue;
       }
       result.add(
