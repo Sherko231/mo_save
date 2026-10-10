@@ -25,7 +25,7 @@ class HomeDashboardSnapshot {
 
   int expectedIncomeMicros(FinancialUnit unit) {
     return incomeOccurrences
-        .where((income) => income.unit == unit)
+        .where((income) => income.unit == unit && !income.isIgnored)
         .fold<int>(0, (sum, income) => sum + income.expectedAmountMicros);
   }
 
