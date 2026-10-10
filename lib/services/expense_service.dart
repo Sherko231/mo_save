@@ -71,6 +71,7 @@ class ExpenseService {
     required String category,
     String? note,
     FinancialFund sourceFund = FinancialFund.unallocated,
+    String? requestId,
   }) async {
     if (amountMicros <= 0) {
       throw ArgumentError('Expense amount must be greater than zero.');
@@ -79,8 +80,23 @@ class ExpenseService {
       throw ArgumentError('Gold grams are not a direct expense currency.');
     }
     final String cleanCategory = category.trim();
-    if (cleanCategory.isEmpty) {
-      throw ArgumentError('Expense category must not be empty.');
+    if (cleanCategory.isEmpty || cleanCategory.length > 80) {
+      throw ArgumentError('Expense category must be 1 to 80 characters.');
+    }
+    final String? cleanNote = note?.trim().isNotEmpty == true
+        ? note!.trim() : null;
+    if (cleanNote != null && cleanNote.length > 300) {
+      throw ArgumentError('Expense note must be at most 300 characters.');
+    }
+    if (sourceFund == FinancialFund.savings && cleanNote == null) {
+      throw ArgumentError(
+        'A reason is mandatory for a direct payment from Savings.',
+      );
+    }
+    final String? cleanedRequestId = requestId?.trim();
+    if (cleanedRequestId != null &&
+        (cleanedRequestId.isEmpty || cleanedRequestId.length > 128)) {
+      throw ArgumentError('Invalid expense request identity.');
     }
 
     final DateTime now = DateTime.now();
@@ -104,6 +120,7 @@ class ExpenseService {
     }
 
     final FinancialEvent event = FinancialEvent.create(
+      id: cleanedRequestId == null ? null : 'expense_$cleanedRequestId',
       type: FinancialEventType.expense,
       occurredAt: DateTime(
         expenseDay.year,
@@ -119,9 +136,30 @@ class ExpenseService {
         ),
       ],
       category: cleanCategory,
-      note: note,
+      note: cleanNote,
     );
 
-    await _ledgerStorage.addEvent(event);
+    // The first write and the fund-balance validation run inside a ledger
+    // transaction. A repeated UI request ID must not write a second expense.
+    // Conflict re-check also covers a retry whose first result was lost.
+    try {
+      await _ledgerStorage.addEvent(event);
+    } catch (_) {
+      if (cleanedRequestId == null) rethrow;
+      final existing = await _ledgerStorage.loadEvent(event.id);
+      if (existing != null &&
+          existing.type == FinancialEventType.expense &&
+          existing.occurredAt == event.occurredAt &&
+          existing.category == event.category &&
+          existing.note == event.note &&
+          existing.entries.length == 1 &&
+          existing.entries.single.affectsBalance &&
+          existing.entries.single.unit == unit &&
+          existing.entries.single.fund == sourceFund &&
+          existing.entries.single.amountMicros == -amountMicros) {
+        return;
+      }
+      rethrow;
+    }
   }
 }
