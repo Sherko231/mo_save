@@ -14,6 +14,7 @@ import 'home_balance_section.dart';
 import 'home_dashboard_overview.dart';
 import 'home_envelope_section.dart';
 import 'home_expenses_section.dart';
+import 'income_receipt_dialog.dart';
 import 'transaction_history_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -125,7 +126,7 @@ class _HomePageState extends State<HomePage> {
         occurrence.scheduledDate.month,
         occurrence.scheduledDate.day,
       );
-      return !occurrence.isReceived && !scheduled.isAfter(today);
+      return occurrence.needsAction && !scheduled.isAfter(today);
     }).toList(growable: false);
   }
 
@@ -144,85 +145,21 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final bool isSyp = occurrence.unit == FinancialUnit.syp;
-    final TextEditingController controller = TextEditingController(
-      text: FinancialFormat.editableAmount(
-        occurrence.expectedAmountMicros,
-        occurrence.unit,
-      ),
-    );
+    final IncomeReceiptDraft? draft =
+        await showIncomeReceiptDialog(context, occurrence);
 
-    final num? amount = await showDialog<num>(
-      context: context,
-      builder: (dialogContext) {
-        String? errorText;
-        return StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(_incomeTitle(occurrence)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  'أكد المبلغ الذي استلمته فعلياً. يمكنك تعديله إذا اختلف عن المتوقع.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  keyboardType: TextInputType.numberWithOptions(decimal: !isSyp),
-                  inputFormatters: <TextInputFormatter>[
-                    if (isSyp)
-                      FilteringTextInputFormatter.digitsOnly
-                    else
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  onChanged: (_) => setDialogState(() => errorText = null),
-                  decoration: InputDecoration(
-                    labelText: 'المبلغ المستلم',
-                    suffixText: FinancialFormat.unitShort(occurrence.unit),
-                    helperText:
-                        'موعد الدفعة ${FinancialFormat.date(occurrence.scheduledDate)}',
-                    errorText: errorText,
-                  ),
-                ),
-              ],
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final String raw = controller.text.trim();
-                  final num? parsed =
-                      isSyp ? int.tryParse(raw) : double.tryParse(raw);
-                  if (parsed == null || parsed <= 0) {
-                    setDialogState(() {
-                      errorText = 'أدخل مبلغاً أكبر من صفر.';
-                    });
-                    return;
-                  }
-                  Navigator.of(dialogContext).pop(parsed);
-                },
-                child: const Text('تأكيد الاستلام'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    controller.dispose();
-
-    if (amount == null || !mounted) return;
+    if (draft == null || !mounted) return;
     setState(() => _confirmingKey = occurrence.recurrenceKey);
 
     try {
       await _incomeService.confirmReceived(
         occurrence: occurrence,
-        amountMicros: LedgerEntry.amountToMicros(amount),
+        amountMicros: draft.amountMicros,
+        receivedAt: draft.receivedAt,
+        alreadySpentMicros: draft.alreadySpentMicros,
+        spentAt: draft.spentAt,
+        spentCategory: draft.spentCategory,
+        spentNote: draft.spentNote,
       );
       await _reload(showLoading: false);
       if (!mounted) return;
@@ -232,12 +169,15 @@ class _HomePageState extends State<HomePage> {
     } on StateError catch (error) {
       if (!mounted) return;
       final bool future = error.message.toString().contains('Future');
+      final bool ignored = error.message.toString().contains('ignored');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             future
                 ? 'يمكن تأكيد الدخل في موعده فقط.'
-                : 'تم تسجيل هذه الدفعة مسبقاً.',
+                : ignored
+                    ? 'هذه الدفعة متجاهلة. ألغِ التجاهل أولاً.'
+                    : 'تم تسجيل هذه الدفعة مسبقاً.',
           ),
         ),
       );
@@ -250,6 +190,68 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر تسجيل الدخل.')),
+      );
+    } finally {
+      if (mounted) setState(() => _confirmingKey = null);
+    }
+  }
+
+  Future<void> _ignoreOccurrence(ExpectedIncome occurrence) async {
+    if (_confirmingKey != null) return;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تجاهل هذه الدفعة؟'),
+        content: const Text(
+          'لن تُعتبر هذه الدفعة مستلمة، ولن يُضاف أي مبلغ لرصيدك. '
+          'لن تظهر مجدداً ضمن الرواتب المتأخرة، ويمكنك إلغاء التجاهل '
+          'من تفاصيل الدخل لاحقاً.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('تجاهل هذه الدفعة'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _confirmingKey = occurrence.recurrenceKey);
+    try {
+      await _incomeService.ignoreOccurrence(occurrence);
+      await _reload(showLoading: false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تجاهل الدفعة دون تغيير الرصيد.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تجاهل الدفعة. أعد المحاولة.')),
+      );
+    } finally {
+      if (mounted) setState(() => _confirmingKey = null);
+    }
+  }
+
+  Future<void> _undoIgnore(ExpectedIncome occurrence) async {
+    if (_confirmingKey != null) return;
+    setState(() => _confirmingKey = occurrence.recurrenceKey);
+    try {
+      await _incomeService.undoIgnore(occurrence);
+      await _reload(showLoading: false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إلغاء التجاهل. يمكنك تسجيل الدفعة.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر إلغاء التجاهل.')),
       );
     } finally {
       if (mounted) setState(() => _confirmingKey = null);
@@ -304,6 +306,7 @@ class _HomePageState extends State<HomePage> {
                   occurrence: occurrence,
                   isConfirming: _confirmingKey == occurrence.recurrenceKey,
                   onConfirm: () => _confirmReceived(occurrence),
+                   onIgnore: () => _ignoreOccurrence(occurrence),
                 ),
               ),
             ),
@@ -332,6 +335,8 @@ class _HomePageState extends State<HomePage> {
               occurrences: _occurrences,
               confirmingKey: _confirmingKey,
               onConfirm: _confirmReceived,
+              onIgnore: _ignoreOccurrence,
+              onUndoIgnore: _undoIgnore,
             ),
           ),
           const SizedBox(height: 8),
