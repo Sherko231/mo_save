@@ -8,6 +8,7 @@ enum FinancialEventType {
   goldSale,
   manualAdjustment,
   fundTransfer,
+  openingBalance,
 }
 
 enum FinancialUnit {
