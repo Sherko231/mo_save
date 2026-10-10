@@ -44,6 +44,10 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
 - MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
 - MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
+- MS-10: moving 100 USD Savings→Spending from 500 USD saved produces 400 Savings and 100 Spending, still 500 owned, with **no** income or expense. Only a later actual 100 USD Spending payment lowers owned assets to 400 and records a 100 USD expense once.
+- MS-10: moving Spending→Savings is supported; inadequate source balance fails without fallback to other funds, even if owned assets total is larger.
+- MS-10: identical retries remain safe after transferring the entire source balance, while changed-payload reuse rejects; zero/negative, same-fund, Unallocated UI, future-dated and gold transfers reject.
+- MS-10: same-unit fund moves do not convert SYP↔USD or SYP (N), and no executed FX rate is invented. History shows the source→destination, audited corrections/deletes preserve revisions, and transfers cannot be reversed if their cash has already been spent.
 - MS-09: a planned ampere price changed effective next month never rewrites older monthly plans or previously paid ledger entries.
 - MS-09: scheduled cancellation removes the commitment only after its effective month; future-only additions do not appear in current-month totals.
 - MS-09: a confirmed planned installment has one month-specific recurrence identity; duplicate linked payments reject, while extra one-off expenses remain possible.
@@ -58,7 +62,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-09 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-10 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
