@@ -130,6 +130,7 @@ void main() {
       final payload = jsonDecode(outer['payloadJson']! as String)
           as Map<String, dynamic>;
       final tables = payload['tables']! as Map<String, dynamic>;
+      tables.remove('recurring_expense_plan_versions');
       final entries = tables['financial_event_entries']! as List<dynamic>;
       for (final item in entries) {
         (item as Map<String, dynamic>).remove('fund');
@@ -207,7 +208,8 @@ void main() {
           LedgerEntry.amountToMicros(885000));
 
       final again = await targetBackup.createBackupBytes();
-      expect(targetBackup.inspectBackupBytes(again).databaseSchemaVersion, 10);
+      expect(targetBackup.inspectBackupBytes(again).databaseSchemaVersion,
+          LocalDatabase.schemaVersion);
       await targetBackup.restoreBackupBytes(again);
       expect(await database.query('financial_events'), hasLength(4));
       expect(await database.query('financial_event_revisions'), hasLength(1));
