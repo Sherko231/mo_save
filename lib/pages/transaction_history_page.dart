@@ -458,7 +458,10 @@ class _TransactionCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   '${FinancialFormat.dateTime(event.occurredAt)}'
-                  '${event.category == null ? '' : ' • ${event.category}'}',
+                  '${event.category == null ? '' : ' • ${event.category}'}'
+                  '${event.type != FinancialEventType.expense
+                      ? ''
+                      : ' • من ${_fundLabel(event.entries.first.fund)}'}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -986,7 +989,8 @@ class _EntryRow extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Text(
-              '${entry.affectsBalance ? 'رصيد' : 'تخصيص'}$role',
+              '${entry.affectsBalance ? 'رصيد' : 'تخصيص'}'
+              ' • ${_fundLabel(entry.fund)}$role',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -1132,6 +1136,12 @@ String _entryEditLabel(LedgerEntry entry, int index) {
       entry.role == null ? '' : ' — ${_roleLabel(entry.role)}';
   return 'المبلغ ${index + 1} ($direction)$role';
 }
+
+String _fundLabel(FinancialFund fund) => switch (fund) {
+  FinancialFund.savings => 'الادخار',
+  FinancialFund.spending => 'المصاريف',
+  FinancialFund.unallocated => 'غير موزّع',
+};
 
 String _roleLabel(LedgerEntryRole? role) {
   return switch (role) {
