@@ -141,6 +141,56 @@ void main() {
       await database.close();
     });
 
+    test('minimal on-disk v10 plan upgrades to one known v11 baseline',
+        () async {
+      final path = '${tempDirectory.path}${Platform.pathSeparator}legacy_v10_plan.db';
+      final v10 = await databaseFactoryFfi.openDatabase(
+        path,
+        options: OpenDatabaseOptions(
+          version: 10,
+          onCreate: (raw, version) async {
+            await raw.execute('''
+              CREATE TABLE app_metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)
+            ''');
+            await raw.execute('''
+              CREATE TABLE recurring_expense_items(
+                id TEXT PRIMARY KEY, name TEXT NOT NULL,
+                unit TEXT NOT NULL, amount_micros INTEGER NOT NULL,
+                sort_order INTEGER NOT NULL,
+                created_at_ms INTEGER NOT NULL, updated_at_ms INTEGER NOT NULL)
+            ''');
+            await raw.insert('recurring_expense_items', <String, Object?>{
+              'id': 'old-gas',
+              'name': 'غاز',
+              'unit': 'syp',
+              'amount_micros': LedgerEntry.amountToMicros(100000),
+              'sort_order': 0,
+              'created_at_ms': DateTime(2026, 8, 15)
+                  .millisecondsSinceEpoch,
+              'updated_at_ms': DateTime(2026, 10, 9)
+                  .millisecondsSinceEpoch,
+            });
+            await raw.insert('app_metadata', <String, Object?>{
+              'key': 'expense_plan_client_defaults_seeded_v1',
+              'value': '1',
+            });
+          },
+        ),
+      );
+      await v10.close();
+      final upgraded = LocalDatabase.forTesting(path);
+      final raw = await upgraded.database;
+      expect(await raw.getVersion(), 11);
+      expect(await raw.query('recurring_expense_items'), hasLength(1));
+      final versions = await raw.query('recurring_expense_plan_versions');
+      expect(versions, hasLength(1));
+      expect(versions.single['item_id'], 'old-gas');
+      expect(versions.single['effective_month'], 202608);
+      expect(versions.single['amount_micros'],
+          LedgerEntry.amountToMicros(100000));
+      await upgraded.close();
+    });
+
     test('real schema v9 fixture keeps balances, history and goal progress', () async {
       final path = '${tempDirectory.path}${Platform.pathSeparator}real_v9.db';
       final old = await databaseFactoryFfi.openDatabase(
