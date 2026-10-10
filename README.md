@@ -2,6 +2,17 @@
 
 Single-user, offline-first Flutter app for personal finance tracking and gamified saving goals.
 
+## Active redesign — savings and spending funds
+
+The client-requested redesign is **planned, not implemented**. It adds linked Savings and Spending funds, actual spendable liquidity and categorized expenses, goal earmarks backed by real Savings, overdue-payday dismissal, editable income/expense assumptions and realistic goal forecasts.
+
+- [AI implementation contract](AGENTS.md)
+- [Redesign product specification](docs/FUNDS_REDESIGN.md)
+- [Progress / next Issue / dependency tracker](docs/FUNDS_REDESIGN_PROGRESS.md)
+- [GitHub redesign Issues MS-01..MS-18](https://github.com/Sherko231/mo_save/issues/75) (#75–#92)
+
+Read these before continuing project implementation. The tracker begins with MS-01, and previous APK/client acceptance must not be considered redesigned-product sign-off.
+
 ## Project docs
 
 - [Product scope](docs/PRODUCT.md)
