@@ -280,8 +280,8 @@ void main() {
       final reloaded = FinancialLedgerStorage(database: reopened);
       expect(await reloaded.loadFundBalanceMicros(
           FinancialFund.unallocated, FinancialUnit.syp), 805000000000);
-      expect((await reopened.database).then((value) => value.query('financial_events')),
-          completion(hasLength(3)));
+      final reopenedDatabase = await reopened.database;
+      expect(await reopenedDatabase.query('financial_events'), hasLength(3));
       await reopened.close();
     });
 
