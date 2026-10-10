@@ -1000,6 +1000,7 @@ Color _eventTone(FinancialEventType type, ColorScheme colors) {
     FinancialEventType.goldPurchase => AppPalette.gold,
     FinancialEventType.goldSale => const Color(0xFF9A7A34),
     FinancialEventType.manualAdjustment => colors.onSurfaceVariant,
+    FinancialEventType.fundTransfer => colors.secondary,
   };
 }
 
@@ -1013,6 +1014,7 @@ String _eventTypeLabel(FinancialEventType type) {
     FinancialEventType.goldPurchase => 'شراء ذهب',
     FinancialEventType.goldSale => 'بيع ذهب',
     FinancialEventType.manualAdjustment => 'تصحيح يدوي',
+    FinancialEventType.fundTransfer => 'تحويل بين الصناديق',
   };
 }
 
@@ -1026,11 +1028,13 @@ IconData _eventIcon(FinancialEventType type) {
     FinancialEventType.goldPurchase => Icons.diamond_outlined,
     FinancialEventType.goldSale => Icons.sell_outlined,
     FinancialEventType.manualAdjustment => Icons.tune,
+    FinancialEventType.fundTransfer => Icons.swap_horiz,
   };
 }
 
 String _eventSummary(FinancialEvent event) {
   if (event.type == FinancialEventType.currencyConversion ||
+      event.type == FinancialEventType.fundTransfer ||
       event.type == FinancialEventType.goldPurchase ||
       event.type == FinancialEventType.goldSale) {
     final LedgerEntry? source = _firstEntry(event, negative: true);
