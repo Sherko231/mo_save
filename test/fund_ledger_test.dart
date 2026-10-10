@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mo_save/models/financial_event.dart';
 import 'package:mo_save/services/financial_ledger_storage.dart';
 import 'package:mo_save/services/local_database.dart';
+import 'package:mo_save/services/transaction_history_service.dart';
 
 void main() {
   group('MS-02 fund-aware ledger', () {
@@ -137,6 +138,47 @@ void main() {
       );
       expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
           LedgerEntry.amountToMicros(200));
+    });
+
+    test('audited correction preserves fund and rolls back unsafe edit', () async {
+      await income(FinancialUnit.usd, LedgerEntry.amountToMicros(500),
+          fund: FinancialFund.savings, id: 'saved-receipt');
+      final history = TransactionHistoryService(
+        database: database,
+        ledger: ledger,
+      );
+      await ledger.transferFunds(
+        unit: FinancialUnit.usd,
+        source: FinancialFund.savings,
+        destination: FinancialFund.spending,
+        amountMicros: LedgerEntry.amountToMicros(200),
+        occurredAt: DateTime.now(),
+      );
+      await expectLater(
+        history.correctAmounts(
+          eventId: 'saved-receipt',
+          absoluteAmountsMicros: <int>[LedgerEntry.amountToMicros(100)],
+        ),
+        throwsA(isA<InsufficientFundBalanceException>()),
+      );
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
+          LedgerEntry.amountToMicros(500));
+      expect(await ledger.loadFundBalanceMicros(
+          FinancialFund.savings, FinancialUnit.usd),
+          LedgerEntry.amountToMicros(300));
+      expect(await history.loadRevisions('saved-receipt'), isEmpty);
+
+      await history.correctAmounts(
+        eventId: 'saved-receipt',
+        absoluteAmountsMicros: <int>[LedgerEntry.amountToMicros(450)],
+      );
+      final restored = await ledger.loadEvent('saved-receipt');
+      expect(restored!.entries.single.fund, FinancialFund.savings);
+      final revisions = await history.loadRevisions('saved-receipt');
+      expect(revisions.single.snapshot.entries.single.fund,
+          FinancialFund.savings);
+      expect(revisions.single.snapshot.entries.single.amountMicros,
+          LedgerEntry.amountToMicros(500));
     });
 
     test('cannot classify physical gold as spendable cash', () async {
