@@ -265,6 +265,17 @@ class ExpensePlanStorage {
         whereArgs: <Object?>[_seedMetadataKey], limit: 1);
       if (metadata.isNotEmpty) return;
 
+      // Older archives may include a real custom plan but lack the seeding
+      // marker. Never add nine default commitments on top of restored bills.
+      final existing = await txn.query('recurring_expense_items',
+        columns: <String>['id'], limit: 1);
+      if (existing.isNotEmpty) {
+        await txn.insert('app_metadata',
+          <String, Object?>{'key': _seedMetadataKey, 'value': '1'},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+        return;
+      }
+
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       final month = _monthKey(DateTime.now());
       const defaults = <(String, int)>[
