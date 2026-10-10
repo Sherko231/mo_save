@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `9`
+- Current schema version: `10`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -213,6 +213,30 @@ The transaction-history UI merges active ledger events with final delete snapsho
 Before replacing amounts, the correction flow checks resulting balances from the same SQLite transaction and rejects a mutation that would worsen an owned unit into a negative value. Deletion performs the equivalent check. Events with dependent `source_event_id` rows cannot be amount-corrected or deleted until the dependent event is handled, and challenge-owned saving contributions stay read-only in History so challenge progress cannot diverge from its canonical ledger contribution.
 
 See `docs/TRANSACTION_HISTORY.md` for the user-facing correction rules.
+
+## Schema v10 — Fund classification and zero-asset transfers (MS-02)
+
+Schema v10 adds one field to `financial_event_entries`:
+
+- `fund TEXT NOT NULL DEFAULT 'unallocated'` with allowed values `savings`, `spending`, and `unallocated`; indexed together with `unit`.
+
+It does not rewrite a single older `financial_events` row or create new income. Existing v9 entries receive the SQLite default `unallocated`. Thus every old known owned balance is classified as **unallocated** until the user explicitly reconciles it (MS-03). Historical weekly envelopes and challenge completion cannot establish a verified Savings fund amount.
+
+Each balance-affecting ledger entry now represents both an owned-asset delta and a delta to the selected fund. A new `fundTransfer` event represents an **equal and opposite pair of non-balance-affecting entries**, in the **same unit**, with different funds and equal absolute amounts. The entries adjust fund quantities only. The canonical owned-asset balance query continues to sum only `affects_balance = 1`. The fund query groups (1) balance-affecting entries and (2) `fundTransfer` entries; it ignores other non-balance entries such as `savingContribution` and `weeklyAllocation`.
+
+Conservation, **for each** asset unit:
+
+```text
+Owned(unit) = Savings(unit) + Spending(unit) + Unallocated(unit)
+```
+
+`FinancialLedgerStorage` exposes `loadFundBalancesMicros()`, `loadFundBalanceMicros(fund, unit)`, `transferFunds(...)`, and `addFundTransfer(event)`. New fund-only transfers can be retried with the same stable event ID or recurrence key without double posting. The service checks source-fund availability and per-unit conservation inside the same SQLite transaction, rejecting operations that would worsen a negative fund balance. Gold grams cannot enter the immediately spendable `spending` fund. Conversion and gold purchase/sale postings preserve their pre-existing historic amounts and executed rates.
+
+`TransactionHistoryService` now round-trips fund attribution in event revisions and blocks fund-invalid corrections/deletions in the existing atomic correction transaction. Existing event revision history is retained unchanged. This phase **does not** rewire the Home/Spending/Savings UI: ordinary old-screen events still default to `unallocated` until downstream issues implement explicit fund selection and salary distribution.
+
+**Compatibility boundary:** schema v9 application databases are migrated by the versioned SQLite upgrade; v9 `.mosave` exports are **not yet restorable** into schema v10 because `BackupService` currently requires exact schema equality. Fixing version-aware backup restore and full v9 migration validation is mandatory in MS-03 before the redesigned release is delivered. Do not uninstall an old client or delete its backups based only on MS-02.
+
+Implementation tests have been added in `test/fund_ledger_test.dart` but have **not** been run (CLI checks explicitly omitted at owner request). See the issue and progress tracker for verification status.
 
 ## Legacy SharedPreferences migration
 
