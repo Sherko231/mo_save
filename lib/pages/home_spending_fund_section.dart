@@ -14,7 +14,10 @@ import 'unallocated_funds_page.dart';
 /// Always describes NOW, independent of the month selected in the historical
 /// Home overview. Plans are clearly hypothetical and cannot debit balances.
 class HomeSpendingFundSection extends StatefulWidget {
-  const HomeSpendingFundSection({super.key});
+  const HomeSpendingFundSection({super.key, required this.refreshToken});
+
+  /// Changed by Home reload or recurring-plan edit; no derived balance cache.
+  final int refreshToken;
 
   @override
   State<HomeSpendingFundSection> createState() =>
@@ -34,6 +37,12 @@ class _HomeSpendingFundSectionState extends State<HomeSpendingFundSection> {
     super.initState();
     _ledgerChanges = FinancialLedgerStorage.changes.listen((_) => _refresh());
     _refresh();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeSpendingFundSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) _refresh();
   }
 
   @override
@@ -139,6 +148,13 @@ class _HomeSpendingFundSectionState extends State<HomeSpendingFundSection> {
               child: Text(_error!,
                   style: TextStyle(color: colors.error)),
             ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'رصيد الآن • خطة ومدفوعات شهر ${snapshot.month.month}/${snapshot.month.year}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
           for (final unit in SpendingFundSnapshot.cashUnits)
             if (unit != FinancialUnit.sypNew ||
                 snapshot.spendableMicros(unit) != 0 ||
