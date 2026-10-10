@@ -461,26 +461,7 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
 
 int? _parseCashMicros(String raw, FinancialUnit unit) {
   final text = raw.trim();
-  if (!RegExp(r'^\d+(\.\d+)?
-  const _ExpenseDraft({
-    required this.name,
-    required this.unit,
-    required this.amountMicros,
-    required this.effectiveFromMonth,
-  });
-
-  final String name;
-  final FinancialUnit unit;
-  final int amountMicros;
-  final DateTime effectiveFromMonth;
-}
-
-const List<FinancialUnit> _cashUnits = <FinancialUnit>[
-  FinancialUnit.syp,
-  FinancialUnit.usd,
-  FinancialUnit.sypNew,
-];
-).hasMatch(text)) return null;
+  if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(text)) return null;
   final parts = text.split('.');
   final decimals = unit == FinancialUnit.usd ? 2 : 0;
   if (parts.length > 1 &&
