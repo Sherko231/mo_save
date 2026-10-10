@@ -125,6 +125,7 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
         source: _sourceController.text,
         note: _noteController.text,
         requestId: _requestId,
+        untrackedAssetSaleConfirmed: _kind == ManualInflowKind.itemSale,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
