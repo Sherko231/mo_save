@@ -116,6 +116,20 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _openManualInflow() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const ManualInflowPage(),
+      ),
+    );
+    if (!mounted || saved != true) return;
+    await _reload(showLoading: false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم تسجيل المبلغ في سجل الحركات.')),
+    );
+  }
+
   List<ExpectedIncome> get _incomeNeedingAttention {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
