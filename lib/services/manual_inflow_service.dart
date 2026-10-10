@@ -43,7 +43,15 @@ class ManualInflowService {
     String? source,
     String? note,
     String? requestId,
+    bool untrackedAssetSaleConfirmed = false,
   }) async {
+    if (kind == ManualInflowKind.itemSale &&
+        !untrackedAssetSaleConfirmed) {
+      throw ArgumentError(
+        'Only sales of previously untracked items can be recorded as income. '
+        'Use asset trades for tracked gold or currency.',
+      );
+    }
     if (unit == FinancialUnit.goldGram) {
       throw ArgumentError('Manual receipts are cash-only. Use a gold trade.');
     }
