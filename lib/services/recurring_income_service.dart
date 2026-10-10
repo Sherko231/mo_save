@@ -97,6 +97,7 @@ class RecurringIncomeService {
     int alreadySpentMicros = 0,
     String? spentCategory,
     String? spentNote,
+    DateTime? spentAt,
   }) async {
     if (amountMicros <= 0) {
       throw ArgumentError.value(
@@ -150,13 +151,17 @@ class RecurringIncomeService {
       recurrenceKey: occurrence.recurrenceKey,
     );
 
+    final DateTime expenseDay = _calendarDay(spentAt ?? actualDay);
+    if (alreadySpentMicros > 0 && expenseDay.isAfter(today)) {
+      throw ArgumentError('Historical expense date cannot be in the future.');
+    }
     final FinancialEvent? spent = alreadySpentMicros == 0
         ? null
         : FinancialEvent.create(
             id: 'historical_spent_${event.id}',
             type: FinancialEventType.expense,
             occurredAt: DateTime(
-              actualDay.year, actualDay.month, actualDay.day, 12,
+              expenseDay.year, expenseDay.month, expenseDay.day, 12,
             ),
             entries: <LedgerEntry>[
               LedgerEntry(
