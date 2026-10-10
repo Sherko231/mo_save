@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../models/expected_income.dart';
 import '../models/financial_event.dart';
+import '../models/financial_settings.dart';
+import '../models/receipt_fund_allocation.dart';
+import '../services/financial_settings_storage.dart';
 import '../utils/financial_format.dart';
 
 class IncomeReceiptDraft {
@@ -10,6 +13,8 @@ class IncomeReceiptDraft {
     required this.amountMicros,
     required this.receivedAt,
     required this.alreadySpentMicros,
+    required this.savingsMicros,
+    required this.spendingMicros,
     required this.spentAt,
     required this.spentCategory,
     required this.spentNote,
@@ -18,6 +23,8 @@ class IncomeReceiptDraft {
   final int amountMicros;
   final DateTime receivedAt;
   final int alreadySpentMicros;
+  final int savingsMicros;
+  final int spendingMicros;
   final DateTime spentAt;
   final String spentCategory;
   final String spentNote;
@@ -29,6 +36,13 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
   BuildContext context,
   ExpectedIncome occurrence,
 ) async {
+  FinancialSettings? settings;
+  try {
+    settings = await FinancialSettingsStorage().loadSettings();
+  } catch (_) {
+    // Manual allocation stays available when suggestions cannot be loaded.
+  }
+  if (!context.mounted) return null;
   final FinancialUnit unit = occurrence.unit;
   final bool isWhole = unit == FinancialUnit.syp ||
       unit == FinancialUnit.sypNew;
@@ -44,6 +58,8 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
     ),
   );
   final spentController = TextEditingController(text: '0');
+  final savingsController = TextEditingController(text: '0');
+  final spendingController = TextEditingController(text: '0');
   final categoryController = TextEditingController();
   final noteController = TextEditingController();
 
@@ -133,6 +149,137 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                       'تاريخ المصروف السابق: ${FinancialFormat.date(spentDate)}',
                     ),
                   ),
+                  const Divider(),
+                  Text(
+                    'توزيع المبلغ المتبقي على الصناديق',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'كل مبلغ مخصص للادخار أو للمصاريف هو جزء من '
+                    'نفس الدفعة، مو دخل إضافي. والجزء الباقي بيضل '
+                    'غير موزّع. المصروف السابق ما بينحسب مرتين.',
+                  ),
+                  if (settings != null) ...<Widget>[
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () {
+                        final received = _parseMoneyMicros(
+                          amountController.text, unit,
+                        );
+                        final spent = _parseMoneyMicros(
+                          spentController.text, unit,
+                        );
+                        if (received == null || spent == null ||
+                            spent > received) {
+                          update(() => errorText =
+                              'صحح المبلغ والمصروف قبل تطبيق الاقتراح.');
+                          return;
+                        }
+                        final available = received - spent;
+                        int savings;
+                        int spending;
+                        if (unit == FinancialUnit.syp) {
+                          final wantedSpending = LedgerEntry.amountToMicros(
+                            settings!.weeklyExpensesAllocation,
+                          );
+                          final wantedSavings = LedgerEntry.amountToMicros(
+                            settings.weeklySavingsAllocation,
+                          );
+                          spending = wantedSpending > available
+                              ? available : wantedSpending;
+                          final left = available - spending;
+                          savings = wantedSavings > left ? left : wantedSavings;
+                        } else {
+                          // Monthly USD income historically favored savings;
+                          // this is a suggestion, not a forced allocation.
+                          savings = available;
+                          spending = 0;
+                        }
+                        update(() {
+                          spendingController.text =
+                              FinancialFormat.editableAmount(spending, unit);
+                          savingsController.text =
+                              FinancialFormat.editableAmount(savings, unit);
+                          errorText = null;
+                        });
+                      },
+                      icon: const Icon(Icons.auto_fix_high_outlined),
+                      label: const Text('تطبيق التقسيم المقترح (اختياري)'),
+                    ),
+                  ],
+                  const SizedBox(height: 9),
+                  TextField(
+                    controller: spendingController,
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: !isWhole,
+                    ),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(
+                        isWhole ? r'[0-9]' : r'[0-9.]',
+                      )),
+                    ],
+                    onChanged: (_) => update(() => errorText = null),
+                    decoration: InputDecoration(
+                      labelText: 'إلى صندوق المصاريف',
+                      suffixText: FinancialFormat.unitShort(unit),
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  TextField(
+                    controller: savingsController,
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: !isWhole,
+                    ),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(
+                        isWhole ? r'[0-9]' : r'[0-9.]',
+                      )),
+                    ],
+                    onChanged: (_) => update(() => errorText = null),
+                    decoration: InputDecoration(
+                      labelText: 'إلى صندوق الادخار',
+                      suffixText: FinancialFormat.unitShort(unit),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Builder(builder: (context) {
+                    final received = _parseMoneyMicros(
+                      amountController.text, unit,
+                    );
+                    final spent = _parseMoneyMicros(
+                      spentController.text, unit,
+                    );
+                    final savings = _parseMoneyMicros(
+                      savingsController.text, unit,
+                    );
+                    final spending = _parseMoneyMicros(
+                      spendingController.text, unit,
+                    );
+                    if (received == null || spent == null ||
+                        savings == null || spending == null) {
+                      return const Text('أدخل مبالغ صحيحة لعرض الباقي.');
+                    }
+                    try {
+                      final split = ReceiptFundAllocation(
+                        receivedMicros: received,
+                        savingsMicros: savings,
+                        spendingMicros: spending,
+                        alreadySpentMicros: spent,
+                      savingsMicros: savings,
+                      spendingMicros: spending,
+                      );
+                      return Text(
+                        'المتبقي غير الموزّع: '
+                        '${FinancialFormat.assetBalance(
+                          split.remainingUnallocatedMicros, unit,
+                        )}',
+                      );
+                    } on ArgumentError {
+                      return const Text('مجموع التخصيص تجاوز المبلغ المتاح.');
+                    }
+                  }),
+                  const Divider(),
                   TextField(
                     controller: categoryController,
                     decoration: const InputDecoration(
@@ -170,11 +317,21 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                   final spent = _parseMoneyMicros(
                     spentController.text, unit,
                   );
+                  final savings = _parseMoneyMicros(
+                    savingsController.text, unit,
+                  );
+                  final spending = _parseMoneyMicros(
+                    spendingController.text, unit,
+                  );
                   if (received == null ||
                       received <= 0 ||
                       spent == null ||
+                      savings == null ||
+                      spending == null ||
                       spent < 0 ||
-                      spent > received) {
+                      spent > received ||
+                      savings > received - spent ||
+                      spending > received - spent - savings) {
                     update(() => errorText =
                         'تأكد أن المبلغ المستلم موجب، وأن المصروف السابق '
                         'بين صفر والمبلغ المستلم.');
@@ -202,6 +359,8 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
   } finally {
     amountController.dispose();
     spentController.dispose();
+    savingsController.dispose();
+    spendingController.dispose();
     categoryController.dispose();
     noteController.dispose();
   }
