@@ -44,7 +44,11 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
 - MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
 - MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
-- MS-08: choosing a bill plan item prefills only; the plan alone does not debit cash.
+- MS-09: a planned ampere price changed effective next month never rewrites older monthly plans or previously paid ledger entries.
+- MS-09: scheduled cancellation removes the commitment only after its effective month; future-only additions do not appear in current-month totals.
+- MS-09: a confirmed planned installment has one month-specific recurrence identity; duplicate linked payments reject, while extra one-off expenses remain possible.
+- MS-09: SQLite v11 schema upgrade preserves known old-plan baselines; v9/v10 archive import and v11 round trips restore version rows atomically, rejecting malformed plan history.
+- MS-08: choosing a bill plan item merely prefills until actual payment is confirmed.
 - MS-08: one-form retry is idempotent even for a fully depleted fund; a changed-payload retry rejects. Corrections/deletions preserve the original fund and revisions, and SYP (N) remains distinct.
 - Actual expenses cannot exceed the designated paying fund's balance; quick Spending payments never spend Savings or Unallocated cash.
 - SYP↔USD conversions reconcile source/destination balances and persist the executed rate.
@@ -54,20 +58,20 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-08 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-09 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
 The migration suite covers two upgrade paths that contain client data:
 
-1. A real schema-v1 SQLite file is created, populated with a challenge and cells, then opened through the current `LocalDatabase`. The test verifies upgrade to schema v10, preservation of challenge data, and presence of the later ledger/settings/expense/revision schema.
+1. A real schema-v1 SQLite file is created, populated with a challenge and cells, then opened through the current `LocalDatabase`. The test verifies upgrade to schema v11, preservation of challenge data, and presence of the later ledger/settings/expense/revision schema.
 2. Legacy `saving_challenges_v1` SharedPreferences JSON is loaded through `ChallengeStorage`, migrated once into SQLite, removed from the legacy store, and reconciled into the canonical challenge-progress ledger event when completed cells already exist.
 
 These tests are intended to catch accidental missing migrations, destructive schema changes, duplicate legacy imports, and challenge/ledger divergence before release.
 
 ## Widget smoke coverage
 
-`expense_plan_widget_test.dart` exercises one complete persisted create → edit → delete flow against an isolated SQLite database, including the destructive-delete confirmation dialog and the resulting empty state.
+`expense_plan_widget_test.dart` now exercises creation followed by effective-next-month editing and scheduled cancellation; the current month's values remain unchanged rather than being destructively replaced.
 
 ## Known boundaries
 
