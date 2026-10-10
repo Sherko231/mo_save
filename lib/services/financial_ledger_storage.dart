@@ -235,6 +235,79 @@ class FinancialLedgerStorage {
     await addFundTransfer(event);
   }
 
+  /// Record one recurring receipt, optionally netting already-spent historic
+  /// money with a separately classified expense in the very same transaction.
+  /// Ignore and receipt race safely: their SQLite writes serialize and only
+  /// one disposition can win. Historical spending is NOT a fund transfer.
+  Future<void> addRecurringIncomeReceipt({
+    required FinancialEvent income,
+    FinancialEvent? historicalExpense,
+  }) async {
+    if (income.type != FinancialEventType.income ||
+        income.recurrenceKey == null ||
+        income.entries.isEmpty ||
+        income.entries.any(
+          (entry) => !entry.affectsBalance || entry.amountMicros <= 0,
+        )) {
+      throw ArgumentError('Recurring receipt must be positive real income.');
+    }
+    _validateFundEntryShape(income);
+    if (historicalExpense != null) {
+      final Map<FinancialUnit, int> received = <FinancialUnit, int>{};
+      for (final LedgerEntry entry in income.entries) {
+        received[entry.unit] =
+            (received[entry.unit] ?? 0) + entry.amountMicros;
+      }
+      final Map<FinancialUnit, int> spent = <FinancialUnit, int>{};
+      if (historicalExpense.type != FinancialEventType.expense ||
+          historicalExpense.sourceEventId != income.id ||
+          historicalExpense.recurrenceKey != null ||
+          historicalExpense.entries.isEmpty ||
+          historicalExpense.entries.any(
+            (entry) => !entry.affectsBalance ||
+                entry.amountMicros >= 0 ||
+                entry.fund != FinancialFund.unallocated ||
+                entry.unit == FinancialUnit.goldGram,
+          )) {
+        throw ArgumentError('Historical expense must be linked cash spending.');
+      }
+      for (final LedgerEntry entry in historicalExpense.entries) {
+        spent[entry.unit] = (spent[entry.unit] ?? 0) -
+            entry.amountMicros;
+      }
+      for (final MapEntry<FinancialUnit, int> paid in spent.entries) {
+        if (paid.value > (received[paid.key] ?? 0)) {
+          throw ArgumentError(
+            'Historical spending exceeds the receipt for ${paid.key.name}.',
+          );
+        }
+      }
+    }
+
+    final Database database = await _database.database;
+    await database.transaction((transaction) async {
+      final List<Map<String, Object?>> ignored = await transaction.query(
+        'app_metadata',
+        columns: <String>['key'],
+        where: 'key = ?',
+        whereArgs: <Object?>[
+          'ignored_income_occurrence:${income.recurrenceKey}',
+        ],
+        limit: 1,
+      );
+      if (ignored.isNotEmpty) {
+        throw StateError('This recurring income occurrence is ignored.');
+      }
+      final before = await _loadFundBalances(transaction);
+      await _insertEvent(transaction, income);
+      if (historicalExpense != null) {
+        await _insertEvent(transaction, historicalExpense);
+      }
+      await _ensureSafeFundMutation(transaction, before);
+    });
+    notifyChanged();
+  }
+
   /// Adds one real SYP <-> USD conversion as one atomic ledger event.
   ///
   /// The source balance is checked inside the same SQLite transaction that
