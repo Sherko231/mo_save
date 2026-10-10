@@ -25,6 +25,11 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - Actual 300 USD monthly receipts support a user-edited split with nonzero Unallocated remainder, not mandatory all-Savings classification.
 - Prior spending reduces distributable cash before savings/spending allocations; 885k received minus 80k historic expense may produce 345k Savings + 460k Spending with zero Unallocated, preserving exactly one expense.
 - Invalid allocations fail before any partial receipt is written; manual split retries are idempotent for identical postings, and conflicting reuse fails.
+- MS-07 Spending dashboard shows exactly the per-unit Spending holdings; Savings USD, unallocated SYP and physical gold cannot inflate available liquidity.
+- Monthly recurring planned bills do not debit actual Spending cash; the after-full-plan figure is explicitly a hypothetical scenario, not an unpaid-bills calculation.
+- Actual spending is counted once from the paying fund; Spending-funded monthly expense is distinguished from total expenses across all funds.
+- A Spending-only quick expense rejects insufficient Spending funds even when overall assets or Savings would cover it; ledger and fund totals do not change.
+- Fund-filtered history includes actual receipts/expenses involving Spending and retains deleted-event revisions and amount corrections.
 - A 50 USD manual gift is a single real-income receipt; Savings and owned-asset totals increase exactly once.
 - Opening pre-existing cash records an owned asset but is **not income** in period aggregates; Unallocated remains a separate bucket.
 - Stable manual entry request keys prevent duplicate receipts while rejecting changed-payload retries.
@@ -36,7 +41,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - Receipt uniqueness survives repeated confirmation; changed salary defaults do not hide already-recorded historical occurrences.
 - Weekly envelope defaults clamp to the actual received salary.
 - Weekly envelope allocation remains non-balance-affecting and cannot be duplicated.
-- Actual expenses cannot exceed the currently owned balance.
+- Actual expenses cannot exceed the designated paying fund's balance; quick Spending payments never spend Savings or Unallocated cash.
 - SYP↔USD conversions reconcile source/destination balances and persist the executed rate.
 - Gold purchases reconcile cash-out and gram-in postings without double counting.
 - Insufficient cash prevents conversion/gold purchase mutations.
@@ -44,7 +49,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-06 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-07 regression cases have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
