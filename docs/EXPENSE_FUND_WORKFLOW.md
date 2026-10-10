@@ -27,9 +27,9 @@ All expense totals are per unit: `ExpenseService.loadMonth` counts the actual ca
 
 ## Plan selection, recurrence and limits
 
-Selecting an existing recurring expense item (e.g. `أمبير`, internet) **only prefills** the name, currency and planned amount. The owner may enter the amount actually paid and choose their source fund. It does **not** create a new recurring rule, mark a specific invoice occurrence paid, modify the plan, or affect cash before confirmation.
+Selecting an existing recurring expense item (e.g. `أمبير`, internet) prefills its current effective planned value for the chosen payment month. Nothing is debited until the user confirms the actual payment. **On confirmation**, MS-09 links that actual expense to the item's monthly occurrence via a unique `expense-plan:<item-id>:<YYYYMM>` key, marks it paid for that month, and keeps the stored actual amount/date/fund independent of later planned price changes. A separate extra expense must be posted as an ordinary unlinked category.
 
-MS-09 (#83) is responsible for effective-dated plan changes and a reliable recurring-occurrence identity. Until then, matching a generic expense category or a plan name **is not enough** to infer which installment is paid; the Spending dashboard's post-plan amount remains a clearly hypothetical scenario, not guaranteed remaining cash.
+MS-09 (#83) also records time-effective plan values and a **linked paid monthly occurrence**. A generic category match or a plan title alone is **not** enough to infer a settled invoice; only a confirmed keyed event does that. The Spending dashboard's subtract-full-plan illustration is still a conservative hypothetical scenario, not a guaranteed unpaid-bills total. Details: [RECURRING_EXPENSE_VERSIONS.md](RECURRING_EXPENSE_VERSIONS.md).
 
 ## Integrity, audit, and source attribution
 
