@@ -7,6 +7,7 @@ import '../services/notification_preferences_storage.dart';
 import '../services/notification_service.dart';
 import '../ui/ux_components.dart';
 import 'expense_plan_sheet.dart';
+import 'unallocated_funds_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -111,6 +112,14 @@ class _SettingsPageState extends State<SettingsPage> {
         const SnackBar(content: Text('تعذر تحميل الإعدادات المالية.')),
       );
     }
+  }
+
+  Future<void> _openUnallocatedFunds() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const UnallocatedFundsPage(),
+      ),
+    );
   }
 
   Future<void> _manageExpensePlan() async {
@@ -390,6 +399,15 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: _manageExpensePlan,
           ),
           const SizedBox(height: 10),
+          if (!widget.initialSetup) ...<Widget>[
+            _ActionSettingsCard(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'توزيع أرصدتك القديمة',
+              subtitle: 'خصص الأموال الموجودة للادخار أو للمصاريف دون تسجيل دخل',
+              onTap: _openUnallocatedFunds,
+            ),
+            const SizedBox(height: 10),
+          ],
           _SettingsGroup(
             icon: Icons.call_split_outlined,
             title: 'تقسيم راتب الأسبوع',
