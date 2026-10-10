@@ -1,12 +1,12 @@
 # Mo Save — Redesign Implementation Progress
 
-> Progress updated: 2026-10-10. **MS-01 design contract complete; MS-02 through MS-18 still open/not implemented.** This file is a human/AI-readable navigation index, not a replacement for GitHub issue states. Never infer code implementation from design documentation or a checkbox alone.
+> Progress updated: 2026-10-10. **MS-01 and MS-02 closed. MS-03 is next; subsequent tasks remain open.** This is a human/AI navigation index; GitHub Issues are the completion authority. MS-02 source/tests were committed but CLI checks were intentionally not executed.
 
 ## Current checkpoint
 
-- **Next task:** [MS-02 — Implement fund-aware ledger and persistence](https://github.com/Sherko231/mo_save/issues/76).
+- **Next task:** [MS-03 — Safely migrate existing SQLite v9 data](https://github.com/Sherko231/mo_save/issues/77).
 - **Active implementation:** None.
-- **Redesign progress:** 1 / 18 complete (**documentation-only MS-01**; no redesign runtime code implemented).
+- **Redesign progress:** 2 / 18 issues closed. **MS-02 introduces schema v10 and fund ledger APIs, but their tests/build were not run.**
 - **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
 
@@ -15,7 +15,7 @@
 | Phase | Task | GitHub Issue | Dependencies | Status |
 | --- | --- | --- | --- | --- |
 | P1 | MS-01 — Define fund-ledger accounting invariants | [#75](https://github.com/Sherko231/mo_save/issues/75) | — | Done — documentation contract [commit](https://github.com/Sherko231/mo_save/commit/29be2562f1121dc0e474b9547b975b021cd4d10c) |
-| P1 | MS-02 — Implement fund-aware ledger and persistence | [#76](https://github.com/Sherko231/mo_save/issues/76) | MS-01 | Not started |
+| P1 | MS-02 — Implement fund-aware ledger and persistence | [#76](https://github.com/Sherko231/mo_save/issues/76) | MS-01 | Done — code committed; runtime unverified [commit](https://github.com/Sherko231/mo_save/commit/2a71c08c74230d60bc7c70af334b2301ba89e6bd) |
 | P1 | MS-03 — Safely migrate existing SQLite v9 data | [#77](https://github.com/Sherko231/mo_save/issues/77) | MS-02 | Not started |
 | P2 | MS-04 — Dismiss or backdate overdue salary occurrences | [#78](https://github.com/Sherko231/mo_save/issues/78) | MS-02, MS-03 | Not started |
 | P2 | MS-05 — Record gifts, item sales, bonuses, and opening cash | [#79](https://github.com/Sherko231/mo_save/issues/79) | MS-02 | Not started |
@@ -65,5 +65,6 @@
 
 ## Change log
 
+- **2026-10-10 — MS-02 closed (#76):** added `FinancialFund`, fund transfer event, per-ledger-entry fund attribution, SQLite v10 `fund` column with Unallocated migration default, fund balance queries, atomic transfer checks and conservation, fund-aware transaction revisions/corrections, history labels, new unit tests and DATA_STORAGE documentation. **No CLI checks, Flutter tests, analyzer, APK builds or on-device migrations were executed**; implementation remains runtime-unverified. **Important MS-03 handoff:** schema-v9 `.mosave` backups cannot currently restore under schema v10 due to strict equality in `BackupService`; implement compatibility and real upgrade/restore validation before release. [Issue #77](https://github.com/Sherko231/mo_save/issues/77) is next.
 - **2026-10-10 — MS-01 complete:** finalized [fund-ledger accounting contract](FUNDS_ACCOUNTING_CONTRACT.md), per-unit conservation/expense/income/fund transfer rules, gold and FX, goal backing, existing v9 migration constraints, audit preservation and explicit deferred decisions. Closed [Issue #75](https://github.com/Sherko231/mo_save/issues/75). No app code changed and no CLI checks/tests/builds executed. Next: [MS-02 / #76](https://github.com/Sherko231/mo_save/issues/76).
 - **2026-10-10** — Redesign specification agreed from client feedback; Issues MS-01..MS-18 (#75..#92) created. No application implementation done as part of planning.
