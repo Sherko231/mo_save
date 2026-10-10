@@ -243,6 +243,27 @@ void main() {
       ), LedgerEntry.amountToMicros(500000));
     });
 
+    test('identical retry still succeeds after paying entire source balance',
+        () async {
+      Future<void> pay() => expenses.logExpense(
+        amountMicros: LedgerEntry.amountToMicros(540000),
+        unit: FinancialUnit.syp,
+        occurredAt: today,
+        category: 'فواتير',
+        sourceFund: FinancialFund.spending,
+        requestId: 'full-wallet-payment',
+      );
+      await pay();
+      expect(await ledger.loadFundBalanceMicros(
+        FinancialFund.spending, FinancialUnit.syp,
+      ), 0);
+      await pay();
+      expect((await ledger.loadEvents(type: FinancialEventType.expense)),
+          hasLength(1));
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.syp],
+          LedgerEntry.amountToMicros(50000));
+    });
+
     test('bill plan is not cash: payment posts only after confirmation',
         () async {
       await plans.addItem(RecurringExpenseItem.create(
