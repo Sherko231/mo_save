@@ -242,7 +242,7 @@ class _FundTransferPageState extends State<FundTransferPage> {
               contentPadding: EdgeInsets.zero,
               title: const Text('إلى الصندوق'),
               subtitle: Text(_fundLabel(_destination)),
-              leading: const Icon(Icons.swap_horiz_outlined),
+              leading: const Icon(Icons.swap_horiz_rounded),
               trailing: IconButton(
                 onPressed: _saving ? null : () => setState(() {
                   _source = _destination;
@@ -317,9 +317,9 @@ class _FundTransferPageState extends State<FundTransferPage> {
               Text(
                 'بعد التحويل: الادخار/المصاريف بحسب الاتجاه، '
                 'رصيد المصدر ${FinancialFormat.assetBalance(
-                  sourceBalance - amount, _unit,
+                  sourceBalance! - amount!, _unit,
                 )}، والوجهة ${FinancialFormat.assetBalance(
-                  destinationBalance + amount, _unit,
+                  destinationBalance! + amount!, _unit,
                 )}.',
                 style: TextStyle(color: colors.primary),
               ),
