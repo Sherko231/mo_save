@@ -44,9 +44,9 @@ void main() {
 
     Future<ExpectedIncome> payday(RecurringIncomeKind kind) async {
       final month = await recurring.loadMonth(DateTime(2026, 10));
+      final day = kind == RecurringIncomeKind.weeklySyp ? 8 : 1;
       return month.firstWhere((item) =>
-          item.kind == kind && item.scheduledDate.day == 8 ||
-          item.kind == kind && item.scheduledDate.day == 1);
+          item.kind == kind && item.scheduledDate.day == day);
     }
 
     test('885000 SYP is one receipt split 540000/345000 and survives reload',
