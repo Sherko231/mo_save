@@ -222,15 +222,17 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
       Navigator.of(context).pop(true);
     } on InsufficientBalanceException catch (error) {
       if (!mounted) return;
-      setState(() => _error =
-          'الرصيد الفعلي تغيّر. المتاح: '
-          '${FinancialFormat.assetBalance(error.availableMicros, error.unit)}');
       await _loadReferenceData();
+      if (!mounted) return;
+      setState(() => _error =
+          'الرصيد الفعلي تغيّر. المتاح وقت التحقق: '
+          '${FinancialFormat.assetBalance(error.availableMicros, error.unit)}');
     } on InsufficientFundBalanceException catch (_) {
+      if (!mounted) return;
+      await _loadReferenceData();
       if (!mounted) return;
       setState(() => _error =
           'الرصيد الفعلي تغيّر، ولم يُسجّل المصروف.');
-      await _loadReferenceData();
     } on ArgumentError catch (_) {
       if (!mounted) return;
       setState(() => _error = 'راجع المبلغ والعملة والتصنيف وسبب المصروف.');
