@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `10`
+- Current schema version: `11`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -214,9 +214,9 @@ Each item stores:
 
 The first expense-plan load seeds the approved client defaults exactly once through an `app_metadata` flag. The seeded SYP items are: Amper 240,000; Internet 200,000; Electricity 150,000; Gas 100,000; Telephone 30,000; services 140,000; family 200,000; side expenses 100,000; personal spending 1,000,000. Their calculated SYP total is 2,160,000.
 
-The seed marker remains even if the user deletes every item, so an intentionally cleared plan is not silently recreated on the next launch. Items can be added, edited or deleted later and monthly planned totals are always recalculated from the current item rows.
+The seed marker remains even when the user schedules every item to stop; an intentionally cleared plan is not silently recreated on the next launch. Under schema v11, this base table holds stable item identity/order, while **time-effective versions** (not the latest mutable row) determine each month's planned totals.
 
-Actual spending is not stored in the plan table. Every actual expense is a normal `expense` financial event with a negative balance-affecting ledger entry plus its date, category and optional note. The selected-month UI compares totals derived from the plan rows against totals derived from expense ledger events.
+Actual spending is not stored in the plan tables. Every actual expense is a normal `expense` financial event with a negative balance-affecting ledger entry plus its date, category and optional note. The selected-month UI compares the **effective monthly version** of the planned items against immutable actual expense events. Explicit linked planned payments carry a stable per-month recurrence key and are counted once.
 
 ## Schema v6 — Weekly envelope allocation metadata
 
@@ -319,10 +319,42 @@ wallet balance, fund-transfer event, or income entry.
 A recurring expense plan item only prefills its category, currency, and
 proposed amount. It does not mark any scheduled bill occurrence settled or
 debit cash until an actual payment is confirmed; time-effective recurrence
-changes and paid-occurrence matching belong to MS-09. Client UI submissions
+changes and paid-occurrence matching are implemented for simple monthly plans in MS-09. Client UI submissions
 use a stable per-form expense ID to protect against repeat debits even when
 the initial payment consumed all the source-fund cash. See
 [EXPENSE_FUND_WORKFLOW.md](EXPENSE_FUND_WORKFLOW.md).
+
+## Schema v11 — Time-effective recurring expense plans (MS-09)
+
+The `recurring_expense_plan_versions` table persists one immutable
+monthly-effective **expected** amount per `(item_id, effective_month)` key,
+with `name`, `unit`, `amount_micros`, `is_active`, and
+`recorded_at_ms`. `effective_month` is an integer `YYYYMM` calendar key,
+validated to have a real month 01–12. The current `recurring_expense_items`
+base row retains stable item ID/creation/order; version rows are authoritative
+for a particular month's planned value. A month reads the latest effective
+version at or before that month. A scheduled stop is a version with
+`is_active=0`; it does **not** delete old versions or any ledger activity.
+New items may start this month/future; editing or canceling existing items
+can only take effect **next month or later**, never in prior months.
+
+Legacy v9/v10 plan rows cannot reveal edited prices that were overwritten
+before upgrade. The v10→v11 migration builds just **one known baseline from
+the original row's creation month**; it does not assert any earlier prices
+or create fake monthly bills. Older verified portable backups are restored
+with that same baseline inside the restore transaction. Schema v11 exports
+include all plan versions and scheduled future changes. Restore validates
+that each item has at least one plan version and rejects orphaned versions
+before committing. No schema v11 migration changes `financial_events`,
+`financial_event_entries`, or `financial_event_revisions`.
+
+When the user explicitly pays a planned installment from Savings/Spending,
+the `expense` ledger event has a stable key
+`expense-plan:<item-id>:<YYYYMM>`. The existing unique recurrence index
+prevents a second **linked monthly installment** for that item. Additional
+one-off expenses may use normal unlinked expense entry. Choosing a recurring
+plan name without a confirmed payment is not a cash debit. See
+[RECURRING_EXPENSE_VERSIONS.md](RECURRING_EXPENSE_VERSIONS.md).
 
 ## Legacy SharedPreferences migration
 
