@@ -31,7 +31,9 @@ Income receipt, fund allocation, internal transfers, transaction history, initia
 - **Goal**: designate part of already-owned Savings for a goal. Goal progress and optional challenge grid must reconcile to designated Savings and cannot create a second asset. Releasing/withdrawing these funds must reconcile earmarks.
 - **Forecast**: adapt to changed salaries, expenses, Thursday counts, goal targets, actual saving pace, and reference FX assumptions.
 
-## Account model and invariants (MS-01 must finalize)
+## Account model and invariants
+
+**MS-01 accounting contract is complete as a design deliverable:** [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md). The contract defines exact per-unit conservation equations, fund attribution, transaction matrix, goal earmark checks, migration limitations and implementation/test vectors. It is the normative reference for MS-02 onward. This section is the higher-level product summary; **none of these redesign behaviors are implemented in the app yet**.
 
 **Owned asset**: a separate unit such as USD, SYP, SYP (N), or gold grams.
 **Fund**: Savings, Spending, or Unallocated (temporary intake/migration bucket; never silently label this as saved).
