@@ -22,6 +22,7 @@ class ExpensePlanSheet extends StatefulWidget {
 class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
   late final ExpensePlanStorage _storage;
   List<RecurringExpenseItem> _items = const <RecurringExpenseItem>[];
+  Map<String, List<ExpensePlanChange>> _upcoming = const {};
   bool _isLoading = true;
   bool _changed = false;
 
@@ -34,10 +35,16 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
 
   Future<void> _reload() async {
     try {
-      final List<RecurringExpenseItem> items = await _storage.loadItems();
+      final List<RecurringExpenseItem> items = await _storage.loadManageableItems();
+      final revisions = await Future.wait(
+        items.map((item) => _storage.loadFutureChanges(item.id)),
+      );
       if (!mounted) return;
       setState(() {
         _items = items;
+        _upcoming = <String, List<ExpensePlanChange>>{
+          for (int i = 0; i < items.length; i++) items[i].id: revisions[i],
+        };
         _isLoading = false;
       });
     } catch (_) {
@@ -58,9 +65,10 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
         RecurringExpenseItem.create(
           name: draft.name,
           unit: draft.unit,
-          amountMicros: LedgerEntry.amountToMicros(draft.amount),
+          amountMicros: draft.amountMicros,
           sortOrder: _items.length,
         ),
+        effectiveFromMonth: draft.effectiveFromMonth,
       );
       _changed = true;
       await _reload();
@@ -81,8 +89,9 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
         item.copyWith(
           name: draft.name,
           unit: draft.unit,
-          amountMicros: LedgerEntry.amountToMicros(draft.amount),
+          amountMicros: draft.amountMicros,
         ),
+        effectiveFromMonth: draft.effectiveFromMonth,
       );
       _changed = true;
       await _reload();
@@ -95,35 +104,75 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
   }
 
   Future<void> _deleteItem(RecurringExpenseItem item) async {
+    final now = DateTime.now();
+    DateTime effective = DateTime(now.year, now.month + 1);
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('حذف المصروف'),
-        content: Text('حذف «${item.name}» من الخطة الشهرية؟'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('إلغاء'),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, update) => AlertDialog(
+          title: const Text('إيقاف بند متكرر'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text('إيقاف «${item.name}» من شهر تختاره. '
+                  'رح تبقى الخطة بالأشهر السابقة والمدفوعات القديمة بدون تغيير.'),
+              TextButton.icon(
+                onPressed: () async {
+                  final picked = await _selectEffectiveMonth(
+                    dialogContext, startNextMonth: true,
+                    initial: effective,
+                  );
+                  if (picked != null) update(() => effective = picked);
+                },
+                icon: const Icon(Icons.calendar_month_outlined),
+                label: Text('يبدأ الإيقاف: ${effective.month}/${effective.year}'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('حذف'),
-          ),
-        ],
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('جدولة الإيقاف'),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true) return;
-
     try {
-      await _storage.deleteItem(item.id);
+      await _storage.deleteItem(
+        item.id, effectiveFromMonth: effective,
+      );
       _changed = true;
       await _reload();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر حذف المصروف.')),
+        const SnackBar(content: Text('تعذر جدولة إيقاف البند.')),
       );
     }
+  }
+
+  Future<DateTime?> _selectEffectiveMonth(
+    BuildContext dialogContext, {
+    required bool startNextMonth,
+    required DateTime initial,
+  }) async {
+    final now = DateTime.now();
+    final earliest = DateTime(now.year, now.month + (startNextMonth ? 1 : 0));
+    final picked = await showDatePicker(
+      context: dialogContext,
+      initialDate: initial.isBefore(earliest) ? earliest : initial,
+      firstDate: earliest,
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'اختر أي يوم من شهر سريان الخطة',
+    );
+    if (picked == null) return null;
+    return DateTime(picked.year, picked.month);
   }
 
   Future<_ExpenseDraft?> _showItemDialog({RecurringExpenseItem? item}) async {
@@ -136,6 +185,10 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
           : FinancialFormat.editableAmount(item.amountMicros, item.unit),
     );
     FinancialUnit unit = item?.unit ?? FinancialUnit.syp;
+    final now = DateTime.now();
+    DateTime effective = DateTime(
+      now.year, now.month + (item == null ? 0 : 1),
+    );
 
     final _ExpenseDraft? result = await showDialog<_ExpenseDraft>(
       context: context,
@@ -183,6 +236,21 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
                     },
                   ),
                   const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final chosen = await _selectEffectiveMonth(
+                        dialogContext, startNextMonth: item != null,
+                        initial: effective,
+                      );
+                      if (chosen != null) {
+                        setDialogState(() => effective = chosen);
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text('يسري من شهر ${effective.month}/${effective.year}'),
+                  ),
+                  const Text('التعديل والإيقاف بالمستقبل فقط؛ المدفوعات المسجلة سابقاً لا تتغير.'),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.numberWithOptions(
@@ -214,16 +282,16 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
                 onPressed: () {
                   final String name = nameController.text.trim();
                   final String rawAmount = amountController.text.trim();
-                  final num? amount = unit == FinancialUnit.usd
-                      ? double.tryParse(rawAmount)
-                      : int.tryParse(rawAmount);
+                  final int? amountMicros = _parseCashMicros(
+                    rawAmount, unit,
+                  );
                   if (name.isEmpty) {
                     setDialogState(() {
                       errorText = 'أدخل اسم المصروف.';
                     });
                     return;
                   }
-                  if (amount == null || amount <= 0) {
+                  if (amountMicros == null || amountMicros <= 0) {
                     setDialogState(() {
                       errorText = 'أدخل مبلغاً صالحاً أكبر من صفر.';
                     });
@@ -231,7 +299,10 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
                   }
                   Navigator.pop(
                     dialogContext,
-                    _ExpenseDraft(name: name, unit: unit, amount: amount),
+                    _ExpenseDraft(
+                      name: name, unit: unit, amountMicros: amountMicros,
+                      effectiveFromMonth: effective,
+                    ),
                   );
                 },
                 child: const Text('حفظ'),
@@ -332,6 +403,14 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
                                                 .textTheme
                                                 .titleSmall,
                                           ),
+                                          if ((_upcoming[item.id] ?? const <ExpensePlanChange>[]).isNotEmpty)
+                                            Text(
+                                              (_upcoming[item.id]!.first.isActive
+                                                  ? 'تغيير مجدول' : 'إيقاف مجدول')
+                                                  + ' من ${_upcoming[item.id]!.first.effectiveMonth.month}/'
+                                                  '${_upcoming[item.id]!.first.effectiveMonth.year}',
+                                              style: Theme.of(context).textTheme.bodySmall,
+                                            ),
                                           const SizedBox(height: 2),
                                           Text(
                                             FinancialFormat.assetBalance(
@@ -380,16 +459,52 @@ class _ExpensePlanSheetState extends State<ExpensePlanSheet> {
   }
 }
 
-class _ExpenseDraft {
+int? _parseCashMicros(String raw, FinancialUnit unit) {
+  final text = raw.trim();
+  if (!RegExp(r'^\d+(\.\d+)?
   const _ExpenseDraft({
     required this.name,
     required this.unit,
-    required this.amount,
+    required this.amountMicros,
+    required this.effectiveFromMonth,
   });
 
   final String name;
   final FinancialUnit unit;
-  final num amount;
+  final int amountMicros;
+  final DateTime effectiveFromMonth;
+}
+
+const List<FinancialUnit> _cashUnits = <FinancialUnit>[
+  FinancialUnit.syp,
+  FinancialUnit.usd,
+  FinancialUnit.sypNew,
+];
+).hasMatch(text)) return null;
+  final parts = text.split('.');
+  final decimals = unit == FinancialUnit.usd ? 2 : 0;
+  if (parts.length > 1 &&
+      (decimals == 0 || parts.last.length > decimals)) return null;
+  final whole = int.tryParse(parts.first);
+  final frac = parts.length == 1
+      ? 0 : int.tryParse(parts.last.padRight(6, '0'));
+  if (whole == null || frac == null ||
+      whole > (9223372036854775807 - frac) ~/ 1000000) return null;
+  return whole * 1000000 + frac;
+}
+
+class _ExpenseDraft {
+  const _ExpenseDraft({
+    required this.name,
+    required this.unit,
+    required this.amountMicros,
+    required this.effectiveFromMonth,
+  });
+
+  final String name;
+  final FinancialUnit unit;
+  final int amountMicros;
+  final DateTime effectiveFromMonth;
 }
 
 const List<FinancialUnit> _cashUnits = <FinancialUnit>[
