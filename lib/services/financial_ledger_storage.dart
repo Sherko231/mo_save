@@ -474,6 +474,26 @@ class FinancialLedgerStorage {
     Map<FinancialFund, Map<FinancialUnit, int>> before,
   ) async {
     final after = await _loadFundBalances(executor);
+    final assetRows = await executor.rawQuery('''
+      SELECT unit, SUM(amount_micros) AS total
+      FROM financial_event_entries
+      WHERE affects_balance = 1
+      GROUP BY unit
+    ''');
+    final owned = <FinancialUnit, int>{
+      for (final unit in FinancialUnit.values) unit: 0,
+    };
+    for (final row in assetRows) {
+      owned[_parseUnit(row['unit']! as String)] =
+          (row['total']! as num).toInt();
+    }
+    for (final unit in FinancialUnit.values) {
+      final classified = FinancialFund.values.fold<int>(0,
+          (total, fund) => total + after[fund]![unit]!);
+      if (classified != owned[unit]) {
+        throw StateError('Fund postings do not reconcile with owned ${unit.name}.');
+      }
+    }
     for (final fund in FinancialFund.values) {
       for (final unit in FinancialUnit.values) {
         final previous = before[fund]![unit]!;
