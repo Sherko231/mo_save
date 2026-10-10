@@ -356,6 +356,16 @@ class FinancialLedgerStorage {
       if (existing.isEmpty) {
         throw StateError('Financial event ${event.id} does not exist.');
       }
+      final dependents = await transaction.query(
+        'financial_events',
+        columns: <String>['id'],
+        where: 'source_event_id = ?',
+        whereArgs: <Object?>[event.id],
+        limit: 1,
+      );
+      if (dependents.isNotEmpty) {
+        throw StateError('Cannot modify an event with dependent transactions.');
+      }
 
       final Map<String, Object?> row = _eventRow(event);
       row['created_at_ms'] = existing.single['created_at_ms'];
