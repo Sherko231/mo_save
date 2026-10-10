@@ -33,6 +33,17 @@ Ignoring and recording are mutually exclusive:
 - A linked historic expense carries `source_event_id` referring to the income event, preserving both the audit trail and dependent-event safety on later corrections/deletions.
 - The monthly projected-income total excludes ignored occurrences; actual income analytics only count real posted receipt events.
 
+## MS-06 — Distribution when confirming actual receipt
+
+The receipt form now has editable Savings and Spending amounts, and a live
+Unallocated remainder. They represent the **same receipt**, not additional
+income or the separate old `weeklyAllocation` planning event. Suggested
+weekly 540k/345k SYP and monthly USD Savings figures can be applied
+**optionally** and are limited to money that remains after prior spending.
+Historically spent money stays in a linked actual expense and is not
+available for a fund allocation. See
+[RECEIPT_FUND_ALLOCATION.md](RECEIPT_FUND_ALLOCATION.md).
+
 ## Recording examples
 
 | Action | New income event | New actual expense event | Owned balance delta | Overdue reminder |
