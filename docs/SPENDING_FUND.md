@@ -35,7 +35,7 @@ Home's separate historic month picker continues to control historic overview and
 
 ## Primary actions
 
-**إضافة مصروف من الصندوق** opens the lightweight quick expense form, with category, actual date, amount, unit and optional reason. It explicitly uses `ExpenseService.logExpense(sourceFund: FinancialFund.spending)`, so the canonical event decreases **owned cash and Spending in the same unit**, and adds **one** actual expense. No automatic cash is drawn from Savings or Unallocated; if Spending lacks enough cash, the operation fails without posting any entries. The existing expanded Expenses section also posts from Spending now for consistency. The broader fund chooser and advanced category/expense workflow remain assigned to MS-08 (#82).
+**إضافة مصروف من المصاريف أو الادخار** now opens the shared MS-08 actual-expense form: category, date, currency, amount and reason, with an explicit **Savings or Spending source fund** (Spending initially selected). Direct Savings payments require a reason and a second confirmation; they debit Savings exactly once and appear in monthly actual expenses without altering Spending. No automatic transfer between funds occurs. The existing expanded Expenses section opens this same form. See [EXPENSE_FUND_WORKFLOW.md](EXPENSE_FUND_WORKFLOW.md).
 
 **سجل حركات صندوق المصاريف** opens the existing `TransactionHistoryPage` with `initialFund: FinancialFund.spending`. The standard history now exposes a **صندوق** filter; a Spending receipt split, direct Spending expense, or transfer involving Spending appears, while unrelated Savings-only or Unallocated-only entries are excluded by default. Users can switch back to **كل الصناديق**. The history retains corrections, deletion snapshots and existing audit details.
 
