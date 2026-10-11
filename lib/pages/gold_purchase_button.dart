@@ -51,6 +51,14 @@ class _GoldPurchaseButtonState extends State<GoldPurchaseButton> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تسجيل شراء الذهب.')),
       );
+    } on GoalBackingInsufficientException catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(
+          'جزء من هالأموال محجوز لأهداف الادخار. ألغِ حجز الخانات '
+          'المعنية قبل تبديل الأصل أو العملة. لم يتم تنفيذ أي عملية.',
+        )),
+      );
     } on InsufficientBalanceException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
