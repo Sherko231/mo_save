@@ -15,7 +15,6 @@ import 'home_spending_fund_section.dart';
 import 'home_savings_fund_section.dart';
 import 'income_receipt_dialog.dart';
 import 'manual_inflow_page.dart';
-import 'fund_transfer_page.dart';
 import 'spending_analytics_page.dart';
 import 'transaction_history_page.dart';
 import 'challenges_page.dart';
@@ -175,22 +174,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
     if (mounted) await _reload(showLoading: false);
-  }
-
-  Future<void> _openFundTransfer() async {
-    final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => const FundTransferPage(),
-      ),
-    );
-    if (!mounted || saved != true) return;
-    await _reload(showLoading: false);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(
-        'تم نقل المال بين الادخار والمصاريف بدون دخل أو مصروف إضافي.',
-      )),
-    );
   }
 
   List<ExpectedIncome> get _incomeNeedingAttention {
