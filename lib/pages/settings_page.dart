@@ -516,7 +516,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   () => _goalDeadlineNotificationEnabled = value,
                 ),
                 title: const Text('مواعيد أهداف الادخار'),
-                subtitle: const Text('قبل أسبوع وفي يوم الموعد.'),
+                subtitle: const Text('اختياري: قبل أسبوع وفي يوم الموعد، برسالة عن المبلغ المثبّت فعلياً وليس خانات قديمة أو وعد بالوصول.'),
               ),
             ],
           ),
