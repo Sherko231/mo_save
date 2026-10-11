@@ -7,6 +7,7 @@ import '../models/financial_event.dart';
 import '../models/saving_challenge.dart';
 import 'financial_ledger_storage.dart';
 import 'local_database.dart';
+import 'transaction_history_service.dart';
 
 class ChallengeStorage {
   ChallengeStorage({
@@ -135,9 +136,12 @@ class ChallengeStorage {
   Future<void> deleteChallenge(String challengeId) async {
     final Database database = await _readyDatabase();
     await database.transaction((transaction) async {
+      await TransactionHistoryService.archiveGoalProgress(transaction,
+        recurrenceKey: _contributionRecurrenceKey(challengeId),
+        action: 'delete');
       await transaction.delete(
         'financial_events',
-        where: 'recurrence_key = ?',
+        where: 'recurrence_key = ?' ,
         whereArgs: <Object?>[_contributionRecurrenceKey(challengeId)],
       );
       await transaction.delete(
@@ -537,6 +541,8 @@ class ChallengeStorage {
 
     if (savedAmount <= 0) {
       if (existing.isNotEmpty) {
+        await TransactionHistoryService.archiveGoalProgress(database,
+          recurrenceKey: recurrenceKey, action: 'delete');
         await database.delete(
           'financial_events',
           where: 'id = ?',
@@ -566,6 +572,10 @@ class ChallengeStorage {
       }
     }
 
+    if (existing.isNotEmpty) {
+      await TransactionHistoryService.archiveGoalProgress(database,
+        recurrenceKey: recurrenceKey, action: 'update');
+    }
     final int nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
     final String eventId = existing.isEmpty
         ? _contributionEventId(challengeId)
