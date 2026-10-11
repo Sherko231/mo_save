@@ -122,6 +122,7 @@ class SavingChallenge {
     required this.cells,
     this.deadline,
     this.goalNote,
+    this.backedAmountMicros,
   });
 
   final String id;
@@ -137,6 +138,16 @@ class SavingChallenge {
 
   /// Optional user-entered context/purpose for the goal.
   final String? goalNote;
+
+  /// Null means imported/unreconciled grid history, NOT verified money.
+  /// Verified figures are a reservation of existing Savings, not new assets.
+  final int? backedAmountMicros;
+  bool get isBackingVerified => backedAmountMicros != null;
+  int get verifiedSavedAmount => (backedAmountMicros ?? 0) ~/ 1000000;
+  bool get isVerifiedComplete => isBackingVerified &&
+      verifiedSavedAmount >= targetAmount;
+  double get verifiedProgress => targetAmount <= 0 ? 0 :
+      (verifiedSavedAmount / targetAmount).clamp(0.0, 1.0).toDouble();
 
   int get savedAmount => cells
       .where((cell) => cell.isCompleted)
@@ -209,6 +220,9 @@ class SavingChallenge {
       cells: cells ?? this.cells,
       deadline: clearDeadline ? null : (deadline ?? this.deadline),
       goalNote: clearGoalNote ? null : (goalNote ?? this.goalNote),
+      backedAmountMicros: backedAmountMicros == null ? null :
+          (cells ?? this.cells).where((cell) => cell.isCompleted)
+              .fold<int>(0, (sum, cell) => sum + cell.value) * 1000000,
     );
   }
 
@@ -278,6 +292,7 @@ class SavingChallenge {
       cells: values.map((value) => ChallengeCell(value: value)).toList(),
       deadline: deadline == null ? null : _dateOnlyUtc(deadline),
       goalNote: _normalizeOptionalText(goalNote),
+      backedAmountMicros: 0,
     );
   }
 
