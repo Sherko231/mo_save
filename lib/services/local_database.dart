@@ -18,19 +18,38 @@ class LocalDatabase {
 
   final String? _databasePathOverride;
   Database? _database;
+  Future<Database>? _openingDatabase;
 
-  Future<Database> get database async {
+  /// Share first-open/migration among concurrent dashboard reads so multiple
+  /// SQLite connections cannot race over the same schema upgrade.
+  Future<Database> get database {
     final Database? existing = _database;
     if (existing != null) {
-      return existing;
+      return Future<Database>.value(existing);
     }
+    return _openingDatabase ??= _openAndCacheDatabase();
+  }
 
-    final Database opened = await _openDatabase();
-    _database = opened;
-    return opened;
+  Future<Database> _openAndCacheDatabase() async {
+    try {
+      final Database opened = await _openDatabase();
+      _database = opened;
+      return opened;
+    } finally {
+      // A failed open must remain retryable.
+      _openingDatabase = null;
+    }
   }
 
   Future<void> close() async {
+    final Future<Database>? opening = _openingDatabase;
+    if (opening != null) {
+      try {
+        await opening;
+      } catch (_) {
+        // No handle exists to close if opening failed.
+      }
+    }
     final Database? existing = _database;
     _database = null;
     if (existing != null) {

@@ -1,6 +1,6 @@
 # Mo Save — Redesign Implementation Progress
 
-> Progress updated: 2026-10-11. **MS-01 through MS-17 closed; MS-18 is next.** GitHub Issues are authoritative. MS-02..MS-17 source/tests remain **runtime-unverified**; no CLI or device checks have been run.
+> Progress updated: 2026-10-11. **MS-01 through MS-17 closed; MS-18 is next.** GitHub Issues are authoritative. MS-18 startup/performance fixes require CI and device verification; other client sign-off is still pending.
 
 ## Current checkpoint
 

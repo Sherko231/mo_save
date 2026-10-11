@@ -728,15 +728,36 @@ class FinancialLedgerStorage {
       return <FinancialEvent>[];
     }
 
+    // Batch-entry hydration replaces one SQL query per financial event.
+    // Keep below the 999-parameter limit supported by older SQLite versions.
+    const int batchSize = 400;
+    final entriesByEvent = <String, List<Map<String, Object?>>>{};
+    for (int start = 0; start < eventRows.length; start += batchSize) {
+      final ids = eventRows
+          .skip(start)
+          .take(batchSize)
+          .map((row) => row['id']! as String)
+          .toList(growable: false);
+      final placeholders = List<String>.filled(ids.length, '?').join(', ');
+      final rows = await database.query(
+        'financial_event_entries',
+        where: 'event_id IN ($placeholders)',
+        whereArgs: ids,
+        orderBy: 'event_id ASC, position ASC',
+      );
+      for (final entry in rows) {
+        final id = entry['event_id']! as String;
+        entriesByEvent.putIfAbsent(
+          id, () => <Map<String, Object?>>[],
+        ).add(entry);
+      }
+    }
+
     final List<FinancialEvent> events = <FinancialEvent>[];
     for (final Map<String, Object?> row in eventRows) {
       final String eventId = row['id']! as String;
-      final List<Map<String, Object?>> entryRows = await database.query(
-        'financial_event_entries',
-        where: 'event_id = ?',
-        whereArgs: <Object?>[eventId],
-        orderBy: 'position ASC',
-      );
+      final List<Map<String, Object?>> entryRows =
+          entriesByEvent[eventId] ?? <Map<String, Object?>>[];
 
       events.add(
         FinancialEvent(

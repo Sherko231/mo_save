@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -14,23 +16,30 @@ Future<void> main() async {
   final AppSetupStorage setupStorage = AppSetupStorage();
   final bool initialSetupComplete = await setupStorage.loadIsComplete();
 
-  try {
-    await NotificationService.instance.initialize();
-    if (initialSetupComplete) {
-      await NotificationService.instance.rescheduleAll();
-    }
-  } catch (_) {
-    // Notifications are optional and must never prevent the finance app from
-    // starting. Settings can retry scheduling later after user interaction.
-  }
-  NotificationService.instance.startAutomaticRefresh();
-
   runApp(
     MoSaveApp(
       initialSetupComplete: initialSetupComplete,
       setupStorage: setupStorage,
     ),
   );
+
+  // Rebuilding notifications invokes platform APIs and database reads; do
+  // not block the first visible frame on these optional background tasks.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_initializeNotifications(initialSetupComplete));
+  });
+}
+
+Future<void> _initializeNotifications(bool initialSetupComplete) async {
+  try {
+    await NotificationService.instance.initialize();
+    if (initialSetupComplete) {
+      await NotificationService.instance.rescheduleAll();
+    }
+  } catch (_) {
+    // Reminder failures must not block or crash the finance UI.
+  }
+  NotificationService.instance.startAutomaticRefresh();
 }
 
 class MoSaveApp extends StatefulWidget {

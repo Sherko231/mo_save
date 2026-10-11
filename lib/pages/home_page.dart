@@ -51,6 +51,7 @@ class _HomePageState extends State<HomePage> {
   bool _isLoading = true;
   String? _confirmingKey;
   int _incomeRefreshToken = 0;
+  int _reloadGeneration = 0;
 
   @override
   void initState() {
@@ -60,19 +61,22 @@ class _HomePageState extends State<HomePage> {
         _reload(showLoading: false, showError: false);
       }
     });
-    _reload();
+    // IndexedStack mounts all destinations. Only read data for the visible
+    // screen; switching to an inactive screen will trigger its first load.
+    if (widget.isActive) _reload();
   }
 
   @override
   void didUpdateWidget(covariant HomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isActive && !oldWidget.isActive) {
-      _reload(showLoading: false);
+      _reload(showLoading: _dashboard == null);
     }
   }
 
   @override
   void dispose() {
+    _reloadGeneration++;
     _ledgerSubscription?.cancel();
     super.dispose();
   }
@@ -81,14 +85,16 @@ class _HomePageState extends State<HomePage> {
     bool showLoading = true,
     bool showError = true,
   }) async {
+    final int request = ++_reloadGeneration;
+    final DateTime month = _selectedMonth;
     if (showLoading && mounted) {
       setState(() => _isLoading = true);
     }
 
     try {
       final HomeDashboardSnapshot dashboard =
-          await _dashboardService.loadMonth(_selectedMonth);
-      if (!mounted) return;
+          await _dashboardService.loadMonth(month);
+      if (!mounted || request != _reloadGeneration) return;
 
       setState(() {
         _dashboard = dashboard;
@@ -97,7 +103,7 @@ class _HomePageState extends State<HomePage> {
         _incomeRefreshToken++;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || request != _reloadGeneration) return;
       setState(() => _isLoading = false);
       if (showError) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -448,7 +448,9 @@ class UxDisclosureCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        maintainState: true,
+        // Collapsed panels contain expensive DB-backed child widgets. Mount
+        // them only when expanded and release their subscriptions on collapse.
+        maintainState: false,
         initiallyExpanded: initiallyExpanded,
         leading: UxIconBadge(
           icon: icon,
