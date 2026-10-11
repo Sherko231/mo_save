@@ -375,6 +375,27 @@ one-off expenses may use normal unlinked expense entry. Choosing a recurring
 plan name without a confirmed payment is not a cash debit. See
 [RECURRING_EXPENSE_VERSIONS.md](RECURRING_EXPENSE_VERSIONS.md).
 
+### MS-11 — Read-only categorized expense analytics (no schema change)
+
+`SpendingAnalyticsService` reads current and preceding calendar-month
+`ExpenseService.loadMonth` snapshots, counting each balance-affecting
+**negative** `expense` ledger entry exactly once. It groups actual cash
+outflows by original event category, `financial_event_entries.fund`, unit
+and explicitly linked planned occurrence (`expense-plan:` key). A similarly
+named free-text expense does **not** prove a scheduled installment was paid.
+Notes, occurrence dates, original event IDs and entry positions remain
+available through the category drill-down and existing audit history.
+
+`fundTransfer`, opening balances, unconfirmed planned bills, cash income,
+currency conversions and gold transactions are not ordinary expenses.
+All calculations use integer fixed-point micros **per unit**; no automatic
+SYP↔USD / SYP (N) conversion or shadow balance table is introduced. Monthly
+planned totals come from the effective-month v11 plan versions, and
+their difference from all actual spending is labelled a comparison, not
+the amount of unpaid bills. Deletion/correction of a payment naturally
+updates active analytics, while the revisions remain stored for audit.
+See [SPENDING_ANALYTICS.md](SPENDING_ANALYTICS.md).
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
