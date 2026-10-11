@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/financial_event.dart';
+import '../models/saving_challenge.dart';
+import '../models/expected_income.dart';
+import '../services/challenge_storage.dart';
 import '../services/financial_ledger_storage.dart';
 import '../services/transaction_history_service.dart';
 import '../ui/app_theme.dart';
@@ -17,6 +20,8 @@ class TransactionHistoryPage extends StatefulWidget {
     this.initialMonth,
     this.initialUnit,
     this.initialType,
+    this.initialGoalId,
+    this.historyService,
   });
 
   /// Open directly on an auditable filtered month, retaining all filters.
@@ -24,19 +29,27 @@ class TransactionHistoryPage extends StatefulWidget {
   final FinancialUnit? initialUnit;
   final FinancialEventType? initialType;
   final DateTime? initialMonth;
+  final String? initialGoalId;
+  final TransactionHistoryService? historyService;
 
   @override
   State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
 }
 
 class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
-  final TransactionHistoryService _service = TransactionHistoryService();
+  late final TransactionHistoryService _service;
+  final ChallengeStorage _goalsStorage = ChallengeStorage();
 
   StreamSubscription<void>? _ledgerSubscription;
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String _typeFilter = 'all';
   String _unitFilter = 'all';
   String _fundFilter = 'all';
+  String _goalFilter = 'all';
+  String _search = '';
+  List<SavingChallenge> _goals = const <SavingChallenge>[];
+  ExpectedCommitmentsSnapshot? _expected;
+  int _loadGeneration = 0;
   List<TransactionHistoryRecord> _records = const <TransactionHistoryRecord>[];
   bool _isLoading = true;
 
@@ -59,6 +72,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   @override
   void initState() {
     super.initState();
+    _service = widget.historyService ?? TransactionHistoryService();
+    _goalFilter = widget.initialGoalId ?? 'all';
+    _loadGoals();
     _fundFilter = widget.initialFund?.name ?? 'all';
     _unitFilter = widget.initialUnit?.name ?? 'all';
     _typeFilter = widget.initialType?.name ?? 'all';
@@ -75,6 +91,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
 
   @override
   void dispose() {
+    _loadGeneration++;
     _ledgerSubscription?.cancel();
     super.dispose();
   }
@@ -97,6 +114,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
   Future<void> _load({bool showLoading = true}) async {
+    final generation = ++_loadGeneration;
     if (showLoading && mounted) setState(() => _isLoading = true);
     try {
       final List<TransactionHistoryRecord> records = await _service.loadMonth(
@@ -104,18 +122,36 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         type: _selectedType,
         unit: _selectedUnit,
         fund: _selectedFund,
+        goalId: _goalFilter == 'all' ? null : _goalFilter,
+        search: _search,
       );
-      if (!mounted) return;
+      ExpectedCommitmentsSnapshot? commitments;
+      try {
+        commitments = await _service.loadExpectedMonth(_selectedMonth);
+      } catch (_) {
+        // A broken plan cannot hide the canonical posted audit history.
+      }
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _records = records;
+        _expected = commitments;
         _isLoading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر تحميل سجل الحركات.')),
       );
+    }
+  }
+
+  Future<void> _loadGoals() async {
+    try {
+      final goals = await _goalsStorage.loadChallenges();
+      if (mounted) setState(() => _goals = goals);
+    } catch (_) {
+      // Historical goal IDs remain discoverable using the text search.
     }
   }
 
@@ -198,7 +234,52 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                   _load(showLoading: false);
                 },
               ),
+              const SizedBox(height: 12),
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'بحث بالملاحظة أو التصنيف أو رقم الحركة أو الهدف',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.search_rounded),
+                  isDense: true,
+                ),
+                onChanged: (text) {
+                  _search = text;
+                  _load(showLoading: false);
+                },
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: _goalFilter == 'all' ||
+                  _goals.any((goal) => goal.id == _goalFilter)
+                  ? _goalFilter : 'all',
+                decoration: const InputDecoration(
+                  labelText: 'الهدف المرتبط',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                items: <DropdownMenuItem<String>>[
+                  const DropdownMenuItem(value: 'all',
+                    child: Text('كل الأهداف والحركات')),
+                  for (final goal in _goals)
+                    DropdownMenuItem(value: goal.id, child: Text(goal.name)),
+                ],
+                onChanged: (id) {
+                  if (id == null) return;
+                  setState(() => _goalFilter = id);
+                  _load(showLoading: false);
+                },
+              ),
+              const SizedBox(height: 13),
+              _CommitmentSection(commitments: _expected),
               const SizedBox(height: 16),
+              Text('الحركات المسجلة فعلياً',
+                style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              const Text(
+                'فقط الحركات الفعلية بتغيّر الرصيد. الالتزامات أعلاه '
+                'مجرد خطة، والحركات المحذوفة ظاهرة للتدقيق فقط.',
+              ),
+              const SizedBox(height: 12),
               if (_isLoading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 48),
