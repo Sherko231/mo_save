@@ -10,7 +10,7 @@ SQLite is the primary durable data store. `SharedPreferences` is not used as the
 
 - File: `mo_save.db`
 - Engine: SQLite through `sqflite` on Android/iOS and `sqflite_common_ffi` on Windows/Linux development builds.
-- Current schema version: `11`
+- Current schema version: `12`
 - Foreign keys are enabled for every opened connection.
 
 The desktop SQLite factory is initialized automatically before the first database path/open call, so Windows/Linux development builds require no manual setup.
@@ -422,6 +422,29 @@ prices; missing prices or nonzero SYP (N) prevent a false "total" estimate.
 A reference change only alters the estimated display, not saved quantities.
 No goal earmark or forecast is implied by Savings until MS-13/MS-14.
 See [SAVINGS_FUND.md](SAVINGS_FUND.md).
+
+## Schema v12 — Verified Savings goal earmarks (MS-13)
+
+The additive goal_earmarks table holds one verified same-currency
+reservation per challenge, with challenge_id PK/FK (cascade on deletion),
+unit usd/syp/sypNew, nonnegative amount_micros and verified_at_ms.
+Reservation is **not an asset ledger entry**. It must exactly equal the
+completed grid values for that challenge and SUM(reservations by unit) must
+not exceed current Savings holdings in that unit. The full ledger's atomic
+fund-mutation guard rejects actual Savings expense, internal transfer,
+currency/gold conversion or retroactive correction that would underfund a
+pledge. Release a pledge by unchecking a verified goal cell or deleting
+the goal; do not silently withdraw a goal's completion.
+
+Legacy checked cells (including schema v9/v10/v11) remain untouched,
+**unverified** and not counted as real funded progress. The user
+explicitly chooses to pledge checked-cell value from real unreserved
+Savings or reset old checkboxes; failed pledging is an atomic no-op.
+v12 portable backup exports and restores verified pledges; older backups
+return unverified challenge records, and v12 restores validate goal
+currency, grid match and Savings coverage. The Savings dashboard now
+shows pledged and free assets by unit. More detail:
+[GOAL_EARMARKS.md](GOAL_EARMARKS.md).
 
 ## Legacy SharedPreferences migration
 
