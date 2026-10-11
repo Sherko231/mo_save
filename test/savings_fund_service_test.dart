@@ -30,7 +30,7 @@ void main() {
       );
       ledger = FinancialLedgerStorage(database: database);
       settings = FinancialSettingsStorage(database: database);
-      savings = SavingsFundService(ledger: ledger, settings: settings);
+      savings = SavingsFundService(ledger: ledger, settings: settings, database: database);
       expenses = ExpenseService(
         ledgerStorage: ledger,
         planStorage: ExpensePlanStorage(database: database),
