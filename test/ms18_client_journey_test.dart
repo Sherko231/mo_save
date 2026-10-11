@@ -43,6 +43,11 @@ void main() {
 
     final settings = FinancialSettingsStorage(database: source);
     await settings.saveSettings(FinancialSettings.clientDefaults);
+    // Keep the acceptance fixture focused on the client's explicit bill;
+    // unrelated first-launch default commitments must not pollute it.
+    await (await source.database).insert('app_metadata', <String, Object?>{
+      'key': 'expense_plan_client_defaults_seeded_v1', 'value': '1',
+    });
     final ledger = FinancialLedgerStorage(database: source);
     final incomes = RecurringIncomeService(
       database: source, ledgerStorage: ledger, settingsStorage: settings,
@@ -117,9 +122,6 @@ void main() {
 
     // An upcoming bill is not a paid historical expense. Raising next
     // month's price changes only future financial projections/commitments.
-    await (await source.database).insert('app_metadata', <String, Object?>{
-      'key': 'expense_plan_client_defaults_seeded_v1', 'value': '1',
-    });
     final thisMonth = DateTime(now.year, now.month);
     final future = DateTime(now.year, now.month + 1);
     final bill = RecurringExpenseItem.create(
