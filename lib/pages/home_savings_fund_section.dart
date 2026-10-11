@@ -183,6 +183,8 @@ class _HomeSavingsFundSectionState extends State<HomeSavingsFundSection> {
               child: _SavedAssetRow(
                 unit: unit,
                 saved: snapshot.saved(unit),
+                reserved: snapshot.reserved(unit),
+                free: snapshot.free(unit),
                 other: snapshot.notSaved(unit),
                 isGold: unit == FinancialUnit.goldGram,
               ),
@@ -332,12 +334,16 @@ class _SavedAssetRow extends StatelessWidget {
   const _SavedAssetRow({
     required this.unit,
     required this.saved,
+    required this.reserved,
+    required this.free,
     required this.other,
     required this.isGold,
   });
 
   final FinancialUnit unit;
   final int saved;
+  final int reserved;
+  final int free;
   final int other;
   final bool isGold;
 
@@ -359,6 +365,11 @@ class _SavedAssetRow extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+          if (!isGold) ...<Widget>[
+            const SizedBox(height: 6),
+            Text('محجوز لأهداف موثّقة: ${FinancialFormat.assetBalance(reserved, unit)}'),
+            Text('حرّ من الادخار: ${FinancialFormat.assetBalance(free, unit)}'),
+          ],
           const SizedBox(height: 4),
           Text(
             'من إجمالي ممتلكاتك بهالعملة: '
