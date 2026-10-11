@@ -260,6 +260,19 @@ class ChallengeStorage {
         columns: <String>['challenge_id']);
       final verifiedIds = existingBacked
           .map((row) => row['challenge_id']! as String).toSet();
+      final previousGoals = await transaction.query('financial_events',
+        columns: <String>['recurrence_key'],
+        where: 'event_type = ? AND category = ?',
+        whereArgs: <Object?>[
+          FinancialEventType.savingContribution.name, _contributionCategory,
+        ],
+      );
+      for (final event in previousGoals) {
+        final key = event['recurrence_key'] as String?;
+        if (key == null) continue;
+        await TransactionHistoryService.archiveGoalProgress(transaction,
+          recurrenceKey: key, action: 'delete');
+      }
       await transaction.delete(
         'financial_events',
         where: 'event_type = ? AND category = ?',
