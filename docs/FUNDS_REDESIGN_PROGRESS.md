@@ -5,7 +5,7 @@
 ## Current checkpoint
 
 - **Next task:** [MS-16 — Unify audit history and corrections](https://github.com/Sherko231/mo_save/issues/90).
-- **Active implementation:** None.
+- **Active implementation:** [MS-16 / #90](https://github.com/Sherko231/mo_save/issues/90) — unified ledger audit, safe mutations, linked goals and planned/actual separation; tests unexecuted.
 - **Redesign progress:** 15 / 18 issues closed. **MS-02..MS-15 implementations and regression cases were committed but not executed or runtime-verified.** Client v12 upgrade, old archive import, forecast interaction and Android device acceptance remain pending.
 - **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
@@ -29,7 +29,7 @@
 | P4 | MS-13 — Link saving goals to real Savings assets | [#87](https://github.com/Sherko231/mo_save/issues/87) | MS-02, MS-03, MS-12 | Done — v12 backed goals, legacy opt-in, pledge freeze, v9-v12 backup coverage; tests unrun [commit](https://github.com/Sherko231/mo_save/commit/ad50dc9151ad789229c4d565c8c3160684fa7946) |
 | P4 | MS-14 — Forecast goal completion and plan-vs-actual delays | [#88](https://github.com/Sherko231/mo_save/issues/88) | MS-05, MS-09, MS-12, MS-13 | Done — 4/5 paydays, effective bills, conditional observed/plan forecasts, FX sensitivity and due-risk; untested [commit](https://github.com/Sherko231/mo_save/commit/846f4f90244e8b80a559c86c86152a8645143886) |
 | P4 | MS-15 — Useful savings motivation | [#89](https://github.com/Sherko231/mo_save/issues/89) | MS-13, MS-14 | Done — real-backed milestones, evidence-only streak, helpful guidance, opt-in reminders; tests unrun |
-| P5 | MS-16 — Unify audit history and corrections | [#90](https://github.com/Sherko231/mo_save/issues/90) | MS-04, MS-05, MS-08, MS-10, MS-13 | Not started |
+| P5 | MS-16 — Unify audit history and corrections | [#90](https://github.com/Sherko231/mo_save/issues/90) | MS-04, MS-05, MS-08, MS-10, MS-13 | In progress — audit filters, safe corrections and separated plans |
 | P5 | MS-17 — Redesign navigation around Savings and Spending | [#91](https://github.com/Sherko231/mo_save/issues/91) | MS-07, MS-11, MS-12, MS-15, MS-16 | Not started |
 | P6 | MS-18 — Verify migration, accounting, backup and handoff | [#92](https://github.com/Sherko231/mo_save/issues/92) | All prior issues | Not started |
 
