@@ -14,8 +14,13 @@ import 'unallocated_funds_page.dart';
 /// A live read-only Savings view. Goal earmarks and forecast dates are
 /// intentionally NOT inferred from challenge grids (MS-13/14).
 class HomeSavingsFundSection extends StatefulWidget {
-  const HomeSavingsFundSection({super.key, required this.refreshToken});
+  const HomeSavingsFundSection({
+    super.key,
+    required this.refreshToken,
+    this.service,
+  });
   final int refreshToken;
+  final SavingsFundService? service;
 
   @override
   State<HomeSavingsFundSection> createState() =>
@@ -23,7 +28,7 @@ class HomeSavingsFundSection extends StatefulWidget {
 }
 
 class _HomeSavingsFundSectionState extends State<HomeSavingsFundSection> {
-  final SavingsFundService _service = SavingsFundService();
+  late final SavingsFundService _service;
   SavingsFundSnapshot? _snapshot;
   StreamSubscription<void>? _changes;
   FinancialUnit _trendUnit = FinancialUnit.usd;
@@ -34,6 +39,7 @@ class _HomeSavingsFundSectionState extends State<HomeSavingsFundSection> {
   @override
   void initState() {
     super.initState();
+    _service = widget.service ?? SavingsFundService();
     _changes = FinancialLedgerStorage.changes.listen((_) => _reload());
     _reload();
   }
