@@ -18,14 +18,23 @@ import 'manual_inflow_page.dart';
 import 'fund_transfer_page.dart';
 import 'spending_analytics_page.dart';
 import 'transaction_history_page.dart';
+import 'challenges_page.dart';
+import 'savings_goals_preview.dart';
+import 'spending_quick_expense_page.dart';
+
+/// Fund-first primary destinations; independent screens share one canonical
+/// financial ledger and never carry their own asset balances.
+enum HomeFinancialView { savings, spending }
 
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.isActive,
+    this.view = HomeFinancialView.savings,
   });
 
   final bool isActive;
+  final HomeFinancialView view;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -106,6 +115,29 @@ class _HomePageState extends State<HomePage> {
       );
     });
     await _reload();
+  }
+
+  Future<void> _openGoals() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const ChallengesPage(isActive: false),
+      ),
+    );
+    if (mounted) await _reload(showLoading: false, showError: false);
+  }
+
+  Future<void> _openExpense() async {
+    final paid = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const SpendingQuickExpensePage(),
+      ),
+    );
+    if (!mounted || paid != true) return;
+    await _reload(showLoading: false, showError: false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم تسجيل مصروف فعلي من الصندوق المختار.')),
+    );
   }
 
   Future<void> _openHistory() async {
@@ -323,102 +355,153 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    final List<ExpectedIncome> attention = _incomeNeedingAttention;
+    final attention = _incomeNeedingAttention;
+    final savings = widget.view == HomeFinancialView.savings;
 
     return RefreshIndicator(
       onRefresh: () => _reload(showLoading: false),
       child: ListView(
+        key: PageStorageKey<String>(
+          savings ? 'savings-scroll' : 'spending-scroll',
+        ),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(18, 22, 18, 112),
         children: <Widget>[
-          HomeDashboardOverview(
-            snapshot: dashboard,
-            month: _selectedMonth,
-            onPreviousMonth: () => _changeMonth(-1),
-            onNextMonth: () => _changeMonth(1),
+          UxPageHeader(
+            title: savings ? 'الادخار' : 'المصاريف',
+            subtitle: savings
+                ? 'المبلغ المملوك للادخار، أهدافك والتاريخ المتوقع للوصول'
+                : 'المبلغ المتاح للصرف، مصروفاتك والفواتير المخططة',
           ),
-          const SizedBox(height: 18),
-          HomeSavingsFundSection(refreshToken: _incomeRefreshToken),
-          const SizedBox(height: 18),
-          HomeSpendingFundSection(refreshToken: _incomeRefreshToken),
-          if (attention.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 13),
+          if (savings) ...<Widget>[
+            HomeSavingsFundSection(refreshToken: _incomeRefreshToken),
+            const SizedBox(height: 20),
+            SavingsGoalsPreview(onOpenGoals: _openGoals),
             const SizedBox(height: 18),
-            const UxSectionHeader(
-              title: 'يحتاج انتباهك',
-              subtitle: 'دفعات حان موعدها ولم تُسجل بعد',
+            UxDisclosureCard(
+              title: 'الأصول الأخرى والتحويلات',
+              subtitle: 'تفاصيل الثروة الإجمالية، الصرف والذهب — ليست كلها ادخاراً',
+              icon: Icons.account_balance_wallet_outlined,
+              child: HomeBalanceSection(refreshToken: _incomeRefreshToken),
             ),
-            const SizedBox(height: 8),
-            ...attention.map(
-              (occurrence) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _AttentionIncomeCard(
-                  occurrence: occurrence,
-                  isConfirming: _confirmingKey == occurrence.recurrenceKey,
-                  onConfirm: () => _confirmReceived(occurrence),
-                  onIgnore: () => _ignoreOccurrence(occurrence),
+            const SizedBox(height: 12),
+            UxActionTile(
+              icon: Icons.add_circle_outline,
+              title: 'إضافة دخل أو رصيد موجود سابقاً',
+              subtitle: 'هدية أو دخل فعلي مع اختيار صندوق الاستلام',
+              onTap: _openManualInflow,
+            ),
+            const SizedBox(height: 9),
+            _HistoryShortcut(onTap: _openHistory),
+          ] else ...<Widget>[
+            FilledButton.icon(
+              onPressed: _openExpense,
+              icon: const Icon(Icons.add_card_rounded),
+              label: const Text('تسجيل مصروف الآن'),
+            ),
+            const SizedBox(height: 12),
+            HomeSpendingFundSection(
+              refreshToken: _incomeRefreshToken,
+              showExpenseButton: false,
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _openAnalytics,
+              icon: const Icon(Icons.bar_chart_rounded),
+              label: const Text('تحليلات المصاريف حسب التصنيف'),
+            ),
+            if (attention.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 18),
+              const UxSectionHeader(
+                title: 'رواتب بحاجة لتأكيد',
+                subtitle: 'لا تنضاف للأرصدة إلا بعد تسجيل الاستلام الفعلي',
+              ),
+              const SizedBox(height: 8),
+              for (final occurrence in attention)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _AttentionIncomeCard(
+                    occurrence: occurrence,
+                    isConfirming: _confirmingKey == occurrence.recurrenceKey,
+                    onConfirm: () => _confirmReceived(occurrence),
+                    onIgnore: () => _ignoreOccurrence(occurrence),
+                  ),
                 ),
+            ],
+            const SizedBox(height: 13),
+            UxDisclosureCard(
+              title: 'المصاريف والخطة',
+              subtitle: 'تعديل الخطة، الفواتير المسجلة والفرق عن المتوقع',
+              icon: Icons.receipt_long_outlined,
+              child: HomeExpensesSection(
+                month: _selectedMonth,
+                onPlanChanged: () => _reload(showLoading: false),
+              ),
+            ),
+            const SizedBox(height: 10),
+            UxDisclosureCard(
+              title: 'الدخل واستلام الرواتب',
+              subtitle: '${_occurrences.length} دفعات ضمن الشهر المحدد',
+              icon: Icons.payments_outlined,
+              initiallyExpanded: attention.isNotEmpty,
+              child: _IncomeDetails(
+                occurrences: _occurrences,
+                confirmingKey: _confirmingKey,
+                onConfirm: _confirmReceived,
+                onIgnore: _ignoreOccurrence,
+                onUndoIgnore: _undoIgnore,
+              ),
+            ),
+            const SizedBox(height: 12),
+            UxActionTile(
+              icon: Icons.add_circle_outline,
+              title: 'تسجيل هدية أو راتب إضافي أو رصيد سابق',
+              subtitle: 'دخل فعلي، منفصل عن الرواتب المتوقعة',
+              onTap: _openManualInflow,
+            ),
+            const SizedBox(height: 9),
+            _HistoryShortcut(onTap: _openHistory),
+          ],
+          const SizedBox(height: 18),
+          UxDisclosureCard(
+            title: 'نظرة إجمالية على أموالك',
+            subtitle: 'الادخار والمصاريف وغير الموزّع معاً — ليست كلها سيولة متاحة',
+            icon: Icons.pie_chart_outline,
+            child: HomeDashboardOverview(
+              snapshot: dashboard,
+              month: _selectedMonth,
+              onPreviousMonth: () => _changeMonth(-1),
+              onNextMonth: () => _changeMonth(1),
+            ),
+          ),
+          if (savings) ...<Widget>[
+            const SizedBox(height: 12),
+            UxDisclosureCard(
+              title: 'استلام الرواتب وحركات التوزيع',
+              subtitle: 'تسجيل الراتب الفعلي ونقل المال بين الصناديق',
+              icon: Icons.payments_outlined,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  for (final occurrence in attention)
+                    _AttentionIncomeCard(
+                      occurrence: occurrence,
+                      isConfirming: _confirmingKey == occurrence.recurrenceKey,
+                      onConfirm: () => _confirmReceived(occurrence),
+                      onIgnore: () => _ignoreOccurrence(occurrence),
+                    ),
+                  _IncomeDetails(
+                    occurrences: _occurrences,
+                    confirmingKey: _confirmingKey,
+                    onConfirm: _confirmReceived,
+                    onIgnore: _ignoreOccurrence,
+                    onUndoIgnore: _undoIgnore,
+                  ),
+                ],
               ),
             ),
           ],
-          const SizedBox(height: 18),
-          UxActionTile(
-            icon: Icons.add_circle_outline,
-            title: 'إضافة دخل أو رصيد سابق',
-            subtitle: 'هدية، مكافأة، عمل جانبي، بيع غرض أو مال موجود سابقاً',
-            onTap: _openManualInflow,
-          ),
-          const SizedBox(height: 10),
-          UxActionTile(
-            icon: Icons.swap_horiz_rounded,
-            title: 'نقل بين الادخار والمصاريف',
-            subtitle: 'تغيير توزيع أموالك بدون دخل أو مصروف جديد',
-            onTap: _openFundTransfer,
-          ),
-          const SizedBox(height: 10),
-          UxActionTile(
-            icon: Icons.bar_chart_rounded,
-            title: 'تحليلات المصاريف الشهرية',
-            subtitle: 'تصنيفات، مصادر الدفع، مقارنة بالشهر السابق وتفاصيل الحركات',
-            onTap: _openAnalytics,
-          ),
-          const SizedBox(height: 10),
-          _HistoryShortcut(onTap: _openHistory),
-          const SizedBox(height: 16),
-          const UxSectionHeader(
-            title: 'التفاصيل والإجراءات',
-            subtitle: 'افتح فقط القسم الذي تحتاجه',
-          ),
-          const SizedBox(height: 8),
-          UxDisclosureCard(
-            title: 'الأرصدة والتحويلات',
-            subtitle: 'تفاصيل الأصول، تحويل العملة وشراء الذهب',
-            icon: Icons.account_balance_wallet_outlined,
-            child: HomeBalanceSection(refreshToken: _incomeRefreshToken),
-          ),
-          const SizedBox(height: 8),
-          UxDisclosureCard(
-            title: 'الدخل',
-            subtitle: '${_occurrences.length} دفعات ضمن الشهر المحدد',
-            icon: Icons.payments_outlined,
-            initiallyExpanded: attention.isNotEmpty,
-            child: _IncomeDetails(
-              occurrences: _occurrences,
-              confirmingKey: _confirmingKey,
-              onConfirm: _confirmReceived,
-              onIgnore: _ignoreOccurrence,
-              onUndoIgnore: _undoIgnore,
-            ),
-          ),
-          const SizedBox(height: 8),
-          UxDisclosureCard(
-            title: 'المصاريف',
-            subtitle: 'الخطة الشهرية والتسجيل الفعلي',
-            icon: Icons.receipt_long_outlined,
-            child: HomeExpensesSection(
-              month: _selectedMonth,
-              onPlanChanged: () => _reload(showLoading: false),
-            ),
-          ),
         ],
       ),
     );
