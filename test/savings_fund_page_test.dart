@@ -62,9 +62,9 @@ void main() {
 
     expect(find.text('صندوق الادخار الحقيقي'), findsOneWidget);
     expect(find.text('القيمة التقريبية للادخار فقط'), findsOneWidget);
-    expect(find.text('≈ $200'), findsOneWidget);
+    expect(find.text('≈ \$200'), findsOneWidget);
     expect(find.text(
-      'من إجمالي ممتلكاتك بهالعملة: $250',
+      'من إجمالي ممتلكاتك بهالعملة: \$250',
     ), findsOneWidget);
     expect(find.text(
       'في أموال غير موزّعة، ما بتنحسب ادخار لحتى تخصّصها أنت.',
@@ -79,7 +79,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('≈ $120'), findsOneWidget);
+    expect(find.text('≈ \$120'), findsOneWidget);
     expect(find.text(
       'من إجمالي ممتلكاتك بهالعملة: $250',
     ), findsOneWidget);
