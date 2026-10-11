@@ -5,7 +5,7 @@
 ## Current checkpoint
 
 - **Next task:** [MS-17 — Redesign navigation around Savings and Spending](https://github.com/Sherko231/mo_save/issues/91).
-- **Active implementation:** None.
+- **Active implementation:** [MS-17 / #91](https://github.com/Sherko231/mo_save/issues/91) — fund-first adaptive navigation, direct expense and Savings goal forecast entry, tests authored but unexecuted.
 - **Redesign progress:** 16 / 18 issues closed. **MS-02..MS-16 source and regression cases committed but NOT run/verified.** Client v12 upgrade, older archive restores, history corrections and Android device acceptance remain pending.
 - **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
@@ -30,7 +30,7 @@
 | P4 | MS-14 — Forecast goal completion and plan-vs-actual delays | [#88](https://github.com/Sherko231/mo_save/issues/88) | MS-05, MS-09, MS-12, MS-13 | Done — 4/5 paydays, effective bills, conditional observed/plan forecasts, FX sensitivity and due-risk; untested [commit](https://github.com/Sherko231/mo_save/commit/846f4f90244e8b80a559c86c86152a8645143886) |
 | P4 | MS-15 — Useful savings motivation | [#89](https://github.com/Sherko231/mo_save/issues/89) | MS-13, MS-14 | Done — real-backed milestones, evidence-only streak, helpful guidance, opt-in reminders; tests unrun |
 | P5 | MS-16 — Unify audit history and corrections | [#90](https://github.com/Sherko231/mo_save/issues/90) | MS-04, MS-05, MS-08, MS-10, MS-13 | Done — fund/goal/search filters, revision expansion, true cancelled audit, goal grid old snapshots, planned-only commitments; tests unrun [commit](https://github.com/Sherko231/mo_save/commit/ebd6c1d8bd9d0f3fa477fadd500a758960394ddc) |
-| P5 | MS-17 — Redesign navigation around Savings and Spending | [#91](https://github.com/Sherko231/mo_save/issues/91) | MS-07, MS-11, MS-12, MS-15, MS-16 | Not started |
+| P5 | MS-17 — Redesign navigation around Savings and Spending | [#91](https://github.com/Sherko231/mo_save/issues/91) | MS-07, MS-11, MS-12, MS-15, MS-16 | In progress — savings/spending primary navigation and quick actions |
 | P6 | MS-18 — Verify migration, accounting, backup and handoff | [#92](https://github.com/Sherko231/mo_save/issues/92) | All prior issues | Not started |
 
 ## Mandatory recovery and update procedure for implementation agents
