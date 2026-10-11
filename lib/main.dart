@@ -95,7 +95,16 @@ class _MoSaveAppState extends State<MoSaveApp> {
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({
+    super.key,
+    this.homeBuilder,
+    this.settingsBody,
+  });
+
+  /// Optional builders keep the adaptive shell testable without a database.
+  /// Production always uses the canonical HomePage / SettingsShellPage.
+  final Widget Function(HomeFinancialView view, bool isActive)? homeBuilder;
+  final Widget? settingsBody;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -157,19 +166,29 @@ class _AppShellState extends State<AppShell> {
     return IndexedStack(
       index: _selectedIndex,
       children: <Widget>[
-        HomePage(
+        KeyedSubtree(
           key: ValueKey<String>('savings-$_dataRevision'),
-          view: HomeFinancialView.savings,
-          isActive: _selectedIndex == 0,
+          child: widget.homeBuilder?.call(
+            HomeFinancialView.savings, _selectedIndex == 0,
+          ) ?? HomePage(
+            view: HomeFinancialView.savings,
+            isActive: _selectedIndex == 0,
+          ),
         ),
-        HomePage(
+        KeyedSubtree(
           key: ValueKey<String>('spending-$_dataRevision'),
-          view: HomeFinancialView.spending,
-          isActive: _selectedIndex == 1,
+          child: widget.homeBuilder?.call(
+            HomeFinancialView.spending, _selectedIndex == 1,
+          ) ?? HomePage(
+            view: HomeFinancialView.spending,
+            isActive: _selectedIndex == 1,
+          ),
         ),
-        SettingsShellPage(
+        KeyedSubtree(
           key: ValueKey<String>('settings-$_dataRevision'),
-          onDataRestored: _handleDataRestored,
+          child: widget.settingsBody ?? SettingsShellPage(
+            onDataRestored: _handleDataRestored,
+          ),
         ),
       ],
     );
