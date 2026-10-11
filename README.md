@@ -2,9 +2,9 @@
 
 Single-user, offline-first Flutter app for personal finance tracking and gamified saving goals.
 
-## Active redesign — savings and spending funds
+## Active design — simple Home, History and More
 
-The client-requested redesign is **in progress**. Its fund-aware ledger, receipt allocations, Spending dashboard, categorized expenses, future-effective recurring plan versions, internal fund transfers and categorized monthly spending analytics and a true Savings dashboard are committed, but **runtime checks have not been executed**. Verified Savings-backed goals, conditional completion forecasts, evidence-based motivation and fund-first Savings/Spending/Settings navigation are implemented in source; final client acceptance is still pending. The chronological financial history now offers fund, unit, type, linked-goal and note/category filters, cancelled-event revisions and a separate expected-commitments section. The plan covers linked Savings and Spending funds, real liquidity and categorized expenses, goal earmarks backed by real Savings, overdue-payday dismissal, editable assumptions and realistic goal forecasts.
+The client-requested redesign remains **in progress** until the owner verifies it on-device. The October 2026 simplification replaces the first screen with everyday balances and actions, a dedicated History tab, and a grouped More hub. All prior Savings/Spending accounting screens, goals, settings and historical correction routes remain accessible. Its fund-aware ledger, receipt allocations, Spending dashboard, categorized expenses, future-effective recurring plan versions, internal fund transfers and categorized monthly spending analytics and a true Savings dashboard are committed, but **runtime checks have not been executed**. Verified Savings-backed goals, conditional completion forecasts, evidence-based motivation and the simplified Home/History/More navigation is implemented in source; final client acceptance is still pending. The chronological financial history now offers fund, unit, type, linked-goal and note/category filters, cancelled-event revisions and a separate expected-commitments section. The plan covers linked Savings and Spending funds, real liquidity and categorized expenses, goal earmarks backed by real Savings, overdue-payday dismissal, editable assumptions and realistic goal forecasts.
 
 - [AI implementation contract](AGENTS.md)
 - [Redesign product specification](docs/FUNDS_REDESIGN.md)
@@ -17,7 +17,8 @@ Read these before continuing project implementation. The tracker begins with MS-
 
 - [Product scope](docs/PRODUCT.md)
 - [Client-ready roadmap](docs/ROADMAP.md)
-- [UX redesign and interaction architecture](docs/UX_REDESIGN.md)
+- [Simple UX feature-preserving navigation and local walkthrough](docs/SIMPLE_UX_2026_10.md)
+- [Earlier UX redesign and interaction architecture](docs/UX_REDESIGN.md)
 - [Visual design system](docs/UI_DESIGN_SYSTEM.md)
 - [Local data storage](docs/DATA_STORAGE.md)
 - [Balance and valuation rules](docs/VALUATION.md)
@@ -30,4 +31,4 @@ Read these before continuing project implementation. The tracker begins with MS-
 
 ## Current foundation
 
-The app provides Savings / Spending / Settings adaptive navigation (with goals inside Savings), a ledger-backed financial model, locally persisted saving goals, multi-currency balances and explicit SYP↔USD conversions. The interaction architecture uses progressive disclosure so advanced financial tools remain available without crowding the default experience.
+The app provides Home / History / More adaptive navigation, a ledger-backed financial model, locally persisted saving goals, multi-currency balances and explicit SYP↔USD conversions. The interaction architecture uses progressive disclosure so advanced financial tools remain available without crowding the default experience.
