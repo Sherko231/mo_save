@@ -16,25 +16,21 @@ Keep every financial feature while making the default experience calm, obvious a
 
 ### Primary navigation
 
-Only three top-level destinations remain:
+MS-17 replaces the former Home/Goals/Settings tabs with exactly three top-level destinations:
 
-1. Home (`الرئيسية`) — status, attention items and financial actions.
-2. Saving goals (`الأهداف`) — goal progress and saving grids.
-3. Settings (`الإعدادات`) — future defaults, reminders and data tools.
+1. Savings (`الادخار`) — current real Savings compared to spendable cash, verified goal progress and conditional forecast. Detailed goals/grid are a direct route inside Savings.
+2. Spending (`المصاريف`) — actual liquid balances and a first-screen direct payment action, scheduled bills, categorized analytics and real received income.
+3. Settings (`الإعدادات`) — income/expense defaults, reference estimates, reminders, Unallocated fund reconciliation and backup/restore.
 
 On compact screens this is a bottom navigation bar. On wider windows it becomes a navigation rail.
 
-### Home
+### Savings and Spending landing screens
 
-The default view now answers three questions in order:
+The default Savings landing view answers *how much is actually saved*, *how much is spendable cash*, and *when verified goals may be reached*. It uses a per-currency Savings/Spending strip and goal-backed forecast preview before collapsible detailed balances; it never silently counts Unallocated or unverified challenge checkmarks.
 
-1. What is my current financial position?
-2. Is anything due or requiring action now?
-3. Where do I go for details?
+Spending starts with a direct Add Expense button, **before** analytics and plan sections, then shows spendable balances, actual paid amounts and hypothetical monthly commitments by currency. Income receipt, transfers, month selection, general history, asset exchange/gold and analytics remain directly linked or disclosed by need. Planned/unreceived items never post real financial transactions.
 
-Detailed balance tools, recurring income, weekly allocation and expenses are preserved behind clearly named expandable sections. Transaction history remains a direct shortcut because it is a high-value audit path.
-
-### Goals
+### Goals (reached from Savings)
 
 The list emphasizes goal name, saved amount, progress and deadline. Destructive deletion moved out of the primary visual path into an overflow menu.
 
