@@ -127,7 +127,11 @@ class TransactionHistoryService {
       whereArgs: const <Object?>['delete'],
     );
 
+    final activeIds = active.map((e) => e.id).toSet();
     for (final Map<String, Object?> row in deletedRows) {
+      // A goal-grid contribution may be recreated with its stable event ID
+      // during bulk save. Its old snapshot is a revision, not another debit.
+      if (activeIds.contains(row['event_id'])) continue;
       final FinancialEvent event = _eventFromJson(
         jsonDecode(row['snapshot_json']! as String) as Map<String, dynamic>,
       );
@@ -173,6 +177,61 @@ class TransactionHistoryService {
       month: month,
       plannedBills: List<RecurringExpenseItem>.unmodifiable(bills),
       expectedIncome: List<ExpectedIncome>.unmodifiable(income),
+    );
+  }
+
+  /// Preserve each previous non-balance goal-grid posting before a grid
+  /// update/release or deletion. Called WITHIN ChallengeStorage's SQL
+  /// transaction, so a rejected goal edit never leaves a misleading audit.
+  ///
+  /// The snapshot schema matches ordinary ledger correction revisions and
+  /// remains readable by historical v9-v12 audit/backup import code.
+  static Future<void> archiveGoalProgress(
+    DatabaseExecutor transaction, {
+    required String recurrenceKey,
+    required String action,
+  }) async {
+    if (action != 'update' && action != 'delete') {
+      throw ArgumentError('Unsupported audit action');
+    }
+    final rows = await transaction.query('financial_events',
+      where: 'recurrence_key = ? AND event_type = ?',
+      whereArgs: <Object?>[
+        recurrenceKey, FinancialEventType.savingContribution.name,
+      ], limit: 1);
+    if (rows.isEmpty) return;
+    final old = rows.single;
+    final entries = await transaction.query('financial_event_entries',
+      where: 'event_id = ?', whereArgs: <Object?>[old['id']],
+      orderBy: 'position ASC');
+    final snapshot = <String, Object?>{
+      'id': old['id'],
+      'type': old['event_type'],
+      'occurredAtMs': old['occurred_at_ms'],
+      'note': old['note'],
+      'category': old['category'],
+      'relatedChallengeId': old['related_challenge_id'],
+      'relatedGoalId': old['related_goal_id'],
+      'recurrenceKey': old['recurrence_key'],
+      'sourceEventId': old['source_event_id'],
+      'executedSypPerUsd': old['executed_syp_per_usd'],
+      'createdAtMs': old['created_at_ms'],
+      'updatedAtMs': old['updated_at_ms'],
+      'entries': entries.map((row) => <String, Object?>{
+        'unit': row['unit'],
+        'amountMicros': row['amount_micros'],
+        'affectsBalance': (row['affects_balance'] as num).toInt() == 1,
+        'role': row['entry_role'],
+        'fund': row['fund'] ?? FinancialFund.unallocated.name,
+      }).toList(growable: false),
+    };
+    await transaction.insert('financial_event_revisions',
+      <String, Object?>{
+        'event_id': old['id'],
+        'action': action,
+        'snapshot_json': jsonEncode(snapshot),
+        'changed_at_ms': DateTime.now().toUtc().millisecondsSinceEpoch,
+      },
     );
   }
 
