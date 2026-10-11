@@ -221,6 +221,32 @@ void main() {
       expect((await history.loadRevisions(payment.id)), hasLength(2));
     });
 
+    test('metadata category and notes follow audited event corrections',
+        () async {
+      await expense(25000, FinancialUnit.syp, 'طعام',
+        note: 'الملاحظة الأصلية');
+      final payment = (await ledger.loadEvents(
+        type: FinancialEventType.expense)).single;
+      await history.updateMetadata(
+        eventId: payment.id,
+        occurredAt: payment.occurredAt.toLocal(),
+        category: 'منزل',
+        note: 'تفصيل المصروف المصحح',
+      );
+      final report = await analytics.loadMonth(month);
+      expect(report.categories(FinancialUnit.syp).single.category, 'منزل');
+      final line = report.categories(FinancialUnit.syp).single.lines.single;
+      expect(line.event.note, 'تفصيل المصروف المصحح');
+      expect(line.event.id, payment.id);
+      expect(line.entryIndex, 0);
+      expect(report.actualMicros(FinancialUnit.syp),
+        LedgerEntry.amountToMicros(25000));
+      final revisions = await history.loadRevisions(payment.id);
+      expect(revisions, hasLength(1));
+      expect(revisions.single.snapshot.category, 'طعام');
+      expect(revisions.single.snapshot.note, 'الملاحظة الأصلية');
+    });
+
     test('different currencies never combine, and Unallocated is explicit',
         () async {
       await expense(70, FinancialUnit.sypNew, 'منزل');
