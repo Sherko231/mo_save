@@ -40,7 +40,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
   @override
   void didUpdateWidget(covariant ChallengeDetailPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_isSaving && oldWidget.challenge != widget.challenge) {
+    if (oldWidget.challenge != widget.challenge) {
       _challenge = widget.challenge;
     }
   }
