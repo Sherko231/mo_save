@@ -11,10 +11,19 @@ import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 class TransactionHistoryPage extends StatefulWidget {
-  const TransactionHistoryPage({super.key, this.initialFund});
+  const TransactionHistoryPage({
+    super.key,
+    this.initialFund,
+    this.initialMonth,
+    this.initialUnit,
+    this.initialType,
+  });
 
-  /// Open directly on one fund without hiding the standard all-funds option.
+  /// Open directly on an auditable filtered month, retaining all filters.
   final FinancialFund? initialFund;
+  final FinancialUnit? initialUnit;
+  final FinancialEventType? initialType;
+  final DateTime? initialMonth;
 
   @override
   State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
@@ -51,6 +60,13 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   void initState() {
     super.initState();
     _fundFilter = widget.initialFund?.name ?? 'all';
+    _unitFilter = widget.initialUnit?.name ?? 'all';
+    _typeFilter = widget.initialType?.name ?? 'all';
+    if (widget.initialMonth != null) {
+      _selectedMonth = DateTime(
+        widget.initialMonth!.year, widget.initialMonth!.month,
+      );
+    }
     _ledgerSubscription = FinancialLedgerStorage.changes.listen((_) {
       if (mounted) _load(showLoading: false);
     });
