@@ -44,6 +44,11 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
 - MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
 - MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
+- MS-12: true Savings reads Savings fund postings, never all assets, Unallocated legacy money or nonbalance challenge progress.
+- MS-12: salary 345,000 SYP saved versus 540,000 Spending, internal transfers and direct Savings payments reconcile per unit without creating income.
+- MS-12: inbound funding, actual withdrawals, opening balances, gold trades, conversion principal and manual corrections have distinct monthly-flow classifications.
+- MS-12: changing reference FX or gold values updates only Savings valuation, not recorded assets; absent rates and nonzero SYP (N) reject incomplete grand totals.
+- MS-12: six-month real fund flows, audit corrections/deletions and RTL live Savings balance UI preserve owned/fund conservation.
 - MS-11: a 100 USD expense paid directly from Savings contributes 100 USD to actual monthly USD expenses exactly once and 0 USD to Spending-funded expenses; a same-month fund transfer and opening cash contribute 0 expenses.
 - MS-11: category breakdowns sum exactly to the active actual ledger expense entries in each unit, excluding non-expense event types; historical notes and paying funds remain available in drill-down.
 - MS-11: only explicitly linked `expense-plan:` occurrences count as recurring payments. Unlinked identically named bills remain one-off/unlinked; the full monthly plan is never treated as a settled debit.
@@ -67,7 +72,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-11 regression cases (including categorized analytics accounting and widget drill-down scenarios) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-12 regression cases (including real Savings ledger, valuation, trend, and widget cases) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
