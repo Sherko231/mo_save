@@ -3,6 +3,10 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/financial_event.dart';
+import '../models/recurring_expense_item.dart';
+import '../models/expected_income.dart';
+import 'expense_plan_storage.dart';
+import 'recurring_income_service.dart';
 import 'financial_ledger_storage.dart';
 import 'local_database.dart';
 
@@ -41,21 +45,44 @@ class TransactionMutationException implements Exception {
   String toString() => message;
 }
 
+class ExpectedCommitmentsSnapshot {
+  const ExpectedCommitmentsSnapshot({
+    required this.month,
+    required this.plannedBills,
+    required this.expectedIncome,
+  });
+  final DateTime month;
+  /// Current month-effective scheduled bills, not actual expenses.
+  final List<RecurringExpenseItem> plannedBills;
+  /// Expected income dispositions; only receivedEvent is a posted income.
+  final List<ExpectedIncome> expectedIncome;
+}
+
 class TransactionHistoryService {
   TransactionHistoryService({
     LocalDatabase? database,
     FinancialLedgerStorage? ledger,
+    ExpensePlanStorage? plans,
+    RecurringIncomeService? recurringIncome,
   })  : _database = database ?? LocalDatabase.instance,
-        _ledger = ledger ?? FinancialLedgerStorage();
+        _ledger = ledger ?? FinancialLedgerStorage(),
+        _plans = plans ?? ExpensePlanStorage(database: database),
+        _income = recurringIncome ?? RecurringIncomeService(
+          database: database, ledgerStorage: ledger,
+        );
 
   final LocalDatabase _database;
   final FinancialLedgerStorage _ledger;
+  final ExpensePlanStorage _plans;
+  final RecurringIncomeService _income;
 
   Future<List<TransactionHistoryRecord>> loadMonth(
     DateTime month, {
     FinancialEventType? type,
     FinancialUnit? unit,
     FinancialFund? fund,
+    String? goalId,
+    String? search,
   }) async {
     final DateTime start = DateTime(month.year, month.month, 1);
     final DateTime end = DateTime(month.year, month.month + 1, 1);
@@ -67,7 +94,18 @@ class TransactionHistoryService {
     final Database database = await _database.database;
 
     final Map<String, int> revisionCounts = await _loadRevisionCounts(database);
+    final normalized = (search ?? '').trim().toLowerCase();
+    bool matches(FinancialEvent event) =>
+        (goalId == null || event.relatedGoalId == goalId ||
+         event.relatedChallengeId == goalId) &&
+        (normalized.isEmpty || <String?>[
+          event.id, event.note, event.category,
+          event.relatedGoalId, event.relatedChallengeId,
+          event.recurrenceKey, event.sourceEventId,
+        ].any((field) => field?.toLowerCase().contains(normalized) ?? false));
+
     final List<TransactionHistoryRecord> result = active
+        .where(matches)
         .where((event) => unit == null || _containsUnit(event, unit))
         .where((event) => fund == null ||
             event.entries.any((entry) => entry.fund == fund &&
@@ -100,6 +138,7 @@ class TransactionHistoryService {
       if (type != null && event.type != type) {
         continue;
       }
+      if (!matches(event)) continue;
       if (unit != null && !_containsUnit(event, unit)) {
         continue;
       }
@@ -123,6 +162,18 @@ class TransactionHistoryService {
       return b.event.updatedAt.compareTo(a.event.updatedAt);
     });
     return result;
+  }
+
+  /// Only informative commitments; never included in actual-ledger totals.
+  Future<ExpectedCommitmentsSnapshot> loadExpectedMonth(DateTime selected) async {
+    final month = DateTime(selected.year, selected.month);
+    final bills = await _plans.loadItemsForMonth(month);
+    final income = await _income.loadMonth(month);
+    return ExpectedCommitmentsSnapshot(
+      month: month,
+      plannedBills: List<RecurringExpenseItem>.unmodifiable(bills),
+      expectedIncome: List<ExpectedIncome>.unmodifiable(income),
+    );
   }
 
   Future<List<FinancialEventRevision>> loadRevisions(String eventId) async {
