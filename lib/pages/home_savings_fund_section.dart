@@ -8,6 +8,7 @@ import '../services/savings_fund_service.dart';
 import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'fund_transfer_page.dart';
+import 'goal_forecast_page.dart';
 import 'transaction_history_page.dart';
 import 'unallocated_funds_page.dart';
 
@@ -307,13 +308,23 @@ class _HomeSavingsFundSectionState extends State<HomeSavingsFundSection> {
           const SizedBox(height: 8),
           Text(
             'تقدّم تحديات الادخار القديمة مو دليل على امتلاك نفس المبلغ. '
-            'حجز الادخار للأهداف وربطه بأرصدة حقيقية ضمن المرحلة التالية.',
+            'توقعات تحقيق الأهداف افتراضية وتتغير حسب الراتب والمصاريف.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: colors.onSurfaceVariant,
             ),
           ),
         ],
         const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => const GoalForecastPage(),
+            ),
+          ),
+          icon: const Icon(Icons.query_stats_rounded),
+          label: const Text('متى ممكن أوصل لأهداف الادخار؟'),
+        ),
+        const SizedBox(height: 7),
         OutlinedButton.icon(
           onPressed: _moveFunds,
           icon: const Icon(Icons.swap_horiz_rounded),
