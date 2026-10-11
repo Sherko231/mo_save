@@ -107,6 +107,9 @@ void main() {
       currency: ChallengeCurrency.usd,
       sequence: ChallengeSequence.ordered,
       cellCount: 2,
+      // Brand-new goals explicitly start verified at zero, unlike old
+      // imported checkmarks whose provenance is unverified (null).
+      backedAmountMicros: 0,
       cells: const <ChallengeCell>[
         ChallengeCell(value: 100),
         ChallengeCell(value: 100),
