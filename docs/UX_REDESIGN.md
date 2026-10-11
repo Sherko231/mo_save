@@ -1,5 +1,7 @@
 # Mo Save — UX redesign
 
+> **October 2026 update:** The previous Savings / Spending / Settings top-level architecture below is historical. The current simplified product uses **Home / History / More**, with all prior fund dashboards and actions available as detail routes. See [the current simple UX specification](SIMPLE_UX_2026_10.md). Final first-time-user/device acceptance remains pending.
+
 ## Goal
 
 Keep every financial feature while making the default experience calm, obvious and quick to learn. The redesign treats complexity as something to reveal when needed rather than something to remove.
