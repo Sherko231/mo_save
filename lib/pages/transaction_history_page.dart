@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 
 import '../models/financial_event.dart';
 import '../models/saving_challenge.dart';
-import '../models/expected_income.dart';
 import '../services/challenge_storage.dart';
 import '../services/financial_ledger_storage.dart';
 import '../services/transaction_history_service.dart';
