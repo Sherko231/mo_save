@@ -407,6 +407,7 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
                         return _SavingCell(
                           cell: cell,
                           currency: _challenge.currency,
+                          verified: _challenge.isBackingVerified,
                           enabled: !_isSaving,
                           onTap: () => _toggleCell(index),
                         );
@@ -598,12 +599,14 @@ class _SavingCell extends StatelessWidget {
   const _SavingCell({
     required this.cell,
     required this.currency,
+    required this.verified,
     required this.enabled,
     required this.onTap,
   });
 
   final ChallengeCell cell;
   final ChallengeCurrency currency;
+  final bool verified;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -615,7 +618,8 @@ class _SavingCell extends StatelessWidget {
       button: true,
       checked: cell.isCompleted,
       label:
-          '${ChallengeFormat.amount(cell.value, currency)}${cell.isCompleted ? ' محفوظة' : ' غير محفوظة'}',
+          '${ChallengeFormat.amount(cell.value, currency)}'
+          '${cell.isCompleted ? (verified ? ' محجوزة من الادخار' : ' مؤشرّة سابقاً وغير موثقة') : ' غير محجوزة'}',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
