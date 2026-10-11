@@ -217,7 +217,12 @@ class NotificationService {
 
     for (final SavingChallenge challenge in challenges) {
       final DateTime? deadline = challenge.deadline;
-      if (deadline == null || challenge.isComplete) continue;
+      if (deadline == null || challenge.isVerifiedComplete) continue;
+      final remaining = challenge.targetAmount.toInt() -
+          challenge.verifiedSavedAmount;
+      final remainingLabel = challenge.currency.formatAmount(remaining);
+      final progressCaveat = challenge.isBackingVerified
+          ? '' : 'الخانات القديمة غير مثبتة بأموال الادخار. ';
 
       final DateTime localDeadline = deadline.toLocal();
       final tz.TZDateTime due = tz.TZDateTime(
@@ -235,7 +240,7 @@ class NotificationService {
           id: _goalBaseId + notificationIndex++,
           title: 'بقي أسبوع على هدف ${challenge.name}',
           body:
-              'المتبقي ${challenge.currency.formatAmount(challenge.remainingAmount)}. '
+              '${progressCaveat}المتبقي المثبّت ${remainingLabel}. '
               'راجع تقدم الهدف قبل الموعد.',
           scheduledDate: weekBefore,
           notificationDetails: _notificationDetails,
@@ -249,7 +254,7 @@ class NotificationService {
         title: 'موعد هدف ${challenge.name}',
         body:
             'اليوم الموعد المحدد للهدف. المتبقي '
-            '${challenge.currency.formatAmount(challenge.remainingAmount)}.',
+            '${remainingLabel}. ${progressCaveat}',
         scheduledDate: due,
         notificationDetails: _notificationDetails,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
