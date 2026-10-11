@@ -7,17 +7,20 @@ import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 
 typedef ChallengeChanged = Future<bool> Function(SavingChallenge challenge);
+typedef LegacyGoalReconciled = Future<bool> Function(bool useExistingMarks);
 
 class ChallengeDetailPage extends StatefulWidget {
   const ChallengeDetailPage({
     super.key,
     required this.challenge,
     required this.onChanged,
+    required this.onReconcile,
     required this.onBack,
   });
 
   final SavingChallenge challenge;
   final ChallengeChanged onChanged;
+  final LegacyGoalReconciled onReconcile;
   final VoidCallback onBack;
 
   @override
@@ -44,6 +47,10 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
 
   Future<void> _toggleCell(int index) async {
     if (_isSaving) return;
+    if (!_challenge.isBackingVerified) {
+      await _reconcileLegacy();
+      return;
+    }
 
     final SavingChallenge previous = _challenge;
     final List<ChallengeCell> updatedCells =
@@ -53,6 +60,50 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
     final SavingChallenge updated = _challenge.copyWith(cells: updatedCells);
 
     await _saveChange(previous, updated, 'تعذر حفظ تقدم الهدف.');
+  }
+
+  Future<void> _reconcileLegacy() async {
+    if (_isSaving || _challenge.isBackingVerified) return;
+    final choice = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('توثيق ادخار الهدف القديم'),
+        content: Text(
+          'الخانات القديمة تشير إلى '
+          '${ChallengeFormat.amount(_challenge.savedAmount, _challenge.currency)} '
+          'لكن ما عنا دليل إنها محجوزة من مال الادخار الحقيقي. '
+          'بتقدر تثبّت قيمتها إذا في رصيد كافٍ، أو تصفّر الخانات '
+          'وتبدأ الحجز من جديد. ما رح نضيف أي مال جديد.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('تصفير الخانات القديمة'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('تثبيت الرصيد من الادخار'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    setState(() => _isSaving = true);
+    final applied = await widget.onReconcile(choice);
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    if (!applied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(
+          'لا يمكن توثيق المبلغ: الرصيد الحر بالادخار قد لا يكفي، '
+          'أو الهدف تغيّر. لم تتغير الخانات.',
+        )),
+      );
+    }
   }
 
   Future<void> _changeSequence(ChallengeSequence sequence) async {
@@ -223,7 +274,8 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final GoalPace? pace = _challenge.goalPace();
+    final GoalPace? pace = _challenge.isBackingVerified
+        ? _challenge.goalPace() : null;
     final bool overdue = _challenge.isDeadlineOverdue();
     final int completedCells =
         _challenge.cells.where((cell) => cell.isCompleted).length;
@@ -287,6 +339,15 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               overdue: overdue,
               completedCells: completedCells,
             ),
+            if (!_challenge.isBackingVerified) ...<Widget>[
+              const SizedBox(height: 10),
+              const Text('هذا الهدف قديم وخاناته غير موثّقة بأموال حقيقية.'),
+              FilledButton.icon(
+                onPressed: _isSaving ? null : _reconcileLegacy,
+                icon: const Icon(Icons.verified_outlined),
+                label: const Text('تثبيت الخانات أو تصفيرها'),
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: <Widget>[
@@ -304,7 +365,9 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
             ),
             const SizedBox(height: 3),
             Text(
-              'اضغط على الخانة عند ادخار مبلغها. اضغط مرة أخرى للتراجع.',
+              _challenge.isBackingVerified
+              ? 'اختر خانة لحجز مبلغها من رصيد الادخار الحقيقي، أو ألغِ حجزها بالضغط مرة ثانية.'
+              : 'هذه الخانات محفوظة كتاريخ فقط. وثّقها أو صفّرها أولاً.' ,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -394,15 +457,15 @@ class _GoalHero extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  challenge.isComplete ? 'هدف مكتمل' : 'تقدم الهدف',
+                  challenge.isVerifiedComplete ? 'هدف مكتمل ومغطّى' : 'الادخار المثبّت للهدف',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: Colors.white.withValues(alpha: 0.76),
                       ),
                 ),
               ),
               UxStatusPill(
-                label: FinancialFormat.progress(challenge.progress),
-                icon: challenge.isComplete ? Icons.check_rounded : null,
+                label: FinancialFormat.progress(challenge.verifiedProgress),
+                icon: challenge.isVerifiedComplete ? Icons.check_rounded : null,
                 color: const Color(0xFFF1D58E),
               ),
             ],
@@ -410,7 +473,7 @@ class _GoalHero extends StatelessWidget {
           const SizedBox(height: 13),
           Text(
             ChallengeFormat.amount(
-              challenge.savedAmount,
+              challenge.verifiedSavedAmount,
               challenge.currency,
             ),
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -427,7 +490,7 @@ class _GoalHero extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           LinearProgressIndicator(
-            value: challenge.progress,
+            value: challenge.verifiedProgress,
             minHeight: 9,
             color: const Color(0xFFF4D98D),
             backgroundColor: Colors.white.withValues(alpha: 0.14),
@@ -442,7 +505,7 @@ class _GoalHero extends StatelessWidget {
                 icon: Icons.grid_view_rounded,
                 label: '$completedCells / ${challenge.cellCount} خانات',
               ),
-              if (challenge.isComplete)
+              if (challenge.isVerifiedComplete)
                 const _HeroMetaPill(
                   icon: Icons.check_circle_rounded,
                   label: 'اكتمل الهدف',
@@ -456,7 +519,7 @@ class _GoalHero extends StatelessWidget {
                       ? 'متأخر عن ${FinancialFormat.date(challenge.deadline!)}'
                       : 'الموعد ${FinancialFormat.date(challenge.deadline!)}',
                 ),
-              if (!challenge.isComplete)
+              if (!challenge.isVerifiedComplete)
                 if (pace case final GoalPace goalPace)
                   _HeroMetaPill(
                     icon: Icons.speed_rounded,
