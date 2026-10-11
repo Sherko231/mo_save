@@ -16,8 +16,11 @@ class _FakeMotivation extends SavingsMotivationService {
     final real = SavingChallenge(
       id: fresh.id, name: fresh.name,
       targetAmount: fresh.targetAmount, currency: fresh.currency,
-      sequence: fresh.sequence, cellCount: fresh.cellCount,
-      cells: fresh.cells, backedAmountMicros: 60000000,
+      sequence: fresh.sequence, cellCount: 2,
+      cells: const <ChallengeCell>[
+        ChallengeCell(value: 60, isCompleted: true),
+        ChallengeCell(value: 40),
+      ], backedAmountMicros: 60000000,
     );
     final old = SavingChallenge(
       id: 'old', name: 'تحدي قديم',
