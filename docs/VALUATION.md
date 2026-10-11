@@ -28,6 +28,24 @@ If a non-zero SYP balance has no configured exchange rate, or a non-zero gold ba
 
 Changing a reference exchange rate or gold price changes only the current estimate. It never rewrites ledger events, owned balances, or challenge progress.
 
+## Real Savings-only valuation (MS-12)
+
+The Savings dashboard uses the **same** display-time valuation logic as the
+total-assets overview, but supplies **only currently classified Savings
+holdings**. It never counts Spending or Unallocated as saved. This is a
+separately labeled, estimated **Savings-only** number, not total owned wealth
+and not the user's original contribution cost. When rates are missing, or
+there is any unvalued new Syrian lira, the complete total is unavailable
+and reasons are displayed without silently omitting assets.
+
+Current and six-month Savings movements are derived from signed **ledger
+quantities in each original unit**, never from fluctuating market references.
+Positive receipts and internal funding, actual withdrawals, old opening
+assets, and cash↔gold/FX principal changes are visibly separated. Neither
+reference price appreciation nor legacy saving challenge progress is treated
+as an earned contribution. See
+[SAVINGS_FUND.md](SAVINGS_FUND.md).
+
 ## Real SYP/USD conversions
 
 A real SYP↔USD conversion is an explicit ledger event and never uses the Settings reference rate as a transaction amount. The user enters the amount actually paid and the amount actually received; both balance changes are posted atomically and the historical executed SYP-per-USD rate is stored with the event.
