@@ -179,7 +179,7 @@ class GoalForecastService {
       FinancialUnit.usd => month.netUsdMicros == null && rate == null
           ? null
           : (month.netUsdMicros ?? -month.usdPlannedBillsMicros) +
-              (rate == null ? 0 : (month.netSypMicros / rate).floor()),
+              (rate == null ? 0 : (math.max(0, month.netSypMicros) / rate).floor()),
       FinancialUnit.sypNew => null,
       FinancialUnit.goldGram => null,
     };
