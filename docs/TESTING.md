@@ -47,6 +47,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-13: 100 USD pledged to a goal stays part of current Savings and owned USD; the verified goal sum cannot exceed Savings, including other goal pledges.
 - MS-13: a verified-goal expense, transfer, FX/gold trade or historical correction that would violate the backing is blocked atomically until the user unchecks/relinquishes the pledge.
 - MS-13: old v9/v10/v11 completed cells remain unverified until explicit keep/check-or-reset choice; insufficient cash refuses without losing old checks.
+- MS-13: isolated RTL goal detail widget requires owner confirmation before promoting an old checked grid to a verified completed goal (test/goal_reconciliation_widget_test.dart).
 - MS-13: deleting or editing a verified grid releases/adjusts only earmarked amounts; neither case creates income or expense. v12 archive pledges restore intact, malformed pledge backups roll back, and older archives omit goal_earmarks.
 - MS-12: true Savings reads Savings fund postings, never all assets, Unallocated legacy money or nonbalance challenge progress.
 - MS-12: salary 345,000 SYP saved versus 540,000 Spending, internal transfers and direct Savings payments reconcile per unit without creating income.
