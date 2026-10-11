@@ -9,6 +9,7 @@ import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'fund_transfer_page.dart';
 import 'goal_forecast_page.dart';
+import 'savings_motivation_page.dart';
 import 'transaction_history_page.dart';
 import 'unallocated_funds_page.dart';
 
@@ -315,6 +316,16 @@ class _HomeSavingsFundSectionState extends State<HomeSavingsFundSection> {
           ),
         ],
         const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => const SavingsMotivationPage(),
+            ),
+          ),
+          icon: const Icon(Icons.verified_outlined),
+          label: const Text('محطات التقدم الحقيقي'),
+        ),
+        const SizedBox(height: 7),
         OutlinedButton.icon(
           onPressed: () => Navigator.of(context).push<void>(
             MaterialPageRoute<void>(
