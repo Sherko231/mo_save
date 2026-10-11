@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mo_save/models/financial_event.dart';
@@ -10,6 +14,7 @@ import 'package:mo_save/services/expense_service.dart';
 import 'package:mo_save/services/financial_ledger_storage.dart';
 import 'package:mo_save/services/local_database.dart';
 import 'package:mo_save/services/notification_preferences_storage.dart';
+import 'package:mo_save/services/transaction_history_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -232,6 +237,129 @@ void main() {
       expect(verified.savedAmount, 0);
       expect(verified.verifiedSavedAmount, 0);
       expect((await ledger.loadBalanceMicros())[FinancialUnit.usd], 0);
+    });
+
+    test('historical correction cannot reduce Savings below reserved goals',
+        () async {
+      await deposit(200);
+      final opened = (await ledger.loadEvents(
+        type: FinancialEventType.openingBalance)).single;
+      final g = goal('corrected');
+      await goals.addChallenge(g);
+      await goals.updateChallenge(mark(g, true));
+      final history = TransactionHistoryService(database: db, ledger: ledger);
+      await expectLater(
+        history.correctAmounts(
+          eventId: opened.id,
+          absoluteAmountsMicros: <int>[LedgerEntry.amountToMicros(80)],
+        ),
+        throwsA(isA<GoalBackingInsufficientException>()),
+      );
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
+        LedgerEntry.amountToMicros(200));
+      expect((await goals.loadChallenges()).single.verifiedSavedAmount, 100);
+    });
+
+    test('v11 archive keeps old checked cells pending until owner backs them',
+        () async {
+      await deposit(300);
+      final current = goal('older-grid');
+      await goals.addChallenge(current);
+      await goals.updateChallenge(mark(current, true));
+      final notifications = NotificationPreferencesStorage(
+        preferences: SharedPreferencesAsync(),
+      );
+      final exporter = BackupService(database: db,
+        notificationPreferencesStorage: notifications);
+      final modern = jsonDecode(utf8.decode(await exporter.createBackupBytes()))
+          as Map<String, dynamic>;
+      final payload = jsonDecode(modern['payloadJson'] as String)
+          as Map<String, dynamic>;
+      (payload['tables'] as Map<String, dynamic>).remove('goal_earmarks');
+      final payloadJson = jsonEncode(payload);
+      modern['databaseSchemaVersion'] = 11;
+      modern['payloadJson'] = payloadJson;
+      modern['checksumSha256'] =
+          sha256.convert(utf8.encode(payloadJson)).toString();
+      final archived = Uint8List.fromList(utf8.encode(jsonEncode(modern)));
+      final target = LocalDatabase.forTesting(
+        '${dir.path}${Platform.pathSeparator}older.db',
+      );
+      try {
+        final importer = BackupService(database: target,
+          notificationPreferencesStorage: notifications);
+        await importer.restoreBackupBytes(archived);
+        final oldGoals = ChallengeStorage(database: target,
+          preferences: SharedPreferencesAsync());
+        final loaded = (await oldGoals.loadChallenges()).single;
+        expect(loaded.savedAmount, 100); // the old cells survive unchanged
+        expect(loaded.verifiedSavedAmount, 0); // NO automatic reservation
+        expect(loaded.isBackingVerified, isFalse);
+        expect(await oldGoals.loadVerifiedEarmarks(), isEmpty);
+        expect((await FinancialLedgerStorage(database: target)
+          .loadBalanceMicros())[FinancialUnit.usd],
+          LedgerEntry.amountToMicros(300));
+        await oldGoals.reconcileLegacyGoal('older-grid',
+          useExistingMarks: true);
+        expect((await oldGoals.loadChallenges()).single.verifiedSavedAmount,
+          100);
+      } finally {
+        await target.close();
+      }
+    });
+
+    test('invalid v12 earmark backup rolls back without deleting prior data',
+        () async {
+      await deposit(300);
+      final g = goal('restore-goal');
+      await goals.addChallenge(g);
+      await goals.updateChallenge(mark(g, true));
+      final notifications = NotificationPreferencesStorage(
+        preferences: SharedPreferencesAsync(),
+      );
+      final exporter = BackupService(database: db,
+        notificationPreferencesStorage: notifications);
+      final modern = jsonDecode(utf8.decode(await exporter.createBackupBytes()))
+          as Map<String, dynamic>;
+      final payload = jsonDecode(modern['payloadJson'] as String)
+          as Map<String, dynamic>;
+      final earmarks = (payload['tables'] as Map<String, dynamic>)
+          ['goal_earmarks'] as List<dynamic>;
+      (earmarks.single as Map<String, dynamic>)['amount_micros'] =
+          LedgerEntry.amountToMicros(500);
+      final payloadJson = jsonEncode(payload);
+      modern['payloadJson'] = payloadJson;
+      modern['checksumSha256'] =
+          sha256.convert(utf8.encode(payloadJson)).toString();
+      final target = LocalDatabase.forTesting(
+        '${dir.path}${Platform.pathSeparator}refuse.db',
+      );
+      final targetLedger = FinancialLedgerStorage(database: target);
+      try {
+        await targetLedger.addEvent(FinancialEvent.create(
+          type: FinancialEventType.openingBalance,
+          occurredAt: now,
+          entries: <LedgerEntry>[
+            LedgerEntry(unit: FinancialUnit.usd,
+              amountMicros: LedgerEntry.amountToMicros(55),
+              fund: FinancialFund.savings),
+          ],
+        ));
+        final importer = BackupService(database: target,
+          notificationPreferencesStorage: notifications);
+        await expectLater(
+          importer.restoreBackupBytes(Uint8List.fromList(
+            utf8.encode(jsonEncode(modern)),
+          )),
+          throwsA(isA<BackupException>()),
+        );
+        expect((await targetLedger.loadBalanceMicros())[FinancialUnit.usd],
+          LedgerEntry.amountToMicros(55));
+        expect(await (await target.database).query('goal_earmarks'), isEmpty);
+        expect(await (await target.database).query('challenges'), isEmpty);
+      } finally {
+        await target.close();
+      }
     });
 
     test('v12 backup restores pledged goals and v11 keeps legacy pending',
