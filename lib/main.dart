@@ -233,7 +233,7 @@ class _AppShellState extends State<AppShell> {
                           extended: extendedRail,
                           labelType: extendedRail
                               ? NavigationRailLabelType.none
-                              : NavigationRailLabelType.selected,
+                              : NavigationRailLabelType.all,
                           leading: Padding(
                             padding: const EdgeInsets.only(top: 18, bottom: 22),
                             child: extendedRail
