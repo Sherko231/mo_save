@@ -124,7 +124,7 @@ class SavingsMotivationService {
           ? milestones.where((v) => v <= progress).toList(growable: false)
           : <int>[];
       final upcoming = goal.isBackingVerified && !goal.isVerifiedComplete
-          ? milestones.where((v) => v > progress).firstOrNull
+          ? milestones.where((v) => v > progress).first
           : null;
       final unit = switch (goal.currency) {
         ChallengeCurrency.usd => FinancialUnit.usd,
