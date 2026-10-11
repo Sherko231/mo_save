@@ -111,6 +111,7 @@ class _IncomeAccessPage extends StatelessWidget {
         body: const HomePage(
           view: HomeFinancialView.spending,
           isActive: true,
+          incomeOnly: true,
         ),
       );
 }
