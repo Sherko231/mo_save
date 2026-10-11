@@ -1,6 +1,6 @@
 # Mo Save — Redesign Implementation Progress
 
-> Progress updated: 2026-10-11. **MS-01 through MS-13 closed; MS-14 is next.** GitHub Issues are authoritative. MS-02..MS-12 source/tests remain **runtime-unverified**; no CLI or device checks have been run.
+> Progress updated: 2026-10-11. **MS-01 through MS-13 closed; MS-14 is next.** GitHub Issues are authoritative. MS-02..MS-13 source/tests remain **runtime-unverified**; no CLI or device checks have been run.
 
 ## Current checkpoint
 
