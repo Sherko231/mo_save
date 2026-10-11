@@ -2,6 +2,7 @@ import '../models/financial_balance_snapshot.dart';
 import '../models/financial_event.dart';
 import 'financial_ledger_storage.dart';
 import 'financial_settings_storage.dart';
+import 'local_database.dart';
 
 /// One month's realized, per-unit change to the Savings fund.
 ///
@@ -67,6 +68,7 @@ class SavingsFundSnapshot {
     required this.asOf,
     required Map<FinancialFund, Map<FinancialUnit, int>> fundBalancesMicros,
     required Map<FinancialUnit, int> ownedMicros,
+    required Map<FinancialUnit, int> reservedMicros,
     required this.valuation,
     required List<SavingsMonthMovement> trend,
   }) : fundBalancesMicros = Map.unmodifiable({
@@ -75,6 +77,9 @@ class SavingsFundSnapshot {
              for (final unit in FinancialUnit.values)
                unit: fundBalancesMicros[fund]?[unit] ?? 0,
            }),
+       }),
+       reservedMicros = Map.unmodifiable({
+         for (final unit in FinancialUnit.values) unit: reservedMicros[unit] ?? 0,
        }),
        ownedMicros = Map.unmodifiable({
          for (final unit in FinancialUnit.values)
@@ -85,6 +90,7 @@ class SavingsFundSnapshot {
   final DateTime asOf;
   final Map<FinancialFund, Map<FinancialUnit, int>> fundBalancesMicros;
   final Map<FinancialUnit, int> ownedMicros;
+  final Map<FinancialUnit, int> reservedMicros;
   /// Built from Savings amounts only, not all owned cash/gold.
   final FinancialBalanceSnapshot valuation;
   /// Oldest month first, last element is current calendar month.
@@ -93,6 +99,8 @@ class SavingsFundSnapshot {
   int fundAmount(FinancialFund fund, FinancialUnit unit) =>
       fundBalancesMicros[fund]?[unit] ?? 0;
   int saved(FinancialUnit unit) => fundAmount(FinancialFund.savings, unit);
+  int reserved(FinancialUnit unit) => reservedMicros[unit] ?? 0;
+  int free(FinancialUnit unit) => saved(unit) - reserved(unit);
   int totalOwned(FinancialUnit unit) => ownedMicros[unit] ?? 0;
   int notSaved(FinancialUnit unit) =>
       fundAmount(FinancialFund.spending, unit) +
@@ -110,11 +118,14 @@ class SavingsFundService {
   SavingsFundService({
     FinancialLedgerStorage? ledger,
     FinancialSettingsStorage? settings,
+    LocalDatabase? database,
   }) : _ledger = ledger ?? FinancialLedgerStorage(),
-       _settings = settings ?? FinancialSettingsStorage();
+       _settings = settings ?? FinancialSettingsStorage(),
+       _database = database ?? LocalDatabase.instance;
 
   final FinancialLedgerStorage _ledger;
   final FinancialSettingsStorage _settings;
+  final LocalDatabase _database;
 
   Future<SavingsFundSnapshot> loadCurrent({DateTime? now}) async {
     final today = now ?? DateTime.now();
@@ -122,6 +133,17 @@ class SavingsFundService {
     final nextMonth = DateTime(today.year, today.month + 1);
     final funds = await _ledger.loadFundBalancesMicros();
     final owned = await _ledger.loadBalanceMicros();
+    final reserveRows = await (await _database.database).rawQuery('''
+      SELECT unit, SUM(amount_micros) AS amount
+      FROM goal_earmarks GROUP BY unit
+    ''');
+    final reserved = <FinancialUnit, int>{
+      for (final unit in FinancialUnit.values) unit: 0,
+    };
+    for (final row in reserveRows) {
+      final unit = FinancialUnit.values.byName(row['unit']! as String);
+      reserved[unit] = (row['amount']! as num).toInt();
+    }
     final settings = await _settings.loadSettings();
     final events = await _ledger.loadEvents(from: firstMonth, to: nextMonth);
 
@@ -178,6 +200,7 @@ class SavingsFundService {
       asOf: today,
       fundBalancesMicros: funds,
       ownedMicros: owned,
+      reservedMicros: reserved,
       valuation: valuation,
       trend: months,
     );
