@@ -26,7 +26,7 @@ GitHub Issue state and acceptance evidence are authoritative for completion. The
 
 ## Authorized GitHub workflow
 
-**Owner preference for this redesign:** commit changes **directly to `main`**, with **no PR, feature branch, or routine CLI preflight/status checks**. GitHub connector/API reads for relevant files, issue status, and dependencies are sufficient for work coordination. Do not insert unrelated CLI checks as a gate to saving progress.
+**Owner preference for this redesign:** commit changes **directly to `main`**, with **no PR, feature branch, routine CLI preflight/status checks or GitHub Actions workflows**. The owner builds and tests locally; do not re-enable or add automated workflows unless specifically requested. GitHub connector/API reads for relevant files, issue status, and dependencies are sufficient for work coordination. Do not insert unrelated CLI checks as a gate to saving progress.
 
 This preference does not mean the application is automatically verified. Where a task explicitly requires automated tests, data migration checks, APK/device acceptance or other validation, perform only what is available and accurately state which checks were run and which remain unverified. Never claim a test/build/install passed without executing it.
 
@@ -48,3 +48,7 @@ Avoid unrelated changes, force pushes, destructive rewriting or losing user data
 Current older Issues #28 and #29 concern the prior APK/release handoff. Any existing build/signing work may remain, but **final client acceptance must wait until MS-01..MS-18 are done and the redesign is verified on the target device**.
 
 Do not treat updating this document, the task tracker, or a GitHub Issue as implementing application features.
+
+## Current simplified navigation
+
+The October 2026 owner-requested UX pass uses **Home / History / More**, while retaining the Savings/Spending dashboards as detail routes. See `docs/SIMPLE_UX_2026_10.md` for the feature map. Do not resurrect Savings/Spending/Settings as primary tabs or silently delete ledger features in a visual redesign. Keep all action copy Arabic and make the everyday screen understandable without financial jargon.
