@@ -25,9 +25,12 @@ SavingChallenge _goal({
   return SavingChallenge(
     id: fresh.id, name: fresh.name, targetAmount: fresh.targetAmount,
     currency: fresh.currency, sequence: fresh.sequence,
-    cellCount: fresh.cellCount,
+    cellCount: backed > 0 && backed < target ? 2 : 1,
     cells: <ChallengeCell>[
-      fresh.cells.single.copyWith(isCompleted: backed == target),
+      ChallengeCell(value: backed == 0 ? target : backed,
+          isCompleted: backed > 0),
+      if (backed > 0 && backed < target)
+        ChallengeCell(value: target - backed),
     ],
     backedAmountMicros: verified ? LedgerEntry.amountToMicros(backed) : null,
   );
