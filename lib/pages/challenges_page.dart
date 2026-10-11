@@ -10,6 +10,7 @@ import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 import 'challenge_detail_page.dart';
 import 'goal_forecast_page.dart';
+import 'savings_motivation_page.dart';
 
 class ChallengesPage extends StatefulWidget {
   const ChallengesPage({
@@ -239,6 +240,16 @@ class _ChallengesPageState extends State<ChallengesPage> {
                   subtitle: 'حوّل الادخار إلى خطوات صغيرة وواضحة',
                 ),
                 const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SavingsMotivationPage(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.verified_outlined),
+                  label: const Text('محطات التقدم والادخار الحقيقي'),
+                ),
+                const SizedBox(height: 7),
                 OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
