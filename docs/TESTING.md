@@ -44,6 +44,11 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
 - MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
 - MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
+- MS-14: realistic 4/5 weekly paydays, chosen weekly weekday and monthly USD payday, future-effective bills and salary allocation changes recompute conditional goal forecasts.
+- MS-14: actual Savings pace uses only complete past months with a minimum two-month history; excludes current month, opening assets, reference FX/gold and non-balance goal-grid events.
+- MS-14: insufficient history, unverified goal, non-positive or unreachable pace, unknown USD Savings allocation, or missing explicit FX assumption results in no forecast date rather than fabricated certainty.
+- MS-14: latest actually received monthly USD salary split or manually selected scenario drives USD saving pace; 75/100/125% what-if outcomes are reported independently, never double-booked as cash.
+- MS-14: confirmed goal reservations remain the minimum projected principal even under negative future cashflow; no forecast action writes receipts, expenses, pledges or currency conversions.
 - MS-13: 100 USD pledged to a goal stays part of current Savings and owned USD; the verified goal sum cannot exceed Savings, including other goal pledges.
 - MS-13: a verified-goal expense, transfer, FX/gold trade or historical correction that would violate the backing is blocked atomically until the user unchecks/relinquishes the pledge.
 - MS-13: old v9/v10/v11 completed cells remain unverified until explicit keep/check-or-reset choice; insufficient cash refuses without losing old checks.
@@ -77,7 +82,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-13 regression cases (including goal earmark and v12 backup compatibility cases) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-14 regression cases (including conditional goal forecasting and RTL what-if scenario coverage) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
