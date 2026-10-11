@@ -171,6 +171,68 @@ void main() {
       expect((await history.loadRevisions(event.id)), hasLength(2));
     });
 
+    test('historical executed FX rate and old revision remain auditable',
+        () async {
+      await opening(3000000, unit: FinancialUnit.syp,
+        fund: FinancialFund.spending);
+      await ledger.addCurrencyConversion(FinancialEvent.create(
+        type: FinancialEventType.currencyConversion,
+        occurredAt: DateTime.now(),
+        executedSypPerUsd: 15000,
+        entries: <LedgerEntry>[
+          LedgerEntry(unit: FinancialUnit.syp,
+            amountMicros: -LedgerEntry.amountToMicros(1500000),
+            fund: FinancialFund.spending),
+          LedgerEntry(unit: FinancialUnit.usd,
+            amountMicros: LedgerEntry.amountToMicros(100),
+            fund: FinancialFund.savings),
+        ],
+      ));
+      final conversion = (await history.loadMonth(month,
+        type: FinancialEventType.currencyConversion)).single.event;
+      expect(conversion.executedSypPerUsd, 15000);
+      await history.correctAmounts(
+        eventId: conversion.id,
+        absoluteAmountsMicros: <int>[
+          LedgerEntry.amountToMicros(1600000),
+          LedgerEntry.amountToMicros(100),
+        ],
+      );
+      final changed = (await history.loadMonth(month,
+        type: FinancialEventType.currencyConversion)).single.event;
+      expect(changed.executedSypPerUsd, 16000);
+      expect((await history.loadRevisions(changed.id)).single
+        .snapshot.executedSypPerUsd, 15000);
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.syp],
+        LedgerEntry.amountToMicros(1400000));
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
+        LedgerEntry.amountToMicros(100));
+    });
+
+    test('unchanged metadata never creates an audit revision', () async {
+      await opening(300);
+      await expenses.logExpense(
+        amountMicros: LedgerEntry.amountToMicros(10),
+        unit: FinancialUnit.usd,
+        occurredAt: DateTime.now(),
+        category: 'طعام', note: 'غداء',
+        sourceFund: FinancialFund.savings,
+      );
+      final e = (await ledger.loadEvents(
+        type: FinancialEventType.expense)).single;
+      await history.updateMetadata(
+        eventId: e.id,
+        occurredAt: e.occurredAt.toLocal(),
+        category: e.category,
+        note: e.note,
+      );
+      expect(await history.loadRevisions(e.id), isEmpty);
+      expect((await history.loadMonth(month,
+        type: FinancialEventType.expense, search: 'غداء')), hasLength(1));
+      expect((await history.loadMonth(month,
+        type: FinancialEventType.expense, search: 'غير موجود')), isEmpty);
+    });
+
     test('planned expense and expected salary are separate from ledger',
         () async {
       final bill = RecurringExpenseItem.create(
