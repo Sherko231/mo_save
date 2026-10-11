@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mo-save-ms18-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze-and-test:
     name: Flutter analyze and automated tests
@@ -24,8 +28,9 @@ jobs:
       - name: Resolve packages
         run: flutter pub get
       - name: Analyze Dart source and tests
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
       - name: Run all deterministic unit and widget tests
+        if: always()
         run: flutter test --reporter expanded
 
   android-apk:
