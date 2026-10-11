@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/financial_event.dart';
+import '../models/recurring_expense_item.dart';
 import '../services/expense_service.dart';
 import '../services/financial_ledger_storage.dart';
 import '../ui/ux_components.dart';
