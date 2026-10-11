@@ -43,7 +43,7 @@ class HomeDashboardOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final String monthLabel = '${_monthNames[month.month]} ${month.year}';
     final SavingChallenge? focusGoal =
-        snapshot.goals.where((goal) => !goal.isComplete).firstOrNull;
+        snapshot.goals.where((goal) => !goal.isVerifiedComplete).firstOrNull;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -550,14 +550,14 @@ class _FocusGoalCard extends StatelessWidget {
                 ),
               ),
               UxStatusPill(
-                label: FinancialFormat.progress(goal.progress),
+                label: FinancialFormat.progress(goal.verifiedProgress),
                 color: overdue ? colors.error : colors.primary,
               ),
             ],
           ),
           const SizedBox(height: 14),
           LinearProgressIndicator(
-            value: goal.progress,
+            value: goal.verifiedProgress,
             minHeight: 8,
             color: overdue ? colors.error : colors.primary,
             backgroundColor:
@@ -566,7 +566,7 @@ class _FocusGoalCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${ChallengeFormat.amount(goal.savedAmount, goal.currency)} من ${ChallengeFormat.amount(goal.targetAmount, goal.currency)}',
+            '${ChallengeFormat.amount(goal.verifiedSavedAmount, goal.currency)} من ${ChallengeFormat.amount(goal.targetAmount, goal.currency)}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
