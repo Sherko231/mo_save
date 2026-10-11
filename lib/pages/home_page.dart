@@ -342,21 +342,26 @@ class _HomePageState extends State<HomePage> {
     final attention = _incomeNeedingAttention;
     final savings = widget.view == HomeFinancialView.savings;
 
-    return RefreshIndicator(
-      onRefresh: () => _reload(showLoading: false),
-      child: ListView(
-        key: PageStorageKey<String>(
-          savings ? 'savings-scroll' : 'spending-scroll',
-        ),
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(18, 22, 18, 112),
-        children: <Widget>[
-          UxPageHeader(
-            title: savings ? 'الادخار' : 'المصاريف',
-            subtitle: savings
-                ? 'المبلغ المملوك للادخار، أهدافك والتاريخ المتوقع للوصول'
-                : 'المبلغ المتاح للصرف، مصروفاتك والفواتير المخططة',
+    // A downward drag is navigation, not a command to refetch every financial
+    // section while the list is moving. Provide an explicit refresh action.
+    return ListView(
+      key: PageStorageKey<String>(
+        savings ? 'savings-scroll' : 'spending-scroll',
+      ),
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 112),
+      children: <Widget>[
+        UxPageHeader(
+          title: savings ? 'الادخار' : 'المصاريف',
+          subtitle: savings
+              ? 'المبلغ المملوك للادخار، أهدافك والتاريخ المتوقع للوصول'
+              : 'المبلغ المتاح للصرف، مصروفاتك والفواتير المخططة',
+          trailing: IconButton(
+            tooltip: 'تحديث البيانات',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () => _reload(showLoading: false),
           ),
+        ),
           const SizedBox(height: 13),
           if (savings) ...<Widget>[
             FundsAtGlance(refreshToken: _incomeRefreshToken),
@@ -496,8 +501,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ],
-        ],
-      ),
+      ],
     );
   }
 
