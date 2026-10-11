@@ -22,6 +22,7 @@ class TransactionHistoryPage extends StatefulWidget {
     this.initialType,
     this.initialGoalId,
     this.historyService,
+    this.goalStorage,
   });
 
   /// Open directly on an auditable filtered month, retaining all filters.
@@ -31,6 +32,7 @@ class TransactionHistoryPage extends StatefulWidget {
   final DateTime? initialMonth;
   final String? initialGoalId;
   final TransactionHistoryService? historyService;
+  final ChallengeStorage? goalStorage;
 
   @override
   State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
@@ -38,7 +40,7 @@ class TransactionHistoryPage extends StatefulWidget {
 
 class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   late final TransactionHistoryService _service;
-  final ChallengeStorage _goalsStorage = ChallengeStorage();
+  late final ChallengeStorage _goalsStorage;
 
   StreamSubscription<void>? _ledgerSubscription;
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
@@ -73,6 +75,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   void initState() {
     super.initState();
     _service = widget.historyService ?? TransactionHistoryService();
+    _goalsStorage = widget.goalStorage ?? ChallengeStorage();
     _goalFilter = widget.initialGoalId ?? 'all';
     _loadGoals();
     _fundFilter = widget.initialFund?.name ?? 'all';
@@ -249,9 +252,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                value: _goalFilter == 'all' ||
-                  _goals.any((goal) => goal.id == _goalFilter)
-                  ? _goalFilter : 'all',
+                value: _goalFilter,
                 decoration: const InputDecoration(
                   labelText: 'الهدف المرتبط',
                   isDense: true,
@@ -260,6 +261,10 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                 items: <DropdownMenuItem<String>>[
                   const DropdownMenuItem(value: 'all',
                     child: Text('كل الأهداف والحركات')),
+                  if (_goalFilter != 'all' &&
+                      !_goals.any((goal) => goal.id == _goalFilter))
+                    DropdownMenuItem(value: _goalFilter,
+                      child: const Text('هدف تاريخي أو محذوف')),
                   for (final goal in _goals)
                     DropdownMenuItem(value: goal.id, child: Text(goal.name)),
                 ],
