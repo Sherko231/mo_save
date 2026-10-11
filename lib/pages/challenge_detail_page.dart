@@ -6,6 +6,7 @@ import '../ui/ux_components.dart';
 import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 import 'goal_forecast_page.dart';
+import 'savings_motivation_page.dart';
 
 typedef ChallengeChanged = Future<bool> Function(SavingChallenge challenge);
 typedef LegacyGoalReconciled = Future<bool> Function(bool useExistingMarks);
@@ -341,6 +342,18 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               completedCells: completedCells,
             ),
             const SizedBox(height: 9),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.verified_outlined),
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => SavingsMotivationPage(
+                    initialGoalId: _challenge.id,
+                  ),
+                ),
+              ),
+              label: const Text('محطات الهدف المثبّتة'),
+            ),
+            const SizedBox(height: 7),
             OutlinedButton.icon(
               icon: const Icon(Icons.query_stats_rounded),
               onPressed: () => Navigator.of(context).push<void>(
