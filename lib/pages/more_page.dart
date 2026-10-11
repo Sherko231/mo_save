@@ -50,7 +50,6 @@ class MorePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final month = DateTime.now();
     return SingleChildScrollView(
       key: const PageStorageKey<String>('more-tools'),
@@ -61,11 +60,27 @@ class MorePage extends StatelessWidget {
         children: <Widget>[
           const UxPageHeader(
             title: 'المزيد',
-            subtitle: 'كل الأدوات موجودة هون، افتح اللي بتحتاجه فقط',
+            subtitle: 'اختار القسم اللي بدك ياه فقط',
           ),
-          const SizedBox(height: 22),
-          Text('إدارة الأموال', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 18),
+          _item(
+            context,
+            icon: Icons.settings_outlined,
+            title: 'الإعدادات والنسخ الاحتياطي',
+            subtitle: 'الرواتب، الفواتير، الأسعار، التنبيهات وحفظ بياناتك',
+            page: Scaffold(
+              appBar: AppBar(title: const Text('الإعدادات')),
+              body: SettingsShellPage(onDataRestored: onDataRestored),
+            ),
+          ),
           const SizedBox(height: 10),
+          UxDisclosureCard(
+            title: 'إدارة الأموال',
+            subtitle: 'تفاصيل الادخار والصرف والتحويلات والدخل',
+            icon: Icons.account_balance_wallet_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
           _item(
             context,
             icon: Icons.savings_outlined,
@@ -101,9 +116,17 @@ class MorePage extends StatelessWidget {
             subtitle: 'تحديد مكان الأموال القديمة غير الموزعة',
             page: const UnallocatedFundsPage(),
           ),
-          const SizedBox(height: 15),
-          Text('الأهداف والمتابعة', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 10),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          UxDisclosureCard(
+            title: 'الأهداف والتوقعات',
+            subtitle: 'أهدافك، مواعيد الوصول والإنجازات',
+            icon: Icons.flag_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
           _item(
             context,
             icon: Icons.flag_outlined,
@@ -125,9 +148,17 @@ class MorePage extends StatelessWidget {
             subtitle: 'المراحل اللي حققتها بمال حقيقي',
             page: const SavingsMotivationPage(),
           ),
-          const SizedBox(height: 15),
-          Text('السجل والتحليل', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 10),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          UxDisclosureCard(
+            title: 'التقارير والسجل',
+            subtitle: 'العمليات السابقة والتحليل الشهري',
+            icon: Icons.bar_chart_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
           _item(
             context,
             icon: Icons.history_rounded,
@@ -144,27 +175,7 @@ class MorePage extends StatelessWidget {
               initialMonth: DateTime(month.year, month.month),
             ),
           ),
-          const SizedBox(height: 15),
-          Text('إعدادات التطبيق', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 10),
-          _item(
-            context,
-            icon: Icons.settings_outlined,
-            title: 'الرواتب والخطة والإعدادات',
-            subtitle: 'تعديل الرواتب والفواتير والأسعار والتنبيهات',
-            page: Scaffold(
-              appBar: AppBar(title: const Text('الإعدادات')),
-              body: SettingsShellPage(onDataRestored: onDataRestored),
-            ),
-          ),
-          _item(
-            context,
-            icon: Icons.backup_outlined,
-            title: 'النسخ الاحتياطي',
-            subtitle: 'من الإعدادات: حفظ البيانات واستعادتها بأمان',
-            page: Scaffold(
-              appBar: AppBar(title: const Text('الإعدادات والنسخ')),
-              body: SettingsShellPage(onDataRestored: onDataRestored),
+              ],
             ),
           ),
         ],
