@@ -1,0 +1,35 @@
+name: MS-18 focused finance smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/flutter-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.7'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Report analyzer errors/warnings (info lint does not block)
+        run: flutter analyze --no-fatal-infos
+      - name: Run MS-18 financial client story
+        if: always()
+        run: flutter test --reporter expanded --timeout 2m test/ms18_client_journey_test.dart
+      - name: Run v9/v10/v12 migration and archive regression
+        if: always()
+        run: flutter test --reporter expanded --timeout 2m test/local_database_migration_test.dart test/legacy_backup_compatibility_test.dart test/expense_plan_backup_v11_test.dart test/goal_earmark_backing_test.dart
