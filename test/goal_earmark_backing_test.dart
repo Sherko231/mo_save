@@ -118,7 +118,7 @@ void main() {
       expect(historicalMarker!.entries.single.affectsBalance, isFalse);
     });
 
-    test('two goals cannot earmark the same $100 twice', () async {
+    test('two goals cannot earmark the same \$100 twice', () async {
       await deposit(100);
       final a = goal('a');
       final b = goal('b');
