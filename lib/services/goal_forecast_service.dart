@@ -16,6 +16,8 @@ class ForecastMonth {
   const ForecastMonth({
     required this.month,
     required this.weeklyPaydays,
+    required this.weeklyPaydayDates,
+    required this.monthlyUsdPayday,
     required this.sypPlannedSavingsMicros,
     required this.sypPlannedBillsMicros,
     required this.sypSpendingEnvelopeMicros,
@@ -26,6 +28,8 @@ class ForecastMonth {
   });
   final DateTime month;
   final int weeklyPaydays;
+  final List<DateTime> weeklyPaydayDates;
+  final DateTime? monthlyUsdPayday;
   final int sypPlannedSavingsMicros;
   final int sypPlannedBillsMicros;
   final int sypSpendingEnvelopeMicros;
@@ -174,7 +178,7 @@ class GoalForecastService {
       FinancialUnit.syp => month.netSypMicros,
       FinancialUnit.usd => month.netUsdMicros == null && rate == null
           ? null
-          : (month.netUsdMicros ?? 0) +
+          : (month.netUsdMicros ?? -month.usdPlannedBillsMicros) +
               (rate == null ? 0 : (month.netSypMicros / rate).floor()),
       FinancialUnit.sypNew => null,
       FinancialUnit.goldGram => null,
@@ -242,11 +246,15 @@ class GoalForecastService {
   ) {
     final first = DateTime(month.year, month.month, 1);
     final days = DateTime(first.year, first.month + 1, 0).day;
-    var paydays = 0;
+    final weeklyDates = <DateTime>[];
     for (var d = 1; d <= days; d++) {
-      if (DateTime(first.year, first.month, d).weekday ==
-          settings.weeklyPayday) paydays++;
+      final date = DateTime(first.year, first.month, d);
+      if (date.weekday == settings.weeklyPayday) weeklyDates.add(date);
     }
+    final paydays = weeklyDates.length;
+    final monthlyUsdPayday = settings.monthlyUsdIncome > 0
+      ? DateTime(first.year, first.month,
+          settings.monthlyPayday.clamp(1, days).toInt()) : null;
     final gross = math.max(0, settings.weeklySypIncome);
     final budgetSavings = math.max(0, settings.weeklySavingsAllocation)
         .clamp(0, gross).toInt();
@@ -271,6 +279,8 @@ class GoalForecastService {
     return ForecastMonth(
       month: first,
       weeklyPaydays: paydays,
+      weeklyPaydayDates: List<DateTime>.unmodifiable(weeklyDates),
+      monthlyUsdPayday: monthlyUsdPayday,
       sypPlannedSavingsMicros: plannedSyp,
       sypPlannedBillsMicros: sypBills,
       sypSpendingEnvelopeMicros: spendingBudget,
