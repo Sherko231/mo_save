@@ -273,35 +273,34 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
     final available = _selectedBalance;
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('تسجيل مصروف فعلي')),
+      appBar: AppBar(title: const Text('تسجيل مصروف')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
           children: <Widget>[
             Text(
-              'من أي صندوق بدك تدفع؟',
+              'من وين دفعت؟',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 7),
             const Text(
-              'المصروف يُخصم مرة واحدة من الصندوق الذي تختاره. '
-              'الخطة الشهرية اقتراح ولا تخصم مالاً حتى تسجّل الدفع.',
+              'اختار الرصيد اللي دفعت منه. رح ينخصم المبلغ مرة واحدة عند الحفظ.',
             ),
             const SizedBox(height: 18),
             DropdownButtonFormField<FinancialFund>(
               value: _fund,
               decoration: const InputDecoration(
-                labelText: 'مصدر الدفع',
+                labelText: 'دفعت من',
                 border: OutlineInputBorder(),
               ),
               items: const <DropdownMenuItem<FinancialFund>>[
                 DropdownMenuItem(
                   value: FinancialFund.spending,
-                  child: Text('صندوق المصاريف'),
+                  child: Text('المال المتاح للصرف'),
                 ),
                 DropdownMenuItem(
                   value: FinancialFund.savings,
-                  child: Text('صندوق الادخار'),
+                  child: Text('مدّخراتي'),
                 ),
               ],
               onChanged: _isSaving ? null : (fund) {
@@ -357,11 +356,28 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
                   style: TextStyle(color: colors.error),
                 ),
               ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amount,
+              enabled: !_isSaving,
+              keyboardType: TextInputType.numberWithOptions(
+                decimal: _unit == FinancialUnit.usd,
+              ),
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp(
+                    _unit == FinancialUnit.usd ? r'[0-9.]' : r'[0-9]')),
+              ],
+              decoration: InputDecoration(
+                labelText: 'قديش دفعت؟',
+                suffixText: FinancialFormat.unitShort(_unit),
+                border: const OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 18),
             DropdownButtonFormField<String>(
               value: _categoryChoice,
               decoration: const InputDecoration(
-                labelText: 'تصنيف المصروف أو بند الخطة',
+                labelText: 'على شو صرفت؟',
                 border: OutlineInputBorder(),
               ),
               items: <DropdownMenuItem<String>>[
@@ -401,23 +417,6 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _amount,
-              enabled: !_isSaving,
-              keyboardType: TextInputType.numberWithOptions(
-                decimal: _unit == FinancialUnit.usd,
-              ),
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.allow(RegExp(
-                    _unit == FinancialUnit.usd ? r'[0-9.]' : r'[0-9]')),
-              ],
-              decoration: InputDecoration(
-                labelText: 'المبلغ المدفوع فعلياً',
-                suffixText: FinancialFormat.unitShort(_unit),
-                border: const OutlineInputBorder(),
-              ),
-            ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _isSaving ? null : _chooseDate,
