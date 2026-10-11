@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/financial_event.dart';
 import '../models/receipt_fund_allocation.dart';
 import '../services/manual_inflow_service.dart';
+import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 
 /// Records cash the owner actually received, or pre-existing cash not yet
@@ -43,9 +44,9 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
   }
 
   String _fundLabel(FinancialFund fund) => switch (fund) {
-    FinancialFund.savings => 'صندوق الادخار',
-    FinancialFund.spending => 'صندوق المصاريف',
-    FinancialFund.unallocated => 'غير موزّع حالياً',
+    FinancialFund.savings => 'المدّخرات',
+    FinancialFund.spending => 'المتاح للصرف',
+    FinancialFund.unallocated => 'لسه ما قررت',
   };
 
   int? _parseAmount(String raw) {
@@ -169,7 +170,7 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
           children: <Widget>[
             Text(
-              opening ? 'رصيد سابق، وليس دخلاً' : 'دخل فعلي غير راتب',
+              opening ? 'رصيد سابق، وليس دخلاً' : 'إضافة مال استلمته',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
@@ -229,11 +230,19 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
               decoration: InputDecoration(
-                labelText: 'المبلغ الحقيقي',
+                labelText: 'قديش استلمت؟',
                 border: const OutlineInputBorder(),
                 suffixText: FinancialFormat.unitShort(_unit),
               ),
             ),
+            const SizedBox(height: 14),
+            UxDisclosureCard(
+              title: 'تفاصيل إضافية',
+              subtitle: 'التاريخ والمصدر والملاحظة — اختياري',
+              icon: Icons.tune_outlined,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
             const SizedBox(height: 14),
             OutlinedButton.icon(
               onPressed: _saving ? null : _chooseDate,
@@ -260,9 +269,12 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
                 border: OutlineInputBorder(),
               ),
             ),
+                ],
+              ),
+            ),
             const SizedBox(height: 14),
             SwitchListTile.adaptive(
-              title: const Text('تقسيم المبلغ على أكثر من صندوق'),
+              title: const Text('بدي قسّم المبلغ'),
               subtitle: const Text(
                 'اختياري. توزع المبلغ الحقيقي بدون إنشاء إيداع ثاني.',
               ),
@@ -274,7 +286,7 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
               DropdownButtonFormField<FinancialFund>(
                 value: _fund,
                 decoration: const InputDecoration(
-                  labelText: 'وين بدك تخصص المبلغ؟',
+                  labelText: 'وين بدك تحط المبلغ؟',
                   border: OutlineInputBorder(),
                 ),
                 items: FinancialFund.values
@@ -298,7 +310,7 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
                 ],
                 onChanged: (_) => setState(() => _error = null),
                 decoration: InputDecoration(
-                  labelText: 'إلى صندوق المصاريف',
+                  labelText: 'للصرف',
                   suffixText: FinancialFormat.unitShort(_unit),
                   border: const OutlineInputBorder(),
                 ),
@@ -314,7 +326,7 @@ class _ManualInflowPageState extends State<ManualInflowPage> {
                 ],
                 onChanged: (_) => setState(() => _error = null),
                 decoration: InputDecoration(
-                  labelText: 'إلى صندوق الادخار',
+                  labelText: 'للادخار',
                   suffixText: FinancialFormat.unitShort(_unit),
                   border: const OutlineInputBorder(),
                 ),
