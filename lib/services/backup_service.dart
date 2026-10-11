@@ -69,6 +69,7 @@ class BackupService {
     'financial_settings',
     'challenges',
     'challenge_cells',
+    'goal_earmarks',
     'recurring_expense_items',
     'recurring_expense_plan_versions',
     'financial_events',
@@ -80,6 +81,7 @@ class BackupService {
     'financial_event_revisions',
     'financial_event_entries',
     'financial_events',
+    'goal_earmarks',
     'challenge_cells',
     'recurring_expense_plan_versions',
     'recurring_expense_items',
@@ -198,6 +200,7 @@ class BackupService {
         await _insertRows(transaction, 'financial_settings', decoded.tables);
         await _insertRows(transaction, 'challenges', decoded.tables);
         await _insertRows(transaction, 'challenge_cells', decoded.tables);
+        await _insertRows(transaction, 'goal_earmarks', decoded.tables);
         await _insertRows(
           transaction,
           'recurring_expense_items',
@@ -223,6 +226,7 @@ class BackupService {
           decoded.tables,
         );
         await _ensureRestoredFundsConserveAssets(transaction);
+        await _validateRestoredGoalEarmarks(transaction);
       });
     } catch (_) {
       try {
@@ -330,6 +334,13 @@ class BackupService {
         }
         tables[table] = <Map<String, Object?>>[];
         continue;
+      }
+      if (table == 'goal_earmarks' && databaseSchemaVersion < 12) {
+        if (rowsRaw != null) {
+          throw const BackupException('النسخة القديمة تحتوي حجز أهداف غير متوقع.');
+        }
+        tables[table] = <Map<String, Object?>>[];
+        continue; // Previous checked cells remain unverified.
       }
       if (rowsRaw is! List<dynamic>) {
         throw BackupException('الجدول $table مفقود أو غير صالح في النسخة.');
@@ -536,6 +547,48 @@ class BackupService {
           (transfer['invalid_gold'] as num).toInt() != 0) {
         throw const BackupException(
           'النسخة تحتوي تحويل صناديق غير صالح.',
+        );
+      }
+    }
+  }
+
+  /// Verified pledges must equal the backed completed cells and cannot
+  /// exceed existing Savings cash of the SAME asset unit.
+  static Future<void> _validateRestoredGoalEarmarks(
+      DatabaseExecutor transaction) async {
+    final invalid = await transaction.rawQuery('''
+      SELECT COUNT(*) AS invalid_count
+      FROM goal_earmarks g
+      JOIN challenges c ON c.id = g.challenge_id
+      WHERE (c.currency = 'usd' AND g.unit != 'usd')
+         OR (c.currency = 'syp' AND g.unit != 'syp')
+         OR (c.currency = 'sypNew' AND g.unit != 'sypNew')
+         OR g.amount_micros !=
+          (SELECT COALESCE(SUM(value),0) * 1000000
+           FROM challenge_cells
+           WHERE challenge_id = g.challenge_id AND is_completed = 1)
+    ''');
+    if ((invalid.single['invalid_count'] as num).toInt() != 0) {
+      throw const BackupException(
+        'النسخة تحتوي حجوزات أهداف لا تطابق خاناتها الموثقة.',
+      );
+    }
+    final total = await transaction.rawQuery('''
+      SELECT unit, COALESCE(SUM(amount_micros),0) AS pledged
+      FROM goal_earmarks GROUP BY unit
+    ''');
+    for (final row in total) {
+      final balance = await transaction.rawQuery('''
+        SELECT COALESCE(SUM(e.amount_micros),0) AS saved
+        FROM financial_event_entries e
+        JOIN financial_events f ON f.id = e.event_id
+        WHERE e.fund = 'savings' AND e.unit = ?
+          AND (e.affects_balance = 1 OR f.event_type = 'fundTransfer')
+      ''', <Object?>[row['unit']]);
+      if ((row['pledged'] as num).toInt() >
+          (balance.single['saved'] as num).toInt()) {
+        throw const BackupException(
+          'النسخة تحجز للأهداف أموالاً أكثر من الادخار الحقيقي.',
         );
       }
     }
