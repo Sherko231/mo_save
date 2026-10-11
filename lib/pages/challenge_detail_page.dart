@@ -5,6 +5,7 @@ import '../ui/app_theme.dart';
 import '../ui/ux_components.dart';
 import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
+import 'goal_forecast_page.dart';
 
 typedef ChallengeChanged = Future<bool> Function(SavingChallenge challenge);
 typedef LegacyGoalReconciled = Future<bool> Function(bool useExistingMarks);
@@ -338,6 +339,18 @@ class _ChallengeDetailPageState extends State<ChallengeDetailPage> {
               pace: pace,
               overdue: overdue,
               completedCells: completedCells,
+            ),
+            const SizedBox(height: 9),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.query_stats_rounded),
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => GoalForecastPage(
+                    initialGoalId: _challenge.id,
+                  ),
+                ),
+              ),
+              label: const Text('توقع موعد تحقيق الهدف والسيناريوهات'),
             ),
             if (!_challenge.isBackingVerified) ...<Widget>[
               const SizedBox(height: 10),
