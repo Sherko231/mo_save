@@ -51,6 +51,7 @@ void main() {
               service: SavingsFundService(
                 ledger: ledger,
                 settings: FinancialSettingsStorage(database: database),
+                database: database,
               ),
             ),
           ),
