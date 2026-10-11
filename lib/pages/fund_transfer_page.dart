@@ -177,6 +177,11 @@ class _FundTransferPageState extends State<FundTransferPage> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
+    } on GoalBackingInsufficientException catch (_) {
+      if (!mounted) return;
+      setState(() => _error =
+          'المبلغ المطلوب محجوز لأهداف الادخار. ألغِ حجز بعض خانات الهدف '
+          'قبل النقل. لا يوجد أي تحويل منفّذ.');
     } on InsufficientFundBalanceException catch (_) {
       if (!mounted) return;
       await _reload();
