@@ -39,6 +39,18 @@ void main() {
     });
 
     test('completed cells keep one canonical non-balance contribution', () async {
+      await ledger.addEvent(FinancialEvent.create(
+        type: FinancialEventType.openingBalance,
+        occurredAt: DateTime.now(),
+        entries: <LedgerEntry>[
+          LedgerEntry(
+            unit: FinancialUnit.usd,
+            amountMicros: LedgerEntry.amountToMicros(500),
+            fund: FinancialFund.savings,
+          ),
+        ],
+      ));
+
       final base = SavingChallenge.create(
         id: 'goal-1',
         name: 'هدف',
@@ -102,6 +114,18 @@ void main() {
     });
 
     test('undoing all completed cells removes contribution event', () async {
+      await ledger.addEvent(FinancialEvent.create(
+        type: FinancialEventType.openingBalance,
+        occurredAt: DateTime.now(),
+        entries: <LedgerEntry>[
+          LedgerEntry(
+            unit: FinancialUnit.usd,
+            amountMicros: LedgerEntry.amountToMicros(500),
+            fund: FinancialFund.savings,
+          ),
+        ],
+      ));
+
       final base = SavingChallenge.create(
         id: 'goal-undo',
         name: 'تراجع',
