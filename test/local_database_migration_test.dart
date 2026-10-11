@@ -29,7 +29,7 @@ void main() {
       await tempDirectory.delete(recursive: true);
     });
 
-    test('schema v1 upgrades to v11 without losing challenge data', () async {
+    test('schema v1 upgrades to v12 without losing challenge data', () async {
       final path = '${tempDirectory.path}${Platform.pathSeparator}legacy_v1.db';
       final legacy = await databaseFactoryFfi.openDatabase(
         path,
@@ -131,6 +131,7 @@ void main() {
       expect(tableNames, contains('financial_event_entries'));
       expect(tableNames, contains('recurring_expense_items'));
       expect(tableNames, contains('recurring_expense_plan_versions'));
+      expect(tableNames, contains('goal_earmarks'));
       expect(tableNames, contains('financial_event_revisions'));
 
       final entryColumns = await upgraded.rawQuery(
@@ -141,7 +142,7 @@ void main() {
       await database.close();
     });
 
-    test('minimal on-disk v10 plan upgrades to one known v11 baseline',
+    test('minimal on-disk v10 plan upgrades to one known v11 baseline and v12 goal table',
         () async {
       final path = '${tempDirectory.path}${Platform.pathSeparator}legacy_v10_plan.db';
       final v10 = await databaseFactoryFfi.openDatabase(
@@ -180,7 +181,7 @@ void main() {
       await v10.close();
       final upgraded = LocalDatabase.forTesting(path);
       final raw = await upgraded.database;
-      expect(await raw.getVersion(), 11);
+      expect(await raw.getVersion(), LocalDatabase.schemaVersion);
       expect(await raw.query('recurring_expense_items'), hasLength(1));
       final versions = await raw.query('recurring_expense_plan_versions');
       expect(versions, hasLength(1));
@@ -340,6 +341,7 @@ void main() {
       expect(planVersions.single['is_active'], 1);
       expect((await db.query('financial_settings')).single['weekly_syp_income'], 885000);
       expect(await db.query('challenge_cells'), hasLength(1));
+      expect(await db.query('goal_earmarks'), isEmpty);
       expect((await db.query('app_metadata', where: 'key = ?',
           whereArgs: <Object?>['legacy_install'])).single['value'],
           'retained');
