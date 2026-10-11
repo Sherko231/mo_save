@@ -65,7 +65,7 @@ The card labels this **قيمة تقريبية للادخار فقط**, not earn
 
 ## Explicit goal boundary
 
-MS-12 introduced current Savings totals; **MS-13 now also exposes verified goal reservations and free/unreserved Savings per currency**. Goal checked cells count as actual progress only after an explicit backing record covered by real Savings. Old unverified goals require a user choice; see [GOAL_EARMARKS.md](GOAL_EARMARKS.md). Forecast dates and motivation remain MS-14/15.
+MS-12 introduced current Savings totals; **MS-13 now also exposes verified goal reservations and free/unreserved Savings per currency**. Goal checked cells count as actual progress only after an explicit backing record covered by real Savings. Old unverified goals require a user choice; see [GOAL_EARMARKS.md](GOAL_EARMARKS.md). Conditional completion-date and actual-vs-plan forecasts are now implemented under MS-14. They are advisory and use **verified** earmarks only; see [GOAL_FORECASTS.md](GOAL_FORECASTS.md). Motivation reminders remain MS-15.
 
 ## Implementation and unverified tests
 
