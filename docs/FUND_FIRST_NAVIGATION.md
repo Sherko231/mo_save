@@ -20,7 +20,7 @@ The Savings first-screen `FundsAtGlance` gets current signed fixed-point unit ba
 - `Savings` is shown as **ادخار حقيقي**.
 - `Spending` is shown as **متاح للمصاريف**.
 - `Unallocated` receives a separate warning and **is not silently counted as either fund**.
-- USD, old SYP and SYP (N) are never mixed or converted for this strip. Gold and price-based valuation stay in the detailed Savings/asset views.
+- USD, old SYP and SYP (N) are never mixed or converted for this strip. Physical Savings gold, when held, is separately labelled in grams and explicitly not liquid cash; detailed gold trades and price-based valuation stay in the expanded assets section.
 
 Immediately below the strip, `SavingsGoalsPreview` lists the first active goals and shows **verified** backed amounts and percentages, plus an estimated plan date only when the existing `GoalForecastService` can ground it. Legacy checked cells with no v12 earmark are shown as **unverified** progress 0, not falsely saved. The date is labelled conditional, and missing plan/history explicitly results in **no date**. The preview does not reserve, move or create money. The owner can open the full goals list, change/check the real Savings-backed cells, inspect milestones and open detailed what-if forecasts. Full balances, six-month trends and wallet/FX/gold operations remain in clearly named disclosure sections.
 
