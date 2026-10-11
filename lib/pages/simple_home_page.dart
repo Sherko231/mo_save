@@ -13,10 +13,11 @@ import 'transaction_history_page.dart';
 class SimpleHomePage extends StatelessWidget {
   const SimpleHomePage({super.key});
 
-  Future<void> _open(BuildContext context, Widget page) =>
-      Navigator.of(context).push<Object?>(
-        MaterialPageRoute<Object?>(builder: (_) => page),
-      );
+  Future<void> _open(BuildContext context, Widget page) async {
+    await Navigator.of(context).push<Object?>(
+      MaterialPageRoute<Object?>(builder: (_) => page),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
