@@ -44,6 +44,10 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
 - MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
 - MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
+- MS-13: 100 USD pledged to a goal stays part of current Savings and owned USD; the verified goal sum cannot exceed Savings, including other goal pledges.
+- MS-13: a verified-goal expense, transfer, FX/gold trade or historical correction that would violate the backing is blocked atomically until the user unchecks/relinquishes the pledge.
+- MS-13: old v9/v10/v11 completed cells remain unverified until explicit keep/check-or-reset choice; insufficient cash refuses without losing old checks.
+- MS-13: deleting or editing a verified grid releases/adjusts only earmarked amounts; neither case creates income or expense. v12 archive pledges restore intact, malformed pledge backups roll back, and older archives omit goal_earmarks.
 - MS-12: true Savings reads Savings fund postings, never all assets, Unallocated legacy money or nonbalance challenge progress.
 - MS-12: salary 345,000 SYP saved versus 540,000 Spending, internal transfers and direct Savings payments reconcile per unit without creating income.
 - MS-12: inbound funding, actual withdrawals, opening balances, gold trades, conversion principal and manual corrections have distinct monthly-flow classifications.
@@ -72,13 +76,13 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-12 regression cases (including real Savings ledger, valuation, trend, and widget cases) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-13 regression cases (including goal earmark and v12 backup compatibility cases) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
 The migration suite covers two upgrade paths that contain client data:
 
-1. A real schema-v1 SQLite file is created, populated with a challenge and cells, then opened through the current `LocalDatabase`. The test verifies upgrade to schema v11, preservation of challenge data, and presence of the later ledger/settings/expense/revision schema.
+1. A real schema-v1 SQLite file is created, populated with a challenge and cells, then opened through the current `LocalDatabase`. The test verifies upgrade to schema v12, preservation of challenge data, and presence of the later ledger/settings/expense/revision schema.
 2. Legacy `saving_challenges_v1` SharedPreferences JSON is loaded through `ChallengeStorage`, migrated once into SQLite, removed from the legacy store, and reconciled into the canonical challenge-progress ledger event when completed cells already exist.
 
 These tests are intended to catch accidental missing migrations, destructive schema changes, duplicate legacy imports, and challenge/ledger divergence before release.
