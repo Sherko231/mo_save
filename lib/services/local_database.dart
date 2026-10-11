@@ -12,7 +12,7 @@ class LocalDatabase {
   static final LocalDatabase instance = LocalDatabase._();
 
   static const String databaseName = 'mo_save.db';
-  static const int schemaVersion = 11;
+  static const int schemaVersion = 12;
 
   static bool _databaseFactoryConfigured = false;
 
@@ -74,6 +74,7 @@ class LocalDatabase {
         await _createSchemaV9(database);
         await _createSchemaV10(database);
         await _createSchemaV11(database);
+        await _createSchemaV12(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         await _runMigrations(database, oldVersion, newVersion);
@@ -362,6 +363,26 @@ class LocalDatabase {
     }
   }
 
+  /// Verified earmarks are a reservation of existing Savings, never assets.
+  /// v9-v11 completed challenge cells stay pending until explicit consent.
+  static Future<void> _createSchemaV12(DatabaseExecutor database) async {
+    await database.execute('''
+      CREATE TABLE goal_earmarks (
+        challenge_id TEXT PRIMARY KEY,
+        unit TEXT NOT NULL CHECK (unit IN ('usd', 'syp', 'sypNew')),
+        amount_micros INTEGER NOT NULL DEFAULT 0 CHECK (amount_micros >= 0),
+        verified_at_ms INTEGER NOT NULL,
+        FOREIGN KEY (challenge_id) REFERENCES challenges(id)
+          ON DELETE CASCADE
+      )
+    ''');
+    await database.execute('''
+      CREATE INDEX goal_earmarks_unit_idx ON goal_earmarks(unit)
+    ''');
+    // Crucially NO auto-import of checked legacy goal cells: missing row
+    // means unresolved historical visual progress, not verified Savings.
+  }
+
   static Future<void> _runMigrations(
     DatabaseExecutor database,
     int oldVersion,
@@ -398,6 +419,9 @@ class LocalDatabase {
           break;
         case 11:
           await _createSchemaV11(database);
+          break;
+        case 12:
+          await _createSchemaV12(database);
           break;
         default:
           throw StateError('Missing database migration for schema v$version.');
