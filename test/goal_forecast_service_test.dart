@@ -289,7 +289,7 @@ void main() {
       final bill = RecurringExpenseItem.create(
         name: 'فاتورة جديدة',
         unit: FinancialUnit.syp,
-        amountMicros: LedgerEntry.amountToMicros(3700000),
+        amountMicros: LedgerEntry.amountToMicros(5000000),
         sortOrder: 0,
       );
       await plans.addItem(bill,
