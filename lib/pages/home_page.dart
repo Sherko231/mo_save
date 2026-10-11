@@ -388,6 +388,9 @@ class _HomePageState extends State<HomePage> {
           ] else ...<Widget>[
             FilledButton.icon(
               onPressed: _openExpense,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
               icon: const Icon(Icons.add_card_rounded),
               label: const Text('تسجيل مصروف الآن'),
             ),
