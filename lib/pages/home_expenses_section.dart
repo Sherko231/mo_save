@@ -9,6 +9,7 @@ import '../ui/ux_components.dart';
 import '../utils/financial_format.dart';
 import 'expense_plan_sheet.dart';
 import 'spending_quick_expense_page.dart';
+import 'spending_analytics_page.dart';
 
 class HomeExpensesSection extends StatefulWidget {
   const HomeExpensesSection({
@@ -88,6 +89,17 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
     }
   }
 
+  Future<void> _openAnalytics() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => SpendingAnalyticsPage(
+          initialMonth: widget.month,
+        ),
+      ),
+    );
+    if (mounted) await _reload();
+  }
+
   Future<void> _logExpense() async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
@@ -139,6 +151,11 @@ class _HomeExpensesSectionState extends State<HomeExpensesSection> {
                 'المصاريف',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+            ),
+            TextButton.icon(
+              onPressed: _openAnalytics,
+              icon: const Icon(Icons.bar_chart_rounded),
+              label: const Text('التحليلات'),
             ),
             TextButton.icon(
               onPressed: _managePlan,
