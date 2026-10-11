@@ -66,7 +66,7 @@ class TransactionHistoryService {
     ExpensePlanStorage? plans,
     RecurringIncomeService? recurringIncome,
   })  : _database = database ?? LocalDatabase.instance,
-        _ledger = ledger ?? FinancialLedgerStorage(),
+        _ledger = ledger ?? FinancialLedgerStorage(database: database),
         _plans = plans ?? ExpensePlanStorage(database: database),
         _income = recurringIncome ?? RecurringIncomeService(
           database: database, ledgerStorage: ledger,
