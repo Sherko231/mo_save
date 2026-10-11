@@ -247,6 +247,10 @@ class ChallengeStorage {
     final Database database = await _readyDatabase();
 
     await database.transaction((transaction) async {
+      final existingBacked = await transaction.query('goal_earmarks',
+        columns: <String>['challenge_id']);
+      final verifiedIds = existingBacked
+          .map((row) => row['challenge_id']! as String).toSet();
       await transaction.delete(
         'financial_events',
         where: 'event_type = ? AND category = ?',
@@ -264,6 +268,12 @@ class ChallengeStorage {
           challenge,
           sortOrder: index,
         );
+        if (verifiedIds.contains(challenge.id) ||
+            challenge.isBackingVerified) {
+          await _reserveNewGoal(transaction, challenge);
+        }
+        // Imported unverified completed cells remain pending and do not
+        // silently become real reserved money through list replacement.
         await _syncChallengeContribution(transaction, challenge);
       }
     });
