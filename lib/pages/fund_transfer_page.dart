@@ -80,7 +80,7 @@ class _FundTransferPageState extends State<FundTransferPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'تعذر تحميل أرصدة الصناديق. حاول تحديثها.'
+        _error = 'تعذر تحميل أرصدة الصناديق. حاول تحديثها.';
       });
     }
   }
