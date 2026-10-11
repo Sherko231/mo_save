@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'pages/home_page.dart';
+import 'pages/simple_home_page.dart';
+import 'pages/more_page.dart';
+import 'pages/transaction_history_page.dart';
 import 'pages/settings_shell_page.dart';
 import 'services/app_setup_storage.dart';
 import 'services/notification_service.dart';
@@ -126,42 +129,43 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
   int _dataRevision = 0;
+  final Set<int> _visited = <int>{0};
 
   static const List<NavigationDestination> _bottomDestinations =
       <NavigationDestination>[
     NavigationDestination(
-      icon: Icon(Icons.savings_outlined),
-      selectedIcon: Icon(Icons.savings_rounded),
-      label: 'الادخار',
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home_rounded),
+      label: 'الرئيسية',
     ),
     NavigationDestination(
-      icon: Icon(Icons.account_balance_wallet_outlined),
-      selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-      label: 'المصاريف',
+      icon: Icon(Icons.receipt_long_outlined),
+      selectedIcon: Icon(Icons.receipt_long_rounded),
+      label: 'السجل',
     ),
     NavigationDestination(
-      icon: Icon(Icons.settings_outlined),
-      selectedIcon: Icon(Icons.settings_rounded),
-      label: 'الإعدادات',
+      icon: Icon(Icons.apps_outlined),
+      selectedIcon: Icon(Icons.apps_rounded),
+      label: 'المزيد',
     ),
   ];
 
   static const List<NavigationRailDestination> _railDestinations =
       <NavigationRailDestination>[
     NavigationRailDestination(
-      icon: Icon(Icons.savings_outlined),
-      selectedIcon: Icon(Icons.savings_rounded),
-      label: Text('الادخار'),
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home_rounded),
+      label: Text('الرئيسية'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.account_balance_wallet_outlined),
-      selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-      label: Text('المصاريف'),
+      icon: Icon(Icons.receipt_long_outlined),
+      selectedIcon: Icon(Icons.receipt_long_rounded),
+      label: Text('السجل'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.settings_outlined),
-      selectedIcon: Icon(Icons.settings_rounded),
-      label: Text('الإعدادات'),
+      icon: Icon(Icons.apps_outlined),
+      selectedIcon: Icon(Icons.apps_rounded),
+      label: Text('المزيد'),
     ),
   ];
 
@@ -172,36 +176,40 @@ class _AppShellState extends State<AppShell> {
 
   void _selectDestination(int index) {
     if (_selectedIndex == index) return;
-    setState(() => _selectedIndex = index);
+    setState(() {
+      _selectedIndex = index;
+      _visited.add(index);
+    });
   }
 
   Widget _content() {
+    // Other tabs are mounted on first visit to avoid an expensive initial
+    // history query or settings load while the owner is looking at balances.
     return IndexedStack(
       index: _selectedIndex,
       children: <Widget>[
         KeyedSubtree(
-          key: ValueKey<String>('savings-$_dataRevision'),
+          key: ValueKey<int>(_dataRevision * 3),
           child: widget.homeBuilder?.call(
-            HomeFinancialView.savings, _selectedIndex == 0,
-          ) ?? HomePage(
-            view: HomeFinancialView.savings,
-            isActive: _selectedIndex == 0,
-          ),
+                HomeFinancialView.savings, _selectedIndex == 0,
+              ) ??
+              const SimpleHomePage(),
         ),
         KeyedSubtree(
-          key: ValueKey<String>('spending-$_dataRevision'),
-          child: widget.homeBuilder?.call(
-            HomeFinancialView.spending, _selectedIndex == 1,
-          ) ?? HomePage(
-            view: HomeFinancialView.spending,
-            isActive: _selectedIndex == 1,
-          ),
+          key: ValueKey<int>(_dataRevision * 3 + 1),
+          child: !_visited.contains(1)
+              ? const SizedBox.shrink()
+              : widget.homeBuilder?.call(
+                    HomeFinancialView.spending, _selectedIndex == 1,
+                  ) ??
+                  const TransactionHistoryPage(embedded: true),
         ),
         KeyedSubtree(
-          key: ValueKey<String>('settings-$_dataRevision'),
-          child: widget.settingsBody ?? SettingsShellPage(
-            onDataRestored: _handleDataRestored,
-          ),
+          key: ValueKey<int>(_dataRevision * 3 + 2),
+          child: !_visited.contains(2)
+              ? const SizedBox.shrink()
+              : widget.settingsBody ??
+                  MorePage(onDataRestored: _handleDataRestored),
         ),
       ],
     );
