@@ -107,6 +107,18 @@ class _ChallengesPageState extends State<ChallengesPage> {
     }
   }
 
+  Future<bool> _reconcileOpenedGoal(bool keepMarks) async {
+    final id = _openedChallengeId;
+    if (id == null) return false;
+    try {
+      await _storage.reconcileLegacyGoal(id, useExistingMarks: keepMarks);
+      await _loadChallenges();
+      return mounted;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _deleteChallenge(SavingChallenge challenge) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -173,6 +185,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
             ? ChallengeDetailPage(
                 challenge: openedChallenge,
                 onChanged: _updateChallenge,
+                onReconcile: _reconcileOpenedGoal,
                 onBack: _closeChallenge,
               )
             : _buildChallengeList(),
@@ -206,7 +219,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
       );
     }
 
-    final int completed = _challenges.where((item) => item.isComplete).length;
+    final int completed = _challenges.where((item) => item.isVerifiedComplete).length;
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 116),
@@ -283,8 +296,8 @@ class _GoalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final bool overdue = challenge.isDeadlineOverdue();
-    final bool complete = challenge.isComplete;
+    final bool overdue = challenge.isBackingVerified && challenge.isDeadlineOverdue();
+    final bool complete = challenge.isVerifiedComplete;
     final Color tone = complete
         ? colors.tertiary
         : overdue
@@ -360,7 +373,7 @@ class _GoalCard extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       ChallengeFormat.amount(
-                        challenge.savedAmount,
+                        challenge.verifiedSavedAmount,
                         challenge.currency,
                       ),
                       style: Theme.of(context).textTheme.headlineSmall,
@@ -376,15 +389,19 @@ class _GoalCard extends StatelessWidget {
                 ),
               ),
               UxStatusPill(
-                label: FinancialFormat.progress(challenge.progress),
+                label: FinancialFormat.progress(challenge.verifiedProgress),
                 icon: complete ? Icons.check_rounded : null,
                 color: tone,
               ),
             ],
           ),
+          if (!challenge.isBackingVerified) ...<Widget>[
+            const SizedBox(height: 7),
+            const Text('خانات قديمة غير مثبّتة من رصيد الادخار'),
+          ],
           const SizedBox(height: 12),
           LinearProgressIndicator(
-            value: challenge.progress,
+            value: challenge.verifiedProgress,
             minHeight: 9,
             color: tone,
             backgroundColor: tone.withValues(alpha: 0.12),
