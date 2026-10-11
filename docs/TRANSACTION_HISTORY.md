@@ -91,7 +91,7 @@ goal deletion and bulk replacement. Those snapshots record earlier checked
 amounts and goal links without minting Savings or cash. Recreated goal-grid
 postings with the same stable ID show one current event; older tombstones
 remain accessible inside revisions, not counted as duplicate transactions.
-Goal-creation/name-only edits with **zero posted progress** have no financial
+Bulk goal saves now update existing goals **in place**, keeping a nonchanged contribution's stable ID and created timestamp. Only genuine grid changes or goal removal produce prior contribution audit snapshots. Goal-creation/name-only edits with **zero posted progress** have no financial
 ledger event to revise; they remain nonfinancial goal metadata. Existing old
 grid history prior to MS-16 cannot be reconstructed and is not invented.
 
