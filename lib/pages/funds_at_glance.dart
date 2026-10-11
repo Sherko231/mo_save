@@ -92,10 +92,10 @@ class _FundsAtGlanceState extends State<FundsAtGlance> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text('رصيد اليوم حسب الصندوق',
+          Text('رصيدك الآن',
             style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
-          const Text('الادخار غير المصاريف. ما منجمع الدولار والليرة بسعر مفترض.'),
+          const Text('المتاح للصرف للاستخدام اليومي، والمدّخر للمستقبل. كل عملة لحالها.'),
           const SizedBox(height: 11),
           for (final unit in showUnits) ...<Widget>[
             Text(FinancialFormat.unitLabel(unit),
@@ -103,13 +103,13 @@ class _FundsAtGlanceState extends State<FundsAtGlance> {
             const SizedBox(height: 5),
             Row(children: <Widget>[
               Expanded(child: _FundAmount(
-                label: 'ادخار حقيقي',
+                label: 'مدّخر',
                 amount: b[FinancialFund.savings]?[unit] ?? 0,
                 unit: unit,
               )),
               const SizedBox(width: 9),
               Expanded(child: _FundAmount(
-                label: 'متاح للمصاريف',
+                label: 'للصرف',
                 amount: b[FinancialFund.spending]?[unit] ?? 0,
                 unit: unit,
               )),
@@ -123,7 +123,7 @@ class _FundsAtGlanceState extends State<FundsAtGlance> {
             )} — غرامات مملوكة، مو سيولة نقدية'),
           if (FinancialUnit.values.any((u) =>
               (b[FinancialFund.unallocated]?[u] ?? 0) != 0))
-            const Text('في أموال أو ذهب غير موزّعين؛ ما بتنحسب ادخار أو مصاريف.'),
+            const Text('في مال لسه ما اخترت إذا بدك تدّخره أو تصرفه. وزّعه من قسم «المزيد».'),
         ],
       ),
     );
