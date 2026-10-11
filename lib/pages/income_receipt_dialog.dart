@@ -186,7 +186,7 @@ Future<IncomeReceiptDraft?> showIncomeReceiptDialog(
                             settings!.weeklyExpensesAllocation,
                           );
                           final wantedSavings = LedgerEntry.amountToMicros(
-                            settings!.weeklySavingsAllocation,
+                            settings.weeklySavingsAllocation,
                           );
                           spending = wantedSpending > available
                               ? available : wantedSpending;
