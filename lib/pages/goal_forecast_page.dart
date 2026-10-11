@@ -263,7 +263,11 @@ class _GoalForecastPageState extends State<GoalForecastPage> {
                           '${FinancialFormat.assetBalance(
                             report.months.first.sypPlannedBillsMicros,
                             FinancialUnit.syp,
-                          )}.',
+                          )}. '
+                          '${report.months.first.monthlyUsdPayday == null
+                            ? 'ما في راتب دولار مجدول.'
+                            : 'يوم راتب الدولار المتوقع: '
+                              '${FinancialFormat.date(report.months.first.monthlyUsdPayday!)}.'}',
                         ),
                       ],
                     ],
