@@ -462,6 +462,28 @@ Forecasts preserve already verified pledged principal as their minimum
 and make no database writes. Full calculations and limitations:
 [GOAL_FORECASTS.md](GOAL_FORECASTS.md).
 
+### MS-16 — Read-only unified audit and goal-grid revisions (no schema change)
+
+`TransactionHistoryService` now filters current and archived deleted events by
+month, ledger event type, unit, Savings/Spending/Unallocated fund, linked goal
+ID and free-text category/note/transaction or recurrence identity. Planned
+monthly recurring bills and expected/unconfirmed salary occurrences are
+displayed **separately** via `loadExpectedMonth`; they do not generate
+financial entries. Stored source/destination funds, historic executed FX
+rates, notes, categories and links remain visible.
+
+A permitted financial event edit/cancellation writes the full **previous**
+event snapshot inside the same SQLite transaction and recalculates balances
+from the active ledger. Unchanged metadata creates no revision. Goal-grid
+updates/releases/delete/bulk replacements additionally record previous
+non-balance `savingContribution` snapshots in the already existing
+`financial_event_revisions` table; no money is minted and those events
+remain workflow-managed. Multiple cancelled/recreated snapshots sharing
+one stable ID are grouped into one tombstone on the timeline, with all
+revisions retained. The v12 portable backup already exports revisions,
+so this change requires no new migration. See
+[TRANSACTION_HISTORY.md](TRANSACTION_HISTORY.md).
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
