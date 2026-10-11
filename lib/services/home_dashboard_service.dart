@@ -104,8 +104,8 @@ class HomeDashboardService {
   }
 
   static int _compareGoals(SavingChallenge a, SavingChallenge b) {
-    if (a.isComplete != b.isComplete) {
-      return a.isComplete ? 1 : -1;
+    if (a.isVerifiedComplete != b.isVerifiedComplete) {
+      return a.isVerifiedComplete ? 1 : -1;
     }
 
     final bool aOverdue = a.isDeadlineOverdue();
@@ -125,7 +125,8 @@ class HomeDashboardService {
       return 1;
     }
 
-    final int progressCompare = b.progress.compareTo(a.progress);
+    final int progressCompare =
+        b.verifiedProgress.compareTo(a.verifiedProgress);
     if (progressCompare != 0) return progressCompare;
     return a.name.compareTo(b.name);
   }
