@@ -15,6 +15,7 @@ import 'home_spending_fund_section.dart';
 import 'income_receipt_dialog.dart';
 import 'manual_inflow_page.dart';
 import 'fund_transfer_page.dart';
+import 'spending_analytics_page.dart';
 import 'transaction_history_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -129,6 +130,17 @@ class _HomePageState extends State<HomePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم تسجيل المبلغ في سجل الحركات.')),
     );
+  }
+
+  Future<void> _openAnalytics() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => SpendingAnalyticsPage(
+          initialMonth: _selectedMonth,
+        ),
+      ),
+    );
+    if (mounted) await _reload(showLoading: false);
   }
 
   Future<void> _openFundTransfer() async {
@@ -358,6 +370,13 @@ class _HomePageState extends State<HomePage> {
             title: 'نقل بين الادخار والمصاريف',
             subtitle: 'تغيير توزيع أموالك بدون دخل أو مصروف جديد',
             onTap: _openFundTransfer,
+          ),
+          const SizedBox(height: 10),
+          UxActionTile(
+            icon: Icons.bar_chart_rounded,
+            title: 'تحليلات المصاريف الشهرية',
+            subtitle: 'تصنيفات، مصادر الدفع، مقارنة بالشهر السابق وتفاصيل الحركات',
+            onTap: _openAnalytics,
           ),
           const SizedBox(height: 10),
           _HistoryShortcut(onTap: _openHistory),
