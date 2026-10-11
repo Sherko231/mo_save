@@ -37,7 +37,7 @@ void main() {
     ),
   );
 
-  testWidgets('MS-17 mobile primary destinations are Savings / Spending / Settings',
+  testWidgets('Simple UX primary destinations are Home / History / More',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -48,28 +48,28 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
-    expect(find.text('الادخار'), findsOneWidget);
-    expect(find.text('المصاريف'), findsOneWidget);
-    expect(find.text('الإعدادات'), findsOneWidget);
+    expect(find.text('الرئيسية'), findsOneWidget);
+    expect(find.text('السجل'), findsOneWidget);
+    expect(find.text('المزيد'), findsOneWidget);
     expect(find.text('المحتوى: الادخار الحقيقي'), findsOneWidget);
     expect(find.text('المحتوى: المصاريف المتاحة'), findsNothing);
     expect(find.text('الأهداف'), findsNothing);
 
-    await tester.tap(find.text('المصاريف'));
+    await tester.tap(find.text('السجل'));
     await tester.pumpAndSettle();
     expect(find.text('المحتوى: المصاريف المتاحة'), findsOneWidget);
     expect(find.text('المحتوى: الادخار الحقيقي'), findsNothing);
 
-    await tester.tap(find.text('الإعدادات'));
+    await tester.tap(find.text('المزيد'));
     await tester.pumpAndSettle();
     expect(find.text('بيانات الإعدادات والنسخ الاحتياطي'), findsOneWidget);
 
-    await tester.tap(find.text('الادخار'));
+    await tester.tap(find.text('الرئيسية'));
     await tester.pumpAndSettle();
     expect(find.text('المحتوى: الادخار الحقيقي'), findsOneWidget);
   });
 
-  testWidgets('MS-17 wide layout uses an adaptive RTL NavigationRail',
+  testWidgets('Simple UX keeps an adaptive RTL NavigationRail',
       (tester) async {
     tester.view.physicalSize = const Size(1100, 800);
     tester.view.devicePixelRatio = 1;
@@ -81,8 +81,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
-    expect(find.text('الادخار'), findsOneWidget);
-    await tester.tap(find.text('المصاريف'));
+    expect(find.text('الرئيسية'), findsOneWidget);
+    await tester.tap(find.text('السجل'));
     await tester.pumpAndSettle();
     expect(find.text('المحتوى: المصاريف المتاحة'), findsOneWidget);
   });
