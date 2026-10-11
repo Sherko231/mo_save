@@ -6,6 +6,7 @@ import '../models/financial_event.dart';
 import '../models/recurring_expense_item.dart';
 import '../models/expected_income.dart';
 import 'expense_plan_storage.dart';
+import 'financial_settings_storage.dart';
 import 'recurring_income_service.dart';
 import 'financial_ledger_storage.dart';
 import 'local_database.dart';
@@ -69,6 +70,7 @@ class TransactionHistoryService {
         _plans = plans ?? ExpensePlanStorage(database: database),
         _income = recurringIncome ?? RecurringIncomeService(
           database: database, ledgerStorage: ledger,
+          settingsStorage: FinancialSettingsStorage(database: database),
         );
 
   final LocalDatabase _database;
