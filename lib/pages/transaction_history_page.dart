@@ -315,6 +315,67 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 }
 
+/// Expected schedules are never merged into the true transaction count.
+class _CommitmentSection extends StatelessWidget {
+  const _CommitmentSection({required this.commitments});
+  final ExpectedCommitmentsSnapshot? commitments;
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = commitments;
+    return Card(
+      child: ExpansionTile(
+        leading: const Icon(Icons.event_note_outlined),
+        title: const Text('المخطط والمتوقع — ليس مالاً منفذاً'),
+        subtitle: Text(snapshot == null
+            ? 'تعذر تحميل خطة هذا الشهر، ولا يؤثر ذلك على سجل المال'
+            : '${snapshot.plannedBills.length} فواتير مخططة • '
+              '${snapshot.expectedIncome.length} مواعيد دخل متوقعة'),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        children: <Widget>[
+          const Text('القيم أدناه ليست خصماً أو إضافة للرصيد حتى '
+              'تسجّل حركة فعلية. مواعيد الدخل تستخدم إعدادات '
+              'الجدول الحالية؛ قد تختلف عن افتراضات شهر قديم.'),
+          if (snapshot != null) ...<Widget>[
+            const SizedBox(height: 9),
+            if (snapshot.plannedBills.isEmpty &&
+                snapshot.expectedIncome.isEmpty)
+              const Text('ما في التزامات متوقعة بهذا الشهر.')
+            else ...<Widget>[
+              for (final bill in snapshot.plannedBills)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_repeat_outlined),
+                  title: Text(bill.name),
+                  subtitle: const Text('فاتورة مخططة فقط — ليست مدفوعة'),
+                  trailing: Text(FinancialFormat.assetBalance(
+                    bill.amountMicros, bill.unit,
+                  )),
+                ),
+              for (final income in snapshot.expectedIncome)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.calendar_month_outlined),
+                  title: Text('راتب متوقع: ${FinancialFormat.date(income.scheduledDate)}'),
+                  subtitle: Text(income.isReceived
+                    ? 'مستلم — حركته الفعلية مستقلة تحت'
+                    : income.isIgnored
+                      ? 'تم تجاهله — ما انضاف أي مال'
+                      : 'غير مؤكد الاستلام — ليس دخلاً فعلياً'),
+                  trailing: Text(FinancialFormat.assetBalance(
+                    income.expectedAmountMicros, income.unit,
+                  )),
+                ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _MonthSelector extends StatelessWidget {
   const _MonthSelector({
     required this.title,
@@ -655,7 +716,8 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: event.recurrenceKey != null
+                  onPressed: event.recurrenceKey != null &&
+                    !event.recurrenceKey!.startsWith('manual-cash:')
                       ? null
                       : () async {
                           final DateTime? picked = await showDatePicker(
@@ -670,7 +732,8 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                         },
                   icon: const Icon(Icons.calendar_today_outlined),
                   label: Text(
-                    event.recurrenceKey != null
+                    event.recurrenceKey != null &&
+                        !event.recurrenceKey!.startsWith('manual-cash:')
                         ? 'التاريخ مرتبط بالحركة الدورية'
                         : FinancialFormat.date(selectedDate),
                   ),
@@ -888,6 +951,15 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         SnackBar(content: Text(successMessage)),
       );
       Navigator.of(context).pop(true);
+    } on GoalBackingInsufficientException catch (_) {
+      if (!mounted) return;
+      setState(() => _isMutating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(
+          'هالحركة مرتبطة بمال محجوز لأهداف الادخار. '
+          'حرّر خانات الحجز أولاً، وما تغير أي رصيد.',
+        )),
+      );
     } on TransactionMutationException catch (error) {
       if (!mounted) return;
       setState(() => _isMutating = false);
@@ -942,7 +1014,8 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                   for (int index = 0;
                       index < event.entries.length;
                       index++)
-                    _EntryRow(entry: event.entries[index]),
+                    _EntryRow(entry: event.entries[index],
+                      eventType: event.type),
                 ],
               ),
               const SizedBox(height: 10),
@@ -959,7 +1032,14 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                   if (event.recurrenceKey != null)
                     const _KeyValue('حركة دورية', 'نعم'),
                   if (event.sourceEventId != null)
-                    const _KeyValue('مرتبطة بحركة أصل', 'نعم'),
+                    _KeyValue('رقم الحركة الأصلية', event.sourceEventId!),
+                  if (event.relatedGoalId != null ||
+                      event.relatedChallengeId != null)
+                    _KeyValue('معرّف الهدف المرتبط',
+                      event.relatedGoalId ?? event.relatedChallengeId!),
+                  if (event.recurrenceKey != null)
+                    _KeyValue('معرّف الدورية', event.recurrenceKey!),
+                  _KeyValue('معرّف الحركة', event.id),
                   _KeyValue(
                     'أنشئت',
                     FinancialFormat.dateTime(event.createdAt),
@@ -1072,9 +1152,10 @@ class _DetailCard extends StatelessWidget {
 }
 
 class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry});
+  const _EntryRow({required this.entry, required this.eventType});
 
   final LedgerEntry entry;
+  final FinancialEventType eventType;
 
   @override
   Widget build(BuildContext context) {
@@ -1086,7 +1167,11 @@ class _EntryRow extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Text(
-              '${entry.affectsBalance ? 'رصيد' : 'تخصيص'}'
+              '${eventType == FinancialEventType.fundTransfer
+                ? (entry.amountMicros < 0 ? 'من صندوق' : 'إلى صندوق')
+                : eventType == FinancialEventType.savingContribution
+                  ? 'تقدم هدف (لا يغير الرصيد)'
+                  : entry.affectsBalance ? 'رصيد فعلي' : 'تخصيص غير نقدي'}'
               ' • ${_fundLabel(entry.fund)}$role',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
