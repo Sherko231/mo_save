@@ -1,12 +1,12 @@
 # Mo Save — Redesign Implementation Progress
 
-> Progress updated: 2026-10-11. **MS-01 through MS-17 closed; MS-18 is next.** GitHub Issues are authoritative. MS-18 startup/performance fixes require CI and device verification; other client sign-off is still pending.
+> Progress updated: 2026-10-11. **MS-01 through MS-17 closed; MS-18 remains open.** The owner requested a simpler UX and local-only validation. Home / History / More navigation and focused salary/income/expense flows are committed, but device acceptance is pending. GitHub Actions workflows were removed at the owner's request.
 
 ## Current checkpoint
 
 - **Next task:** [MS-18 — Verify migration, accounting, backups and client handoff](https://github.com/Sherko231/mo_save/issues/92).
-- **Active implementation:** [MS-18 / #92](https://github.com/Sherko231/mo_save/issues/92) — GitHub Actions analyzer/test/APK verification, full client journey, migration/restore and physical device QA pending; first real CI found compile errors that were corrected.
-- **Redesign progress:** 17 / 18 issues closed. **MS-02..MS-17 source implementations and tests were committed but NOT executed or runtime-verified.** All accounting, v9-v12 client migration, portable restore and Arabic RTL/Android APK acceptance remain pending under MS-18.
+- **Active implementation:** [MS-18 / #92](https://github.com/Sherko231/mo_save/issues/92) — owner-run local Flutter build, customer comprehension walkthrough, accounting/migration/restore and physical device QA pending. No GitHub Actions or remote builds; previous smoke checks are historical, not sign-off for this UX.
+- **Redesign progress:** 17 / 18 issues closed. Core financial code is retained behind the simple navigation; see [simple UX feature map](SIMPLE_UX_2026_10.md). The October UX code is not yet locally built or accepted. Migration, portable restore and final Arabic RTL/device checks remain pending under MS-18.
 - **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
 
