@@ -15,6 +15,8 @@ import 'package:mo_save/services/financial_ledger_storage.dart';
 import 'package:mo_save/services/local_database.dart';
 import 'package:mo_save/services/notification_preferences_storage.dart';
 import 'package:mo_save/services/transaction_history_service.dart';
+import 'package:mo_save/services/savings_fund_service.dart';
+import 'package:mo_save/services/financial_settings_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -94,6 +96,16 @@ void main() {
       expect(returned.verifiedSavedAmount, 100);
       expect(returned.verifiedProgress, 1);
       expect((await goals.loadVerifiedEarmarks())['travel'],
+        LedgerEntry.amountToMicros(100));
+      final savingsView = await SavingsFundService(
+        ledger: ledger, database: db,
+        settings: FinancialSettingsStorage(database: db),
+      ).loadCurrent();
+      expect(savingsView.saved(FinancialUnit.usd),
+        LedgerEntry.amountToMicros(200));
+      expect(savingsView.reserved(FinancialUnit.usd),
+        LedgerEntry.amountToMicros(100));
+      expect(savingsView.free(FinancialUnit.usd),
         LedgerEntry.amountToMicros(100));
       expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
         LedgerEntry.amountToMicros(200));
@@ -183,6 +195,29 @@ void main() {
       await goals.updateChallenge(mark(b, true));
       expect((await goals.loadChallenges()).single.verifiedSavedAmount, 100);
       expect((await goals.loadVerifiedEarmarks()).length, 1);
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
+        LedgerEntry.amountToMicros(100));
+    });
+
+    test('adding an imported unverified goal never auto-pledges a cell',
+        () async {
+      await deposit(100);
+      final base = goal('imported-old');
+      final imported = SavingChallenge(
+        id: base.id, name: base.name,
+        targetAmount: base.targetAmount, currency: base.currency,
+        sequence: base.sequence, cellCount: base.cellCount,
+        cells: <ChallengeCell>[
+          base.cells.single.copyWith(isCompleted: true),
+        ],
+        // Backing intentionally absent as it was in v9-v11 data.
+      );
+      await goals.addChallenge(imported);
+      final saved = (await goals.loadChallenges()).single;
+      expect(saved.savedAmount, 100);
+      expect(saved.isBackingVerified, isFalse);
+      expect(saved.verifiedSavedAmount, 0);
+      expect(await goals.loadVerifiedEarmarks(), isEmpty);
       expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
         LedgerEntry.amountToMicros(100));
     });
