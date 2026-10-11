@@ -287,13 +287,19 @@ class TransactionHistoryService {
         );
       }
 
-      final DateTime normalizedDate = DateTime(
-        occurredAt.year,
-        occurredAt.month,
-        occurredAt.day,
-        current.occurredAt.toLocal().hour,
-        current.occurredAt.toLocal().minute,
-      ).toUtc();
+      final DateTime originalLocal = current.occurredAt.toLocal();
+      final DateTime normalizedDate = _sameLocalDay(occurredAt, originalLocal)
+          ? current.occurredAt
+          : DateTime(
+              occurredAt.year,
+              occurredAt.month,
+              occurredAt.day,
+              originalLocal.hour,
+              originalLocal.minute,
+              originalLocal.second,
+              originalLocal.millisecond,
+              originalLocal.microsecond,
+            ).toUtc();
       if (current.recurrenceKey != null &&
           !current.recurrenceKey!.startsWith('manual-cash:') &&
           !_sameLocalDay(normalizedDate, current.occurredAt)) {
@@ -302,13 +308,20 @@ class TransactionHistoryService {
         );
       }
 
+      final cleanCategory = _normalizeOptionalText(category);
+      final cleanNote = _normalizeOptionalText(note);
+      if (normalizedDate.isAtSameMomentAs(current.occurredAt) &&
+          cleanCategory == current.category &&
+          cleanNote == current.note) {
+        return; // No false audit revision for an unchanged form.
+      }
       await _writeRevision(transaction, current, action: 'update');
       await transaction.update(
         'financial_events',
         <String, Object?>{
           'occurred_at_ms': normalizedDate.millisecondsSinceEpoch,
-          'category': _normalizeOptionalText(category),
-          'note': _normalizeOptionalText(note),
+          'category': cleanCategory,
+          'note': cleanNote,
           'updated_at_ms': DateTime.now().toUtc().millisecondsSinceEpoch,
         },
         where: 'id = ?',
