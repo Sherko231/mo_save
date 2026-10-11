@@ -71,4 +71,4 @@ The dedicated RTL `GoalForecastPage` is reachable from Home's Savings dashboard,
 - `test/goal_forecast_service_test.dart`: 4/5 weekly paydays, monthly bills overrunning envelope, salary/weekday/plan edits, marked principal and variable pace date, no-date cases, real salary USD split, observed month coverage, ledger isolation and FX what-if.
 - `test/goal_forecast_page_test.dart`: RTL view, unavailable-history messaging and explicit USD share scenario.
 
-**NO TESTS EXECUTED.** Flutter analyzer, tests, target build, saved backup migration and Android acceptance remain MS-18 (#92) obligations. No SQLite migration, balance cache, new event or background scheduling is introduced by MS-14. Future reminders/motivation belong to MS-15 (#89).
+**NO TESTS EXECUTED.** Flutter analyzer, tests, target build, saved backup migration and Android acceptance remain MS-18 (#92) obligations. No SQLite migration, balance cache, new event or background scheduling is introduced by MS-14. MS-15 now uses these conditional forecasts for verified milestones, plan/observed date comparisons and evidence-only saving streaks. See [SAVINGS_MOTIVATION.md](SAVINGS_MOTIVATION.md).
