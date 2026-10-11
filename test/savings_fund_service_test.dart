@@ -95,10 +95,12 @@ void main() {
       await post(FinancialEventType.openingBalance, <LedgerEntry>[
         amount(FinancialUnit.usd, 50, FinancialFund.unallocated),
       ]);
+      // A legacy challenge entry is a non-balance tracking event, not cash.
+      // No relatedChallengeId is needed in this isolated ledger fixture.
       await post(FinancialEventType.savingContribution, <LedgerEntry>[
         amount(FinancialUnit.usd, 800,
           FinancialFund.savings, affectsBalance: false),
-      ], challengeId: 'legacy-paper-goal');
+      ]);
       await ledger.transferFunds(
         unit: FinancialUnit.usd,
         source: FinancialFund.savings,
