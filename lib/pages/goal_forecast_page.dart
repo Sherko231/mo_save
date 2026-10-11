@@ -79,10 +79,6 @@ class _GoalForecastPageState extends State<GoalForecastPage> {
     ChallengeCurrency.sypNew => FinancialUnit.sypNew,
   };
 
-  static String _date(DateTime? date) =>
-      date == null ? 'لا توجد بيانات كافية لتحديد تاريخ'
-      : FinancialFormat.date(date);
-
   @override
   Widget build(BuildContext context) {
     final report = _snapshot;
