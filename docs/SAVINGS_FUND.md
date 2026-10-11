@@ -65,7 +65,7 @@ The card labels this **قيمة تقريبية للادخار فقط**, not earn
 
 ## Explicit goal boundary
 
-**This issue does not earmark Savings for individual goals or infer goal ownership.** The existing `SavingChallenge` progress/grid remains legacy visual progress, not real Savings. **MS-13** is responsible for backing goal allocations with the actual Savings fund and avoiding duplicated goal assets. Forecast dates and motivation are MS-14/15.
+MS-12 introduced current Savings totals; **MS-13 now also exposes verified goal reservations and free/unreserved Savings per currency**. Goal checked cells count as actual progress only after an explicit backing record covered by real Savings. Old unverified goals require a user choice; see [GOAL_EARMARKS.md](GOAL_EARMARKS.md). Forecast dates and motivation remain MS-14/15.
 
 ## Implementation and unverified tests
 
