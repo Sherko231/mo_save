@@ -4,7 +4,7 @@ Single-user, offline-first Flutter app for personal finance tracking and gamifie
 
 ## Active redesign — savings and spending funds
 
-The client-requested redesign is **in progress**. Its fund-aware ledger, receipt allocations, Spending dashboard, categorized expenses, future-effective recurring plan versions, internal fund transfers and categorized monthly spending analytics and a true Savings dashboard are committed, but **runtime checks have not been executed**. Verified Savings-backed goals, conditional completion forecasts and evidence-based motivation are implemented in source; unified navigation and client acceptance remain future issues. The chronological financial history now offers fund, unit, type, linked-goal and note/category filters, cancelled-event revisions and a separate expected-commitments section. The plan covers linked Savings and Spending funds, real liquidity and categorized expenses, goal earmarks backed by real Savings, overdue-payday dismissal, editable assumptions and realistic goal forecasts.
+The client-requested redesign is **in progress**. Its fund-aware ledger, receipt allocations, Spending dashboard, categorized expenses, future-effective recurring plan versions, internal fund transfers and categorized monthly spending analytics and a true Savings dashboard are committed, but **runtime checks have not been executed**. Verified Savings-backed goals, conditional completion forecasts, evidence-based motivation and fund-first Savings/Spending/Settings navigation are implemented in source; final client acceptance is still pending. The chronological financial history now offers fund, unit, type, linked-goal and note/category filters, cancelled-event revisions and a separate expected-commitments section. The plan covers linked Savings and Spending funds, real liquidity and categorized expenses, goal earmarks backed by real Savings, overdue-payday dismissal, editable assumptions and realistic goal forecasts.
 
 - [AI implementation contract](AGENTS.md)
 - [Redesign product specification](docs/FUNDS_REDESIGN.md)
@@ -30,4 +30,4 @@ Read these before continuing project implementation. The tracker begins with MS-
 
 ## Current foundation
 
-The app provides Home / Saving Goals / Settings navigation, a ledger-backed financial model, locally persisted saving goals, multi-currency balances and explicit SYP↔USD conversions. The interaction architecture uses progressive disclosure so advanced financial tools remain available without crowding the default experience.
+The app provides Savings / Spending / Settings adaptive navigation (with goals inside Savings), a ledger-backed financial model, locally persisted saving goals, multi-currency balances and explicit SYP↔USD conversions. The interaction architecture uses progressive disclosure so advanced financial tools remain available without crowding the default experience.
