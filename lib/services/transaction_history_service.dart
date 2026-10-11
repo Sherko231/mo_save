@@ -127,13 +127,16 @@ class TransactionHistoryService {
       columns: <String>['event_id', 'snapshot_json'],
       where: 'action = ?',
       whereArgs: const <Object?>['delete'],
+      orderBy: 'changed_at_ms DESC, id DESC',
     );
 
     final activeIds = active.map((e) => e.id).toSet();
+    final representedIds = <String>{...activeIds};
     for (final Map<String, Object?> row in deletedRows) {
-      // A goal-grid contribution may be recreated with its stable event ID
-      // during bulk save. Its old snapshot is a revision, not another debit.
-      if (activeIds.contains(row['event_id'])) continue;
+      // Display only the newest tombstone per stable event ID; all older
+      // cancels/releases remain accessible inside loadRevisions(eventId).
+      // Goal-grid progress may also be recreated with that ID.
+      if (!representedIds.add(row['event_id']! as String)) continue;
       final FinancialEvent event = _eventFromJson(
         jsonDecode(row['snapshot_json']! as String) as Map<String, dynamic>,
       );
