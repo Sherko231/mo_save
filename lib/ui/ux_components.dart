@@ -425,7 +425,7 @@ class UxInfoBanner extends StatelessWidget {
   }
 }
 
-class UxDisclosureCard extends StatelessWidget {
+class UxDisclosureCard extends StatefulWidget {
   const UxDisclosureCard({
     super.key,
     required this.title,
@@ -442,39 +442,53 @@ class UxDisclosureCard extends StatelessWidget {
   final bool initiallyExpanded;
 
   @override
+  State<UxDisclosureCard> createState() => _UxDisclosureCardState();
+}
+
+class _UxDisclosureCardState extends State<UxDisclosureCard> {
+  late bool _hasBeenExpanded = widget.initiallyExpanded;
+
+  @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        // Collapsed panels contain expensive DB-backed child widgets. Mount
-        // them only when expanded and release their subscriptions on collapse.
-        maintainState: false,
-        initiallyExpanded: initiallyExpanded,
+        // Defer DB-backed children until first expansion, but keep them alive
+        // afterwards so collapsing a financial form cannot discard its draft.
+        maintainState: true,
+        initiallyExpanded: widget.initiallyExpanded,
+        onExpansionChanged: (expanded) {
+          if (expanded && !_hasBeenExpanded) {
+            setState(() => _hasBeenExpanded = true);
+          }
+        },
         leading: UxIconBadge(
-          icon: icon,
+          icon: widget.icon,
           size: 42,
           iconSize: 21,
         ),
         title: Text(
-          title,
+          widget.title,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        subtitle: subtitle == null
+        subtitle: widget.subtitle == null
             ? null
             : Text(
-                subtitle!,
+                widget.subtitle!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
               ),
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-            child: child,
-          ),
-        ],
+        children: _hasBeenExpanded
+            ? <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                  child: widget.child,
+                ),
+              ]
+            : const <Widget>[],
       ),
     );
   }
