@@ -131,6 +131,7 @@ void main() {
           as Map<String, dynamic>;
       final tables = payload['tables']! as Map<String, dynamic>;
       tables.remove('recurring_expense_plan_versions');
+      tables.remove('goal_earmarks');
       final entries = tables['financial_event_entries']! as List<dynamic>;
       for (final item in entries) {
         (item as Map<String, dynamic>).remove('fund');
@@ -245,7 +246,7 @@ void main() {
         throwsA(isA<BackupException>()),
       );
       final future = jsonDecode(utf8.decode(modern)) as Map<String, dynamic>;
-      future['databaseSchemaVersion'] = 11;
+      future['databaseSchemaVersion'] = LocalDatabase.schemaVersion + 1;
       await expectLater(
         targetBackup.restoreBackupBytes(
             Uint8List.fromList(utf8.encode(jsonEncode(future)))),
