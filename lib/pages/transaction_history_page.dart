@@ -1063,23 +1063,36 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                     const Text('لا توجد تعديلات سابقة على هذه الحركة.')
                   else
                     ..._revisions.map(
-                      (revision) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        leading: Icon(
-                          revision.isDelete
-                              ? Icons.delete_outline
-                              : Icons.history,
-                        ),
-                        title: Text(
-                          revision.isDelete
-                              ? 'نسخة قبل الحذف'
-                              : 'نسخة قبل التعديل',
-                        ),
-                        subtitle: Text(
-                          FinancialFormat.dateTime(revision.changedAt),
-                        ),
-                        trailing: Text(_eventSummary(revision.snapshot)),
+                      (revision) => ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(bottom: 12),
+                        leading: Icon(revision.isDelete
+                          ? Icons.delete_outline : Icons.history_rounded),
+                        title: Text(revision.isDelete
+                          ? 'نسخة قبل الإلغاء' : 'نسخة قبل التعديل'),
+                        subtitle: Text(FinancialFormat.dateTime(
+                          revision.changedAt)),
+                        children: <Widget>[
+                          _KeyValue('المبلغ القديم',
+                            _eventSummary(revision.snapshot)),
+                          _KeyValue('تاريخ الحركة الأصلي',
+                            FinancialFormat.dateTime(
+                              revision.snapshot.occurredAt)),
+                          _KeyValue('التصنيف السابق',
+                            revision.snapshot.category ?? '—'),
+                          _KeyValue('الملاحظة السابقة',
+                            revision.snapshot.note ?? '—'),
+                          if (revision.snapshot.executedSypPerUsd != null)
+                            _KeyValue('سعر التنفيذ التاريخي',
+                              FinancialFormat.referenceRate(
+                                revision.snapshot.executedSypPerUsd!)),
+                          if (revision.snapshot.relatedGoalId != null)
+                            _KeyValue('الهدف المرتبط سابقاً',
+                              revision.snapshot.relatedGoalId!),
+                          for (final entry in revision.snapshot.entries)
+                            _EntryRow(entry: entry,
+                              eventType: revision.snapshot.type),
+                        ],
                       ),
                     ),
                 ],
@@ -1114,7 +1127,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                       foregroundColor: Theme.of(context).colorScheme.error,
                     ),
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text('حذف الحركة'),
+                    label: const Text('إلغاء أثر الحركة مع حفظ نسخة التدقيق'),
                   ),
                 ],
               ],
