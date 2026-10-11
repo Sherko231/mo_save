@@ -44,6 +44,10 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
 - MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
 - MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
+- MS-17: phone bottom navigation and tablet/desktop RTL rail show Savings, Spending, Settings (not a Challenges-only top-level tab). Tabs preserve state while switching, and a successful backup restore rebuilds both fund views from SQLite.
+- MS-17: the default Savings strip shows per-currency actual Savings versus spendable Spending with Unallocated separately and no assumed cross-currency conversion. Old unverified 100%-checked goal yields 0 verified progress and no invented arrival date, while verified goals show backed amount and conditional date.
+- MS-17: Spending immediately exposes a direct Add Expense button (without opening analytics), preselects Spending but may explicitly choose Savings, then reuses the existing atomic expense workflow and refresh signals.
+- MS-17: goals list, saving cells, forecast, motivation, expense plans, categorized reports, receipt/ignore, transfers, manual inflow, currency/gold operations, audit history, settings and backup/restore remain discoverable on the two primary fund screens and Settings.
 - MS-16: 100 USD purchase directly from Savings appears as one USD actual expense and decreases Savings by 100; correcting it to 80 recalculates the real balance and saves the original 100 with its note; cancellation safely returns the spent amount and preserves both archived versions without counting cancelled entries in expense reports.
 - MS-16: unequal fund-transfer corrections fail atomically, equal-opposite transfers and cancellation conserve owned balances and record original source/destination; rate corrections preserve prior executed SYP/USD exchange rates, never today's reference rate.
 - MS-16: planned recurring bills and unconfirmed/ignored salary commitments are visible separately but never posted to active transaction counts; event type, fund, unit, linked goal and category/note search return only matching real records/tombstones.
@@ -91,7 +95,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-16 regression cases (including unified audit, goals, real-fund cancellations and RTL planned-vs-actual history) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-17 regression cases (including fund-first adaptive navigation, true Savings/Spending summary and backed-goal preview) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
