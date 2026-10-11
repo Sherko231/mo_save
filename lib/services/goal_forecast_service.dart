@@ -286,7 +286,7 @@ class GoalForecastService {
       sypSpendingEnvelopeMicros: spendingBudget,
       usdPlannedSavingsMicros: usdFunded,
       usdPlannedBillsMicros: usdBills,
-      netSypMicros: sypNet,
+      netSypMicros: sypNet.toInt(),
       netUsdMicros: usdNet,
     );
   }
