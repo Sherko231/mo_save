@@ -116,9 +116,14 @@ class _FundsAtGlanceState extends State<FundsAtGlance> {
             ]),
             const SizedBox(height: 10),
           ],
-          if (cashUnits.any((u) =>
+          if ((b[FinancialFund.savings]?[FinancialUnit.goldGram] ?? 0) != 0)
+            Text('ذهب الادخار: ${FinancialFormat.assetBalance(
+              b[FinancialFund.savings]![FinancialUnit.goldGram]!,
+              FinancialUnit.goldGram,
+            )} — غرامات مملوكة، مو سيولة نقدية'),
+          if (FinancialUnit.values.any((u) =>
               (b[FinancialFund.unallocated]?[u] ?? 0) != 0))
-            const Text('في أموال غير موزّعة؛ ما بتنحسب ادخار أو مصاريف.'),
+            const Text('في أموال أو ذهب غير موزّعين؛ ما بتنحسب ادخار أو مصاريف.'),
         ],
       ),
     );
