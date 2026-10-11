@@ -52,7 +52,8 @@ void main() {
     expect(find.text('رصيد اليوم حسب الصندوق'), findsOneWidget);
     expect(find.text('ادخار حقيقي'), findsWidgets);
     expect(find.text('متاح للمصاريف'), findsWidgets);
-    expect(find.textContaining('غير موزّعة'), findsOneWidget);
+    expect(find.textContaining('غير موزّعين'), findsOneWidget);
+    expect(find.textContaining('ذهب الادخار:'), findsOneWidget);
     expect(find.textContaining('ما منجمع الدولار والليرة'), findsOneWidget);
     expect(find.text('الليرة السورية الجديدة'), findsNothing);
     expect(stub.loads, 1);
