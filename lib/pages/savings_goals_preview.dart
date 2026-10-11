@@ -36,6 +36,7 @@ class _SavingsGoalsPreviewState extends State<SavingsGoalsPreview> {
   GoalForecastSnapshot? _forecast;
   List<SavingChallenge> _goals = const <SavingChallenge>[];
   bool _loading = true;
+  String? _error;
   int _generation = 0;
 
   @override
@@ -62,6 +63,7 @@ class _SavingsGoalsPreviewState extends State<SavingsGoalsPreview> {
       setState(() {
         _goals = goals;
         _loading = false;
+        _error = null;
       });
       try {
         final forecast = await _forecastService.load();
@@ -75,7 +77,10 @@ class _SavingsGoalsPreviewState extends State<SavingsGoalsPreview> {
       }
     } catch (_) {
       if (!mounted || generation != _generation) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _error = 'تعذر تحميل أهدافك الحالية. أعد المحاولة.';
+      });
     }
   }
 
@@ -96,6 +101,18 @@ class _SavingsGoalsPreviewState extends State<SavingsGoalsPreview> {
             padding: EdgeInsets.all(20),
             child: Center(child: CircularProgressIndicator()),
           )
+        else if (_error != null)
+          UxSoftCard(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(_error!),
+              TextButton.icon(
+                onPressed: _reload,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('إعادة المحاولة'),
+              ),
+            ],
+          ))
         else if (_goals.isEmpty)
           UxSoftCard(
             child: Column(
