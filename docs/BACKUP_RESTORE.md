@@ -8,7 +8,7 @@ The backup contains:
 
 - financial Settings and initial-setup metadata;
 - recurring expense-plan items;
-- saving challenges/goals and every challenge cell;
+- saving challenges/goals, every challenge cell and, for schema v12, explicit verified goal earmarks;
 - all financial ledger events and entries, including gold holdings derived from them;
 - transaction revision/audit snapshots;
 - local notification preferences.
@@ -28,7 +28,7 @@ Backups use the `.mosave` extension. The file is JSON with an outer envelope con
 
 The checksum is verified before any current data is changed. The payload contains table snapshots plus notification preferences.
 
-The current application uses SQLite schema **v11**. It can restore `.mosave` archives created under schema **v9, v10, or v11**, retaining backup envelope format 1. Schemas older than v9 or newer than v11, non-integral versions, malformed payloads and checksum failures are rejected **before replacing local data**. Restoration **replaces**, never merges, the database.
+The current application uses SQLite schema **v12**. It accepts checksummed .mosave archives from **v9, v10, v11 and v12** under envelope format 1. Older than v9/newer than v12, invalid version types, malformed payloads and checksum failures are rejected before database replacement. Restore replaces, never merges, records.
 
 For a verified v9 archive, the `financial_event_entries` rows lack the `fund` column. Import adds `fund = unallocated` to each such entry **after checksum verification** and before the single SQLite restore transaction. Historic income, expense and asset postings are not altered or replayed; their existing net amounts determine actual holdings. Old `weeklyAllocation` and `savingContribution` events remain non-balance-affecting historical entries and do **not** automatically constitute new Savings. Original event identities, notes, recurrence keys, exchange rates, expense plans, goal grid cells, revision JSON, app metadata and notification choices are restored. v9 revision snapshots lacking fund are interpreted as Unallocated when displayed.
 
@@ -36,9 +36,9 @@ For v10/v11 archives each financial entry must carry a recognized `savings`, `sp
 
 After restore, the user can open **Settings → Distribute old balances** (`توزيع أرصدتك القديمة`) to split actually owned, still-Unallocated money among Savings and Spending through explicit atomic **fund-only transfers**. Such transfers never create income or inflate asset totals. Gold may be allocated to Savings, not directly to cash spending. Negative historical holdings are surfaced for correction, not silently reset. The action remains accessible for future unallocated deposits.
 
-Versioned on-device upgrades run incremental SQLite `onUpgrade`: v9→v10 adds Unallocated fund attribution; v10→v11 adds versioned recurring expense plans while preserving the known starting plan row and all actual historical payments. **Never uninstall or reset the user's application to perform these upgrades.** Prior challenge progress is preserved but is not promoted to goal-backed Savings until MS-13.
+Versioned on-device upgrades run incremental SQLite migrations: v9→v10 assigns ambiguous funds to Unallocated; v10→v11 adds versioned recurring expense plans; v11→v12 adds verified goal earmarks **without automatically pledging any old checked goal cells**. The owner must explicitly pledge or reset legacy marks. Never uninstall/reset the app to upgrade.
 
-New backups exported by schema v11 carry v11 metadata, explicit fund assignments and all rows of `recurring_expense_plan_versions`. A v11 restore preserves future effective prices and scheduled stops; v9/v10 restores build only **one known baseline per old plan item** from its creation month, without inventing earlier prices or modifying actual expense events. If a v11 archive contains an item without any plan version or an orphaned version, restoration rolls back transactionally. No restore doubles receipts, spends or fund transfers.
+New backups exported from v12 contain both versioned recurring expense plans and verified goal_earmarks rows. A v12 restore rejects pledges with wrong goal currency, amounts differing from completed cells, or aggregate reservations exceeding restored Savings. A v9/v10/v11 restore preserves old checkmarks but imports **zero verified pledges**. All validation/ledger restoration runs transactionally; a failed import cannot delete the previous local data. No receipt, expense or transfer is posted anew during restore.
 
 The MS-03 tests (`test/local_database_migration_test.dart`, `test/legacy_backup_compatibility_test.dart`) cover earlier balances and legacy v9 archives. MS-09 adds `test/expense_plan_backup_v11_test.dart` to exercise v11 plan-history round trips and v10 baseline reconstruction, with invalid version history rejecting atomically. **Tests were authored but not executed**; real client upgrade and backup recovery must be verified before release.
 
