@@ -134,7 +134,8 @@ void main() {
       effectiveFromMonth: future,
     );
 
-    Future<void> assertBalances(FinancialLedgerStorage recorded) async {
+    Future<void> assertBalances(FinancialLedgerStorage recorded,
+        LocalDatabase testedDb) async {
       final funds = await recorded.loadFundBalancesMicros();
       expect(funds[FinancialFund.savings]![FinancialUnit.syp],
           LedgerEntry.amountToMicros(345000));
@@ -157,8 +158,7 @@ void main() {
           isEmpty);
       final expenseTotals = await ExpenseService(
         ledgerStorage: recorded,
-        planStorage: ExpensePlanStorage(database:
-          identical(recorded, ledger) ? source : target),
+        planStorage: ExpensePlanStorage(database: testedDb),
       ).loadMonth(thisMonth);
       expect(expenseTotals.actualTotalsMicros[FinancialUnit.syp],
           LedgerEntry.amountToMicros(80000));
@@ -166,7 +166,7 @@ void main() {
           LedgerEntry.amountToMicros(100));
     }
 
-    await assertBalances(ledger);
+    await assertBalances(ledger, source);
     final expected = await GoalForecastService(
       goals: goals, settings: settings, plans: plans, ledger: ledger,
     ).load(asOf: now);
@@ -191,12 +191,12 @@ void main() {
     // to assert values were persisted, not cached in widget/service state.
     await source.close();
     source = LocalDatabase.forTesting(path);
-    await assertBalances(FinancialLedgerStorage(database: source));
+    await assertBalances(FinancialLedgerStorage(database: source), source);
     final restored = BackupService(
       database: target, notificationPreferencesStorage: notifications,
     );
     await restored.restoreBackupBytes(bytes);
-    await assertBalances(FinancialLedgerStorage(database: target));
+    await assertBalances(FinancialLedgerStorage(database: target), target);
     final backGoals = ChallengeStorage(
       database: target, preferences: SharedPreferencesAsync(),
     );
