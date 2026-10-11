@@ -1,11 +1,11 @@
 # Mo Save — Redesign Implementation Progress
 
-> Progress updated: 2026-10-11. **MS-01 through MS-12 closed; MS-13 is next.** GitHub Issues are authoritative. MS-02..MS-12 source/tests remain **runtime-unverified**; no CLI or device checks have been run.
+> Progress updated: 2026-10-11. **MS-01 through MS-12 closed; MS-13 is in progress.** GitHub Issues are authoritative. MS-02..MS-12 source/tests remain **runtime-unverified**; no CLI or device checks have been run.
 
 ## Current checkpoint
 
 - **Next task:** [MS-13 — Link saving goals to real Savings assets](https://github.com/Sherko231/mo_save/issues/87).
-- **Active implementation:** None.
+- **Active implementation:** [MS-13 #87](https://github.com/Sherko231/mo_save/issues/87) — source changes underway; accounting and v12 backup regression review pending.
 - **Redesign progress:** 12 / 18 issues closed. **MS-02..MS-12 source implementations/tests were committed but not run or verified.** Client v11 upgrade, backup/restore, Savings fund UI and Android device acceptance remain pending.
 - **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
@@ -26,7 +26,7 @@
 | P3 | MS-10 — Transfer money between funds safely | [#84](https://github.com/Sherko231/mo_save/issues/84) | MS-02, MS-08 | Done — explicit Savings↔Spending cash movement, stable retry, audit/history, widget/service tests unrun [commit](https://github.com/Sherko231/mo_save/commit/643003b16c1b60620acea41dab820c5937592cd8) |
 | P3 | MS-11 — Categorized monthly spending analytics | [#85](https://github.com/Sherko231/mo_save/issues/85) | MS-08, MS-09, MS-10 | Done — category/fund/currency analytics, plan vs paid, prior month and ledger drill-down; tests unrun [commit](https://github.com/Sherko231/mo_save/commit/2034aaa1bf263ae2e13dc33ded6681acb48748a7) |
 | P4 | MS-12 — Build true Savings fund dashboard | [#86](https://github.com/Sherko231/mo_save/issues/86) | MS-02, MS-06, MS-10 | Done — ledger-real Savings/4 asset units, 6-month flows, references/valuation, Unallocated warning, tests unrun [commit](https://github.com/Sherko231/mo_save/commit/2f448b7a05e6a16e7c2a516693cbd868ed9916eb) |
-| P4 | MS-13 — Link saving goals to real Savings assets | [#87](https://github.com/Sherko231/mo_save/issues/87) | MS-02, MS-03, MS-12 | Not started |
+| P4 | MS-13 — Link saving goals to real Savings assets | [#87](https://github.com/Sherko231/mo_save/issues/87) | MS-02, MS-03, MS-12 | In progress — v12 goal backing, ledger guard, legacy consent and recovery compatibility; review pending |
 | P4 | MS-14 — Forecast goal completion and plan-vs-actual delays | [#88](https://github.com/Sherko231/mo_save/issues/88) | MS-05, MS-09, MS-12, MS-13 | Not started |
 | P4 | MS-15 — Useful savings motivation | [#89](https://github.com/Sherko231/mo_save/issues/89) | MS-13, MS-14 | Not started |
 | P5 | MS-16 — Unify audit history and corrections | [#90](https://github.com/Sherko231/mo_save/issues/90) | MS-04, MS-05, MS-08, MS-10, MS-13 | Not started |
