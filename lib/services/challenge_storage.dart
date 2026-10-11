@@ -35,6 +35,11 @@ class ChallengeStorage {
       orderBy: 'sort_order ASC',
     );
 
+    final verifiedRows = await database.query('goal_earmarks');
+    final verified = <String, int>{
+      for (final row in verifiedRows)
+        row['challenge_id']! as String: (row['amount_micros']! as num).toInt(),
+    };
     final List<SavingChallenge> challenges = <SavingChallenge>[];
     for (final Map<String, Object?> row in challengeRows) {
       final String id = row['id']! as String;
@@ -63,6 +68,7 @@ class ChallengeStorage {
               .toList(growable: false),
           deadline: _readDeadline(row['deadline_ms']),
           goalNote: _normalizeOptionalText(row['goal_note'] as String?),
+          backedAmountMicros: verified[id],
         ),
       );
     }
@@ -80,6 +86,7 @@ class ChallengeStorage {
         challenge,
         sortOrder: nextSortOrder,
       );
+      await _reserveNewGoal(transaction, challenge);
       await _syncChallengeContribution(transaction, challenge);
     });
     FinancialLedgerStorage.notifyChanged();
@@ -108,6 +115,7 @@ class ChallengeStorage {
         throw StateError('Challenge ${challenge.id} does not exist.');
       }
 
+      await _updateVerifiedReservation(transaction, challenge);
       await transaction.delete(
         'challenge_cells',
         where: 'challenge_id = ?',
@@ -134,6 +142,100 @@ class ChallengeStorage {
       );
     });
     FinancialLedgerStorage.notifyChanged();
+  }
+
+  /// Older checked grid cells remain visible as an unverified legacy record
+  /// until the owner explicitly chooses to back them or clear them.
+  Future<void> reconcileLegacyGoal(String id, {required bool useExistingMarks}) async {
+    final database = await _readyDatabase();
+    await database.transaction((txn) async {
+      final goalRows = await txn.query('challenges',
+        columns: <String>['currency'], where: 'id = ?',
+        whereArgs: <Object?>[id], limit: 1);
+      if (goalRows.isEmpty) throw StateError('Goal no longer exists.');
+      final existing = await txn.query('goal_earmarks',
+        where: 'challenge_id = ?', whereArgs: <Object?>[id], limit: 1);
+      if (existing.isNotEmpty) return; // Repeat reconciliation is idempotent.
+      final currency = _parseCurrency(goalRows.single['currency']! as String);
+      if (!useExistingMarks) {
+        await txn.update('challenge_cells', <String, Object?>{
+          'is_completed': 0,
+        }, where: 'challenge_id = ?', whereArgs: <Object?>[id]);
+      }
+      final marks = await txn.rawQuery('''
+        SELECT COALESCE(SUM(value),0) AS amount
+        FROM challenge_cells WHERE challenge_id = ? AND is_completed = 1
+      ''', <Object?>[id]);
+      final amount = (marks.single['amount']! as num).toInt();
+      final unit = _financialUnitForCurrency(currency);
+      await _reserveMicros(txn, id, unit, amount * LedgerEntry.microsPerUnit);
+      await _syncContributionValues(txn,
+        challengeId: id, currency: currency, savedAmount: amount);
+    });
+    FinancialLedgerStorage.notifyChanged();
+  }
+
+  Future<Map<String, int>> loadVerifiedEarmarks() async {
+    final db = await _readyDatabase();
+    final rows = await db.query('goal_earmarks');
+    return <String, int>{
+      for (final row in rows)
+        row['challenge_id']! as String: (row['amount_micros']! as num).toInt(),
+    };
+  }
+
+  static Future<void> _reserveNewGoal(
+    DatabaseExecutor txn, SavingChallenge goal,
+  ) => _reserveMicros(txn, goal.id, _financialUnitForCurrency(goal.currency),
+      goal.savedAmount * LedgerEntry.microsPerUnit);
+
+  static Future<void> _updateVerifiedReservation(
+    DatabaseExecutor txn, SavingChallenge goal,
+  ) async {
+    final rows = await txn.query('goal_earmarks',
+      columns: <String>['unit', 'amount_micros'],
+      where: 'challenge_id = ?', whereArgs: <Object?>[goal.id],
+      limit: 1);
+    if (rows.isEmpty) {
+      final existing = await txn.rawQuery('''
+        SELECT COALESCE(SUM(value), 0) AS amount
+        FROM challenge_cells
+        WHERE challenge_id = ? AND is_completed = 1
+      ''', <Object?>[goal.id]);
+      if ((existing.single['amount'] as num).toInt() != goal.savedAmount) {
+        throw StateError('الهدف القديم غير موثّق. ثبّت رصيد الخانات أو صفّرها أولاً.');
+      }
+      return;
+    }
+    final unit = _financialUnitForCurrency(goal.currency);
+    if (rows.single['unit'] != unit.name) {
+      throw StateError('Cannot silently change backed goal currency.');
+    }
+    await _reserveMicros(txn, goal.id, unit,
+      goal.savedAmount * LedgerEntry.microsPerUnit);
+  }
+
+  static Future<void> _reserveMicros(
+    DatabaseExecutor txn, String id, FinancialUnit unit, int proposed,
+  ) async {
+    if (proposed < 0) throw ArgumentError('Negative goal earmark.');
+    final funds = await FinancialLedgerStorage.loadFundBalancesForMutation(txn);
+    final saved = funds[FinancialFund.savings]![unit]!;
+    final reservedRows = await txn.rawQuery('''
+      SELECT COALESCE(SUM(amount_micros),0) AS reserved
+      FROM goal_earmarks WHERE unit = ? AND challenge_id != ?
+    ''', <Object?>[unit.name, id]);
+    final otherGoals = (reservedRows.single['reserved']! as num).toInt();
+    if (proposed > saved - otherGoals) {
+      throw GoalBackingInsufficientException(
+        unit: unit, reservedMicros: proposed + otherGoals,
+        savingsMicros: saved,
+      );
+    }
+    await txn.insert('goal_earmarks', <String, Object?>{
+      'challenge_id': id, 'unit': unit.name, 'amount_micros': proposed,
+      'verified_at_ms': DateTime.now().toUtc().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Compatibility path for callers that still submit the full list.
