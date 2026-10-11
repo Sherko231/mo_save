@@ -6,6 +6,7 @@ import 'pages/settings_shell_page.dart';
 import 'services/app_setup_storage.dart';
 import 'services/notification_service.dart';
 import 'ui/app_theme.dart';
+import 'ui/app_scroll_behavior.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,9 @@ class _MoSaveAppState extends State<MoSaveApp> {
     return MaterialApp(
       title: 'Mo Save',
       debugShowCheckedModeBanner: false,
+      // Prevent Android's stretching overscroll from exposing a blank frame
+      // during long financial-list drags; keep content clipped in-place.
+      scrollBehavior: const MoSaveScrollBehavior(),
       locale: const Locale('ar'),
       supportedLocales: const <Locale>[Locale('ar')],
       localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
