@@ -93,6 +93,7 @@ void main() {
           as Map<String, dynamic>;
       final tables = payload['tables'] as Map<String, dynamic>;
       tables.remove('recurring_expense_plan_versions');
+      tables.remove('goal_earmarks');
       // Schema v10 has only the one known current-row value, not historic
       // revisions. It cannot include the new scheduled Nov price.
       final currentRow = (tables['recurring_expense_items'] as List).single
@@ -108,11 +109,11 @@ void main() {
       return Uint8List.fromList(utf8.encode(jsonEncode(outer)));
     }
 
-    test('v11 export restores exact future revisions and no new cash', () async {
+    test('v12 export restores exact future plan revisions and no new cash', () async {
       final original = await export.createBackupBytes();
-      expect(export.inspectBackupBytes(original).databaseSchemaVersion, 11);
+      expect(export.inspectBackupBytes(original).databaseSchemaVersion, LocalDatabase.schemaVersion);
       final summary = await restore.restoreBackupBytes(original);
-      expect(summary.databaseSchemaVersion, 11);
+      expect(summary.databaseSchemaVersion, LocalDatabase.schemaVersion);
       final restored = ExpensePlanStorage(database: target);
       expect((await restored.loadItemsForMonth(current)).single.amountMicros,
           LedgerEntry.amountToMicros(240000));
