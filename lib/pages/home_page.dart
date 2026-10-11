@@ -31,10 +31,13 @@ class HomePage extends StatefulWidget {
     super.key,
     required this.isActive,
     this.view = HomeFinancialView.savings,
+    this.incomeOnly = false,
   });
 
   final bool isActive;
   final HomeFinancialView view;
+  /// Compact salary workflow without the full spending dashboard.
+  final bool incomeOnly;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -347,6 +350,81 @@ class _HomePageState extends State<HomePage> {
 
     final attention = _incomeNeedingAttention;
     final savings = widget.view == HomeFinancialView.savings;
+
+    if (widget.incomeOnly) {
+      final other = _occurrences
+          .where((occurrence) => !attention.contains(occurrence))
+          .toList(growable: false);
+      return SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(18, 22, 18, 70),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const UxPageHeader(
+              title: 'رواتبك',
+              subtitle: 'سجّل فقط المبلغ اللي استلمته فعلاً',
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: <Widget>[
+                IconButton(
+                  tooltip: 'الشهر السابق',
+                  onPressed: () => _changeMonth(-1),
+                  icon: const Icon(Icons.chevron_right_rounded),
+                ),
+                Expanded(
+                  child: Text(
+                    'الشهر: ' +
+                        _selectedMonth.month.toString() +
+                        '/' +
+                        _selectedMonth.year.toString(),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'الشهر التالي',
+                  onPressed: () => _changeMonth(1),
+                  icon: const Icon(Icons.chevron_left_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (attention.isNotEmpty) ...<Widget>[
+              const UxSectionHeader(title: 'بحاجة لإجراء'),
+              const SizedBox(height: 8),
+              for (final occurrence in attention)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: _AttentionIncomeCard(
+                    occurrence: occurrence,
+                    isConfirming: _confirmingKey == occurrence.recurrenceKey,
+                    onConfirm: () => _confirmReceived(occurrence),
+                    onIgnore: () => _ignoreOccurrence(occurrence),
+                  ),
+                ),
+            ],
+            const UxSectionHeader(title: 'باقي الدفعات'),
+            const SizedBox(height: 8),
+            _IncomeDetails(
+              occurrences: other,
+              confirmingKey: _confirmingKey,
+              onConfirm: _confirmReceived,
+              onIgnore: _ignoreOccurrence,
+              onUndoIgnore: _undoIgnore,
+            ),
+            const SizedBox(height: 14),
+            const UxInfoBanner(
+              icon: Icons.info_outline_rounded,
+              title: 'ما بينضاف أي مبلغ لحاله',
+              body: 'الراتب المتوقع مو رصيد. ما بيتغيّر رصيدك إلا لما تسجل استلامه. '
+                  'إذا كنت مستلمه وصرفته من قبل، سجّل التفاصيل الحقيقية.',
+            ),
+          ],
+        ),
+      );
+    }
 
     // A downward drag is navigation, not a command to refetch every financial
     // section while the list is moving. Provide an explicit refresh action.
