@@ -20,6 +20,7 @@ import 'spending_analytics_page.dart';
 import 'transaction_history_page.dart';
 import 'challenges_page.dart';
 import 'savings_goals_preview.dart';
+import 'funds_at_glance.dart';
 import 'spending_quick_expense_page.dart';
 
 /// Fund-first primary destinations; independent screens share one canonical
@@ -375,10 +376,17 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 13),
           if (savings) ...<Widget>[
-            HomeSavingsFundSection(refreshToken: _incomeRefreshToken),
-            const SizedBox(height: 20),
+            FundsAtGlance(refreshToken: _incomeRefreshToken),
+            const SizedBox(height: 16),
             SavingsGoalsPreview(onOpenGoals: _openGoals),
-            const SizedBox(height: 18),
+            const SizedBox(height: 13),
+            UxDisclosureCard(
+              title: 'تفاصيل صندوق الادخار',
+              subtitle: 'الأرصدة والذهب والمال المحجوز والحر وسجل حركة الادخار',
+              icon: Icons.savings_outlined,
+              child: HomeSavingsFundSection(refreshToken: _incomeRefreshToken),
+            ),
+            const SizedBox(height: 13),
             UxDisclosureCard(
               title: 'الأصول الأخرى والتحويلات',
               subtitle: 'تفاصيل الثروة الإجمالية، الصرف والذهب — ليست كلها ادخاراً',
