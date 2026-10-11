@@ -20,6 +20,7 @@ class TransactionHistoryPage extends StatefulWidget {
     this.initialUnit,
     this.initialType,
     this.initialGoalId,
+    this.embedded = false,
     this.historyService,
     this.goalStorage,
   });
@@ -30,6 +31,8 @@ class TransactionHistoryPage extends StatefulWidget {
   final FinancialEventType? initialType;
   final DateTime? initialMonth;
   final String? initialGoalId;
+  /// Hide route-only back navigation when used as a primary tab.
+  final bool embedded;
   final TransactionHistoryService? historyService;
   final ChallengeStorage? goalStorage;
 
@@ -197,12 +200,14 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  IconButton(
-                    tooltip: 'رجوع',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const BackButtonIcon(),
-                  ),
-                  const SizedBox(width: 4),
+                  if (!widget.embedded) ...<Widget>[
+                    IconButton(
+                      tooltip: 'رجوع',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const BackButtonIcon(),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   const Expanded(
                     child: UxPageHeader(
                       title: 'سجل الحركات',
