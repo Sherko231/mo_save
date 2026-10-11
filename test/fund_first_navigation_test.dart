@@ -39,6 +39,12 @@ void main() {
 
   testWidgets('MS-17 mobile primary destinations are Savings / Spending / Settings',
       (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
