@@ -382,7 +382,10 @@ class GoalForecastService {
         .fold<int>(0, (sum, n) => sum + n) <= 0) return null;
     var future = goal.backedAmountMicros!;
     for (var i = 0; i < horizon; i++) {
-      future = math.max(0,
+      // This is hypothetical UNCOMMITTED future Savings. The actual goal
+      // reservation is protected in the ledger and cannot shrink simply
+      // because future bills would otherwise exceed expected contributions.
+      future = math.max(goal.backedAmountMicros!,
         future + monthlyNetMicros[i] * pacePercent ~/ 100);
       if (future >= target) {
         return DateTime(asOf.year, asOf.month + i + 2, 0);
