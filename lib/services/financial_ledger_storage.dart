@@ -40,6 +40,22 @@ class InsufficientFundBalanceException implements Exception {
       'Insufficient ${fund.name} ${unit.name}: $availableMicros < $requiredMicros';
 }
 
+class GoalBackingInsufficientException implements Exception {
+  const GoalBackingInsufficientException({
+    required this.unit,
+    required this.reservedMicros,
+    required this.savingsMicros,
+  });
+  final FinancialUnit unit;
+  final int reservedMicros;
+  final int savingsMicros;
+
+  @override
+  String toString() =>
+      'Goal reservations exceed Savings ${unit.name}: '
+      '$reservedMicros > $savingsMicros. Release goals before withdrawing.';
+}
+
 class FinancialLedgerStorage {
   FinancialLedgerStorage({LocalDatabase? database})
       : _database = database ?? LocalDatabase.instance;
@@ -617,6 +633,24 @@ class FinancialLedgerStorage {
         throw StateError('Fund postings do not reconcile with owned ${unit.name}.');
       }
     }
+    // Verified goal reservations are backed by existing Savings cash.
+    // Block, rather than silently shrinking completed goal cells, whenever
+    // a transfer, expense, FX or historical correction would underfund them.
+    final pledged = await executor.rawQuery('''
+      SELECT unit, SUM(amount_micros) AS reserved
+      FROM goal_earmarks GROUP BY unit
+    ''');
+    for (final row in pledged) {
+      final unit = _parseUnit(row['unit']! as String);
+      final required = (row['reserved']! as num).toInt();
+      final available = after[FinancialFund.savings]![unit]!;
+      if (required > available) {
+        throw GoalBackingInsufficientException(
+          unit: unit, reservedMicros: required, savingsMicros: available,
+        );
+      }
+    }
+
     for (final fund in FinancialFund.values) {
       for (final unit in FinancialUnit.values) {
         final previous = before[fund]![unit]!;
