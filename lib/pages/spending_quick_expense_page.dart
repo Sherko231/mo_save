@@ -238,6 +238,11 @@ class _SpendingQuickExpensePageState extends State<SpendingQuickExpensePage> {
       setState(() => _error =
           'الرصيد الفعلي تغيّر. المتاح وقت التحقق: '
           '${FinancialFormat.assetBalance(error.availableMicros, error.unit)}');
+    } on GoalBackingInsufficientException catch (_) {
+      if (!mounted) return;
+      setState(() => _error =
+          'في مبلغ محجوز لأهداف الادخار. لتحريره، افتح الهدف '
+          'وألغِ خانات منجزة قبل صرفه. لم يُخصم أي مال.');
     } on InsufficientFundBalanceException catch (_) {
       if (!mounted) return;
       await _loadReferenceData();
