@@ -176,9 +176,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
     final SavingChallenge? openedChallenge = _openedChallenge;
 
     return PopScope(
-      canPop: !widget.isActive || openedChallenge == null,
+      canPop: openedChallenge == null,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && widget.isActive && openedChallenge != null) {
+        if (!didPop && openedChallenge != null) {
           _closeChallenge();
         }
       },
@@ -235,9 +235,23 @@ class _ChallengesPageState extends State<ChallengesPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                UxPageHeader(
-                  title: 'أهداف الادخار',
-                  subtitle: 'حوّل الادخار إلى خطوات صغيرة وواضحة',
+                Row(
+                  children: <Widget>[
+                    if (Navigator.of(context).canPop()) ...<Widget>[
+                      IconButton(
+                        tooltip: 'العودة للادخار',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    const Expanded(
+                      child: UxPageHeader(
+                        title: 'أهداف الادخار',
+                        subtitle: 'تقدّم مثبت بأموال موجودة في الادخار',
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
