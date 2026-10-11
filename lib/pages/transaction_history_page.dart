@@ -281,8 +281,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                 style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
               const Text(
-                'فقط الحركات الفعلية بتغيّر الرصيد. الالتزامات أعلاه '
-                'مجرد خطة، والحركات المحذوفة ظاهرة للتدقيق فقط.',
+                'الحركات النقدية الفعلية فقط بتغيّر الرصيد. تقسيم '
+                'الراتب وتقدم الخانات إشارات غير نقدية، والالتزامات '
+                'أعلاه مجرد خطة. المحذوفات ظاهرة للتدقيق فقط.',
               ),
               const SizedBox(height: 12),
               if (_isLoading)
@@ -622,6 +623,8 @@ class _TransactionCard extends StatelessWidget {
                 Text(
                   '${FinancialFormat.dateTime(event.occurredAt)}'
                   '${event.category == null ? '' : ' • ${event.category}'}'
+                  '${event.type == FinancialEventType.savingContribution
+                      ? ' • تقدم هدف غير نقدي' : ''}'
                   '${event.type != FinancialEventType.expense
                       ? ''
                       : ' • من ${_fundLabel(event.entries.first.fund)}'}',
