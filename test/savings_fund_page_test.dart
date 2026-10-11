@@ -81,7 +81,7 @@ void main() {
 
     expect(find.text('≈ \$120'), findsOneWidget);
     expect(find.text(
-      'من إجمالي ممتلكاتك بهالعملة: $250',
+      'من إجمالي ممتلكاتك بهالعملة: \$250',
     ), findsOneWidget);
     expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
       LedgerEntry.amountToMicros(250));
