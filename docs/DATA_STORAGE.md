@@ -396,6 +396,33 @@ the amount of unpaid bills. Deletion/correction of a payment naturally
 updates active analytics, while the revisions remain stored for audit.
 See [SPENDING_ANALYTICS.md](SPENDING_ANALYTICS.md).
 
+### MS-12 — Real Savings balances, monthly movements and estimate (no schema change)
+
+`SavingsFundService` reads the existing fund ledger
+(`FinancialLedgerStorage.loadFundBalancesMicros`) and owned-unit
+balances; it does **not** create a shadow savings wallet. Each unit satisfies
+`Owned = Savings + Spending + Unallocated`, and only the **Savings** portion
+is shown as saved. Existing non-balance `savingContribution` challenge grid
+entries do not establish ownership, and migrated ambiguous assets remain
+Unallocated until explicitly transferred.
+
+For the current month and previous five calendar months, the service
+categorizes Savings-affecting entries by actual `occurred_at_ms` into
+positive `income` receipts, inbound/outbound `fundTransfer`, negative
+`expense` payments, `openingBalance`, signed FX/gold principal exchanges
+and remaining technical adjustments. The sum of categories equals each
+month's real signed Savings fund movement per asset unit. Income receipts
+and fund transfers are displayed separately so a transfer is not
+misclassified as earnings; conversion and gold trades are not new
+savings contributions. No reference valuation is stored in the ledger.
+
+The Savings-only estimated USD value uses the pre-existing
+`FinancialBalanceSnapshot` calculation and Settings reference FX/gold
+prices; missing prices or nonzero SYP (N) prevent a false "total" estimate.
+A reference change only alters the estimated display, not saved quantities.
+No goal earmark or forecast is implied by Savings until MS-13/MS-14.
+See [SAVINGS_FUND.md](SAVINGS_FUND.md).
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
