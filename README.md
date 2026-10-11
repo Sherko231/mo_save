@@ -4,7 +4,7 @@ Single-user, offline-first Flutter app for personal finance tracking and gamifie
 
 ## Active redesign — savings and spending funds
 
-The client-requested redesign is **in progress**. Its fund-aware ledger, receipt allocations, Spending dashboard, categorized expenses, future-effective recurring plan versions, internal fund transfers and categorized monthly spending analytics and a true Savings dashboard are committed, but **runtime checks have not been executed**. Goal backing, forecasts, full navigation, and client acceptance are still future issues. The plan covers linked Savings and Spending funds, real liquidity and categorized expenses, goal earmarks backed by real Savings, overdue-payday dismissal, editable assumptions and realistic goal forecasts.
+The client-requested redesign is **in progress**. Its fund-aware ledger, receipt allocations, Spending dashboard, categorized expenses, future-effective recurring plan versions, internal fund transfers and categorized monthly spending analytics and a true Savings dashboard are committed, but **runtime checks have not been executed**. Verified Savings-backed goals are implemented in source; forecasts, full navigation and client acceptance remain future issues. The plan covers linked Savings and Spending funds, real liquidity and categorized expenses, goal earmarks backed by real Savings, overdue-payday dismissal, editable assumptions and realistic goal forecasts.
 
 - [AI implementation contract](AGENTS.md)
 - [Redesign product specification](docs/FUNDS_REDESIGN.md)
