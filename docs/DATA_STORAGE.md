@@ -446,6 +446,22 @@ currency, grid match and Savings coverage. The Savings dashboard now
 shows pledged and free assets by unit. More detail:
 [GOAL_EARMARKS.md](GOAL_EARMARKS.md).
 
+### MS-14 — Read-only conditional goal forecasts (no schema change)
+
+`GoalForecastService` reads actual verified goal_earmarks, current salary
+assumptions, recurring monthly plan versions and active Savings ledger
+events. The plan counts real future weekly payday dates (4/5 per month),
+spending envelopes and effective monthly bills. Missing USD allocation
+requires a confirmed historical salary split or explicit user-entered
+scenario; no assumed real SYP↔USD conversion occurs. Observed net Savings
+pace uses complete elapsed months of actual Savings receipts, expenses and
+fund reallocations, never opening cash or reference-value changes.
+Projected dates are conservative month-end **scenarios**, not persisted
+transactions, guaranteed salaries or booked fund/goal increases.
+Forecasts preserve already verified pledged principal as their minimum
+and make no database writes. Full calculations and limitations:
+[GOAL_FORECASTS.md](GOAL_FORECASTS.md).
+
 ## Legacy SharedPreferences migration
 
 Previous versions stored the full challenge list as JSON under:
