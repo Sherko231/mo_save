@@ -9,6 +9,7 @@ import '../ui/ux_components.dart';
 import '../utils/challenge_format.dart';
 import '../utils/financial_format.dart';
 import 'challenge_detail_page.dart';
+import 'goal_forecast_page.dart';
 
 class ChallengesPage extends StatefulWidget {
   const ChallengesPage({
@@ -236,6 +237,16 @@ class _ChallengesPageState extends State<ChallengesPage> {
                 UxPageHeader(
                   title: 'أهداف الادخار',
                   subtitle: 'حوّل الادخار إلى خطوات صغيرة وواضحة',
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const GoalForecastPage(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.query_stats_rounded),
+                  label: const Text('توقعات أهداف الادخار'),
                 ),
                 const SizedBox(height: 16),
                 Row(
