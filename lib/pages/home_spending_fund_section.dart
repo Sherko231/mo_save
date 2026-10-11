@@ -15,10 +15,11 @@ import 'unallocated_funds_page.dart';
 /// Always describes NOW, independent of the month selected in the historical
 /// Home overview. Plans are clearly hypothetical and cannot debit balances.
 class HomeSpendingFundSection extends StatefulWidget {
-  const HomeSpendingFundSection({super.key, required this.refreshToken});
+  const HomeSpendingFundSection({super.key, required this.refreshToken, this.showExpenseButton = true});
 
   /// Changed by Home reload or recurring-plan edit; no derived balance cache.
   final int refreshToken;
+  final bool showExpenseButton;
 
   @override
   State<HomeSpendingFundSection> createState() =>
@@ -232,12 +233,14 @@ class _HomeSpendingFundSectionState extends State<HomeSpendingFundSection> {
           ),
         ],
         const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: snapshot == null ? null : _openExpense,
-          icon: const Icon(Icons.add_card_rounded),
-          label: const Text('إضافة مصروف من المصاريف أو الادخار'),
-        ),
-        const SizedBox(height: 7),
+        if (widget.showExpenseButton) ...<Widget>[
+          FilledButton.icon(
+            onPressed: snapshot == null ? null : _openExpense,
+            icon: const Icon(Icons.add_card_rounded),
+            label: const Text('إضافة مصروف من المصاريف أو الادخار'),
+          ),
+          const SizedBox(height: 7),
+        ],
         OutlinedButton.icon(
           onPressed: _openTransfer,
           icon: const Icon(Icons.swap_horiz_rounded),
