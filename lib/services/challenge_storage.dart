@@ -86,7 +86,12 @@ class ChallengeStorage {
         challenge,
         sortOrder: nextSortOrder,
       );
-      await _reserveNewGoal(transaction, challenge);
+      // A restored/programmatically imported old challenge may already
+      // have checked cells but no proven Savings backing. Never treat
+      // nullable/unverified grid progress as an implicit user consent.
+      if (challenge.isBackingVerified) {
+        await _reserveNewGoal(transaction, challenge);
+      }
       await _syncChallengeContribution(transaction, challenge);
     });
     FinancialLedgerStorage.notifyChanged();
