@@ -44,6 +44,11 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 - MS-08: 80,000 SYP paid from 540,000 Spending leaves 460,000 Spending; 100 USD paid directly from 500 USD Savings leaves 400 USD Savings and one categorized actual payment.
 - MS-08: both paying funds enter month actual expenses once each, retaining the source fund on the transaction and audit snapshots.
 - MS-08: source-fund insufficiency rejects without spending another fund; Savings withdrawal requires a nonblank reason and Other categories require a user-supplied name.
+- MS-16: 100 USD purchase directly from Savings appears as one USD actual expense and decreases Savings by 100; correcting it to 80 recalculates the real balance and saves the original 100 with its note; cancellation safely returns the spent amount and preserves both archived versions without counting cancelled entries in expense reports.
+- MS-16: unequal fund-transfer corrections fail atomically, equal-opposite transfers and cancellation conserve owned balances and record original source/destination; rate corrections preserve prior executed SYP/USD exchange rates, never today's reference rate.
+- MS-16: planned recurring bills and unconfirmed/ignored salary commitments are visible separately but never posted to active transaction counts; event type, fund, unit, linked goal and category/note search return only matching real records/tombstones.
+- MS-16: a goal-grid earmark change/release stores its old nonbalance progress event revision and remains editable only from the goal screen, not as an income/expense; an audited correction cannot underfund backed Savings.
+- MS-16: unchanged metadata adds no revision, and Arabic RTL detail shows expanded previous snapshots, fund direction, linked IDs and reason/note.
 - MS-15: a legacy 100%-checked unverified goal earns no 25/50/75/100 milestone or completion badge; a genuinely backed 60% goal earns only 25/50, next milestone 75, with no new ledger asset.
 - MS-15: current and first possibly partial months never create Savings streaks. At least two complete consecutive positive months of real new Savings income net of direct Savings expenses, in the same currency, are required; a zero/negative month breaks the streak, and FX, opening assets, transfers and paper goal marks are excluded.
 - MS-15: on-track/behind-plan motivation uses MS-14 actual versus conditional plan pace, with readable missing-data handling and signed observed-vs-plan hypothetical arrival-date difference; never promise an exact arrival or allocate one future salary simultaneously to every goal.
@@ -86,7 +91,7 @@ The suite uses isolated temporary SQLite databases through `LocalDatabase.forTes
 
 ## Current verification status
 
-The MS-02 through MS-15 regression cases (including evidence-only milestones, savings streaks, optional reminder text and RTL motivation UI) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
+The MS-02 through MS-16 regression cases (including unified audit, goals, real-fund cancellations and RTL planned-vs-actual history) have been committed, but the owner requested **no CLI checks**, so these cases have **not been executed**. No successful runtime, analyzer, Android build, real-client database upgrade or device acceptance is claimed. They remain verification obligations before client delivery (MS-18).
 
 ## Migration QA
 
