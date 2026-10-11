@@ -9,6 +9,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../models/financial_settings.dart';
 import '../models/saving_challenge.dart';
 import 'challenge_storage.dart';
+import 'goal_reminder_copy.dart';
 import 'financial_ledger_storage.dart';
 import 'financial_settings_storage.dart';
 import 'notification_preferences_storage.dart';
@@ -218,12 +219,6 @@ class NotificationService {
     for (final SavingChallenge challenge in challenges) {
       final DateTime? deadline = challenge.deadline;
       if (deadline == null || challenge.isVerifiedComplete) continue;
-      final remaining = challenge.targetAmount.toInt() -
-          challenge.verifiedSavedAmount;
-      final remainingLabel = challenge.currency.formatAmount(remaining);
-      final progressCaveat = challenge.isBackingVerified
-          ? '' : 'الخانات القديمة غير مثبتة بأموال الادخار. ';
-
       final DateTime localDeadline = deadline.toLocal();
       final tz.TZDateTime due = tz.TZDateTime(
         tz.local,
@@ -239,9 +234,7 @@ class NotificationService {
         await _plugin.zonedSchedule(
           id: _goalBaseId + notificationIndex++,
           title: 'بقي أسبوع على هدف ${challenge.name}',
-          body:
-              '${progressCaveat}المتبقي المثبّت ${remainingLabel}. '
-              'راجع تقدم الهدف قبل الموعد.',
+          body: GoalReminderCopy.weekBefore(challenge),
           scheduledDate: weekBefore,
           notificationDetails: _notificationDetails,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -252,9 +245,7 @@ class NotificationService {
       await _plugin.zonedSchedule(
         id: _goalBaseId + notificationIndex++,
         title: 'موعد هدف ${challenge.name}',
-        body:
-            'اليوم الموعد المحدد للهدف. المتبقي '
-            '${remainingLabel}. ${progressCaveat}',
+        body: GoalReminderCopy.onDeadline(challenge),
         scheduledDate: due,
         notificationDetails: _notificationDetails,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
