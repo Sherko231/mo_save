@@ -247,56 +247,57 @@ class ChallengeStorage {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  /// Compatibility path for callers that still submit the full list.
-  ///
-  /// Dedicated challenge-grid saving contributions are removed before the
-  /// challenge rows are replaced, then recreated from the persisted completion
-  /// state in the same transaction. This keeps the ledger and grid exact.
+  /// Full-list compatibility save without deleting/recreating unchanged
+  /// ledger event IDs. Preserves their created timestamps and audit history.
+  /// Updates and deletions remain atomic with real Savings goal reservations.
   Future<void> saveChallenges(List<SavingChallenge> challenges) async {
-    final Database database = await _readyDatabase();
+    final database = await _readyDatabase();
+    final incomingIds = challenges.map((goal) => goal.id).toSet();
+    if (incomingIds.length != challenges.length) {
+      throw ArgumentError('Duplicate challenge ID in bulk save.');
+    }
 
-    await database.transaction((transaction) async {
-      final existingBacked = await transaction.query('goal_earmarks',
-        columns: <String>['challenge_id']);
-      final verifiedIds = existingBacked
-          .map((row) => row['challenge_id']! as String).toSet();
-      final previousGoals = await transaction.query('financial_events',
-        columns: <String>['recurrence_key'],
-        where: 'event_type = ? AND category = ?',
-        whereArgs: <Object?>[
-          FinancialEventType.savingContribution.name, _contributionCategory,
-        ],
-      );
-      for (final event in previousGoals) {
-        final key = event['recurrence_key'] as String?;
-        if (key == null) continue;
-        await TransactionHistoryService.archiveGoalProgress(transaction,
-          recurrenceKey: key, action: 'delete');
-      }
-      await transaction.delete(
-        'financial_events',
-        where: 'event_type = ? AND category = ?',
-        whereArgs: <Object?>[
-          FinancialEventType.savingContribution.name,
-          _contributionCategory,
-        ],
-      );
-      await transaction.delete('challenges');
+    await database.transaction((txn) async {
+      final oldRows = await txn.query('challenges',
+        columns: <String>['id']);
+      final existingIds = oldRows
+          .map((row) => row['id']! as String).toSet();
 
       for (int index = 0; index < challenges.length; index++) {
-        final SavingChallenge challenge = challenges[index];
-        await _insertChallenge(
-          transaction,
-          challenge,
-          sortOrder: index,
-        );
-        if (verifiedIds.contains(challenge.id) ||
-            challenge.isBackingVerified) {
-          await _reserveNewGoal(transaction, challenge);
+        final goal = challenges[index];
+        if (existingIds.contains(goal.id)) {
+          await txn.update('challenges', <String, Object?>{
+            'name': goal.name,
+            'target_amount': goal.targetAmount,
+            'currency': goal.currency.name,
+            'sequence': goal.sequence.name,
+            'cell_count': goal.cellCount,
+            'deadline_ms': goal.deadline?.toUtc().millisecondsSinceEpoch,
+            'goal_note': _normalizeOptionalText(goal.goalNote),
+            'sort_order': index,
+          }, where: 'id = ?', whereArgs: <Object?>[goal.id]);
+          // Validate against previous completed cells before updating them.
+          await _updateVerifiedReservation(txn, goal);
+          await txn.delete('challenge_cells',
+            where: 'challenge_id = ?', whereArgs: <Object?>[goal.id]);
+          await _insertCells(txn, goal);
+        } else {
+          await _insertChallenge(txn, goal, sortOrder: index);
+          if (goal.isBackingVerified) await _reserveNewGoal(txn, goal);
         }
-        // Imported unverified completed cells remain pending and do not
-        // silently become real reserved money through list replacement.
-        await _syncChallengeContribution(transaction, challenge);
+        // Unverified imports are still unverified; this posts ONLY the
+        // non-balance grid bookkeeping event and archives prior differences.
+        await _syncChallengeContribution(txn, goal);
+      }
+
+      for (final id in existingIds.difference(incomingIds)) {
+        final key = _contributionRecurrenceKey(id);
+        await TransactionHistoryService.archiveGoalProgress(txn,
+          recurrenceKey: key, action: 'delete');
+        await txn.delete('financial_events',
+          where: 'recurrence_key = ?', whereArgs: <Object?>[key]);
+        await txn.delete('challenges',
+          where: 'id = ?', whereArgs: <Object?>[id]);
       }
     });
     FinancialLedgerStorage.notifyChanged();
