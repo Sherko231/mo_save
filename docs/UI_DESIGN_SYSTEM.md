@@ -19,11 +19,11 @@ The UI keeps the progressive-disclosure UX architecture already established. Thi
 
 ## Main surfaces
 
-### Home
+### Savings and Spending landing screens (MS-17)
 
-The hero card owns the strongest visual weight and presents total estimated value plus major asset chips. Monthly income/expense summaries use compact tinted metric cards. Attention items use semantic status tones. Advanced operations remain inside progressive-disclosure cards.
+Savings first shows distinct per-currency **actual Savings** and **spendable Spending** amounts, then real-backed goal progress and conditional dates. These take precedence over the more speculative combined asset valuation, which is behind a disclosure. Spending places a prominent Add Expense action ahead of fund balances, monthly commitments and analytics. No extra conversion of USD/SYP/SYP (N), or false Savings totals based on paper grid marks. Both routes keep restrained styles and expand advanced actions on demand.
 
-### Saving goals
+### Saving goals (inside Savings)
 
 Goal cards use a state-aware accent and a strong progress treatment. Completed, overdue and active goals remain visually distinguishable without relying on text alone. Goal detail uses a premium hero and tactile grid cells; completed cells become saturated emerald tiles with a clear check state.
 
