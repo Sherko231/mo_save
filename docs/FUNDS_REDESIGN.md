@@ -1,6 +1,6 @@
 # Mo Save — Savings and Spending Redesign Specification
 
-Status: **IMPLEMENTATION IN PROGRESS** (MS-01..MS-04 delivered to source, but runtime not checked). Created 2026-10-10 after client feedback. This is the product specification for GitHub issues MS-01 through MS-18, indexed in [FUNDS_REDESIGN_PROGRESS.md](FUNDS_REDESIGN_PROGRESS.md).
+Status: **IMPLEMENTATION IN PROGRESS** (MS-01..MS-13 delivered to source; runtime not checked). Created 2026-10-10 after client feedback. This is the product specification for GitHub issues MS-01 through MS-18, indexed in [FUNDS_REDESIGN_PROGRESS.md](FUNDS_REDESIGN_PROGRESS.md).
 
 ## The real product goal
 
@@ -33,7 +33,7 @@ Income receipt, fund allocation, internal transfers, transaction history, initia
 
 ## Account model and invariants
 
-**MS-01 accounting contract is complete as a design deliverable:** [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md). The contract defines exact per-unit conservation equations, fund attribution, transaction matrix, goal earmark checks, migration limitations and implementation/test vectors. It is the normative reference for MS-02 onward. This section is the higher-level product summary. The fund ledger, v9/v10 recovery, overdue payday handling, receipt allocation, Spending and Savings dashboards, categorized expense analytics and internal transfers now have source implementations through MS-12. Goal earmarking, forecasts, motivation, unified navigation and client acceptance remain future issues. No Flutter/runtime/device verification has been executed.
+**MS-01 accounting contract is complete as a design deliverable:** [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md). The contract defines exact per-unit conservation equations, fund attribution, transaction matrix, goal earmark checks, migration limitations and implementation/test vectors. It is the normative reference for MS-02 onward. This section is the higher-level product summary. The fund ledger, v9/v10 recovery, overdue payday handling, receipt allocation, Spending and Savings dashboards, categorized expense analytics and internal transfers now have source implementations through MS-13, including verified Savings-backed goal earmarks. Forecasts, motivation, unified navigation and client acceptance remain future issues. No Flutter/runtime/device verification has been executed.
 
 **Owned asset**: a separate unit such as USD, SYP, SYP (N), or gold grams.
 **Fund**: Savings, Spending, or Unallocated (temporary intake/migration bucket; never silently label this as saved).
