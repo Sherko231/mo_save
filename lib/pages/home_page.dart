@@ -350,13 +350,18 @@ class _HomePageState extends State<HomePage> {
 
     // A downward drag is navigation, not a command to refetch every financial
     // section while the list is moving. Provide an explicit refresh action.
-    return ListView(
+    // Keep the finance dashboard's widget state stable during swipes.
+    // Unlike ListView, this bounded column does not dispose and re-create
+    // data-backed sections as they cross the viewport boundary.
+    return SingleChildScrollView(
       key: PageStorageKey<String>(
         savings ? 'savings-scroll' : 'spending-scroll',
       ),
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 112),
-      children: <Widget>[
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
         UxPageHeader(
           title: savings ? 'الادخار' : 'المصاريف',
           subtitle: savings
@@ -507,7 +512,8 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ],
-      ],
+        ],
+      ),
     );
   }
 
