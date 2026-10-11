@@ -294,6 +294,40 @@ void main() {
       expect((await history.loadRevisions(current.id)), hasLength(1));
     });
 
+    test('bulk goal save keeps unchanged event identity and only audits releases',
+        () async {
+      await opening(200);
+      final g = SavingChallenge.create(
+        id: 'bulk-goal', name: 'جامعة',
+        targetAmount: 100, currency: ChallengeCurrency.usd,
+        sequence: ChallengeSequence.ordered, cellCount: 1,
+      );
+      await goals.addChallenge(g);
+      await goals.updateChallenge(g.copyWith(cells:
+        <ChallengeCell>[g.cells.single.copyWith(isCompleted: true)]));
+      final before = (await ledger.loadEvents(
+        type: FinancialEventType.savingContribution)).single;
+      final current = (await goals.loadChallenges()).single;
+      await goals.saveChallenges(<SavingChallenge>[current]);
+      final unchanged = (await ledger.loadEvents(
+        type: FinancialEventType.savingContribution)).single;
+      expect(unchanged.id, before.id);
+      expect(unchanged.createdAt, before.createdAt);
+      expect(await history.loadRevisions(before.id), isEmpty);
+      await goals.saveChallenges(<SavingChallenge>[current.copyWith(cells:
+        <ChallengeCell>[
+          current.cells.single.copyWith(isCompleted: false),
+        ])]);
+      expect((await ledger.loadEvents(
+        type: FinancialEventType.savingContribution)), isEmpty);
+      expect((await history.loadRevisions(before.id)), hasLength(1));
+      expect((await history.loadMonth(month,
+        type: FinancialEventType.savingContribution,
+        goalId: g.id)).single.isDeleted, isTrue);
+      expect((await ledger.loadBalanceMicros())[FinancialUnit.usd],
+        LedgerEntry.amountToMicros(200));
+    });
+
     test('history correction cannot break Savings-backed earmarks',
         () async {
       await opening(200);
