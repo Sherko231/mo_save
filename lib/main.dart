@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'pages/challenges_page.dart';
 import 'pages/home_page.dart';
 import 'pages/settings_shell_page.dart';
 import 'services/app_setup_storage.dart';
@@ -109,14 +108,14 @@ class _AppShellState extends State<AppShell> {
   static const List<NavigationDestination> _bottomDestinations =
       <NavigationDestination>[
     NavigationDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home_rounded),
-      label: 'الرئيسية',
+      icon: Icon(Icons.savings_outlined),
+      selectedIcon: Icon(Icons.savings_rounded),
+      label: 'الادخار',
     ),
     NavigationDestination(
-      icon: Icon(Icons.flag_outlined),
-      selectedIcon: Icon(Icons.flag_rounded),
-      label: 'الأهداف',
+      icon: Icon(Icons.account_balance_wallet_outlined),
+      selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+      label: 'المصاريف',
     ),
     NavigationDestination(
       icon: Icon(Icons.settings_outlined),
@@ -128,14 +127,14 @@ class _AppShellState extends State<AppShell> {
   static const List<NavigationRailDestination> _railDestinations =
       <NavigationRailDestination>[
     NavigationRailDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home_rounded),
-      label: Text('الرئيسية'),
+      icon: Icon(Icons.savings_outlined),
+      selectedIcon: Icon(Icons.savings_rounded),
+      label: Text('الادخار'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.flag_outlined),
-      selectedIcon: Icon(Icons.flag_rounded),
-      label: Text('الأهداف'),
+      icon: Icon(Icons.account_balance_wallet_outlined),
+      selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+      label: Text('المصاريف'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.settings_outlined),
@@ -159,11 +158,13 @@ class _AppShellState extends State<AppShell> {
       index: _selectedIndex,
       children: <Widget>[
         HomePage(
-          key: ValueKey<String>('home-$_dataRevision'),
+          key: ValueKey<String>('savings-$_dataRevision'),
+          view: HomeFinancialView.savings,
           isActive: _selectedIndex == 0,
         ),
-        ChallengesPage(
-          key: ValueKey<String>('challenges-$_dataRevision'),
+        HomePage(
+          key: ValueKey<String>('spending-$_dataRevision'),
+          view: HomeFinancialView.spending,
           isActive: _selectedIndex == 1,
         ),
         SettingsShellPage(
