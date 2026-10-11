@@ -5,7 +5,7 @@
 ## Current checkpoint
 
 - **Next task:** [MS-18 — Verify migration, accounting, backups and client handoff](https://github.com/Sherko231/mo_save/issues/92).
-- **Active implementation:** None.
+- **Active implementation:** [MS-18 / #92](https://github.com/Sherko231/mo_save/issues/92) — GitHub Actions analyzer/test/APK verification, full client journey, migration/restore and physical device QA pending; first real CI found compile errors that were corrected.
 - **Redesign progress:** 17 / 18 issues closed. **MS-02..MS-17 source implementations and tests were committed but NOT executed or runtime-verified.** All accounting, v9-v12 client migration, portable restore and Arabic RTL/Android APK acceptance remain pending under MS-18.
 - **Scope:** [FUNDS_REDESIGN.md](FUNDS_REDESIGN.md) defines the approved direction. [FUNDS_ACCOUNTING_CONTRACT.md](FUNDS_ACCOUNTING_CONTRACT.md) now contains the normative MS-01 accounting rules. Linked GitHub Issues contain bounded implementation work and acceptance criteria.
 - **Legacy release gates:** [#28](https://github.com/Sherko231/mo_save/issues/28) (branding/direct APK) and [#29](https://github.com/Sherko231/mo_save/issues/29) (client acceptance/handoff) may contain earlier release preparation but must not be treated as redesigned-product sign-off.
@@ -31,7 +31,7 @@
 | P4 | MS-15 — Useful savings motivation | [#89](https://github.com/Sherko231/mo_save/issues/89) | MS-13, MS-14 | Done — real-backed milestones, evidence-only streak, helpful guidance, opt-in reminders; tests unrun |
 | P5 | MS-16 — Unify audit history and corrections | [#90](https://github.com/Sherko231/mo_save/issues/90) | MS-04, MS-05, MS-08, MS-10, MS-13 | Done — fund/goal/search filters, revision expansion, true cancelled audit, goal grid old snapshots, planned-only commitments; tests unrun [commit](https://github.com/Sherko231/mo_save/commit/ebd6c1d8bd9d0f3fa477fadd500a758960394ddc) |
 | P5 | MS-17 — Redesign navigation around Savings and Spending | [#91](https://github.com/Sherko231/mo_save/issues/91) | MS-07, MS-11, MS-12, MS-15, MS-16 | Done — adaptive fund tabs, per-currency Savings vs Spending, goal forecast preview, one-tap expense, preserved settings/backup; tests unrun [commit](https://github.com/Sherko231/mo_save/commit/565a6e2819f13fc122d30e3c3915cc0d928bba4a) |
-| P6 | MS-18 — Verify migration, accounting, backup and handoff | [#92](https://github.com/Sherko231/mo_save/issues/92) | All prior issues | Not started |
+| P6 | MS-18 — Verify migration, accounting, backup and handoff | [#92](https://github.com/Sherko231/mo_save/issues/92) | All prior issues | In progress — CI checks and client scenario written; device sign-off not yet done |
 
 ## Mandatory recovery and update procedure for implementation agents
 
